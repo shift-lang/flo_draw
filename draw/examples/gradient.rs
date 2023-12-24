@@ -1,8 +1,8 @@
-use flo_draw::*;
-use flo_canvas::*;
-
 use std::thread;
-use std::time::{Duration};
+use std::time::Duration;
+
+use flo_canvas::*;
+use flo_draw::*;
 
 ///
 /// Displays a circle with a linear gradient fill
@@ -10,9 +10,9 @@ use std::time::{Duration};
 pub fn main() {
     with_2d_graphics(|| {
         // Create a window
-        let canvas      = create_drawing_window("Gradient");
+        let canvas = create_drawing_window("Gradient");
 
-        let mut angle   = 0.0;
+        let mut angle = 0.0;
 
         loop {
             // Draw a circle
@@ -30,10 +30,10 @@ pub fn main() {
                 gc.gradient_stop(GradientId(1), 0.66, Color::Rgba(0.0, 0.3, 0.8, 1.0));
                 gc.gradient_stop(GradientId(1), 1.0, Color::Rgba(0.6, 0.3, 0.9, 1.0));
 
-                let x1 = 500.0 - 300.0*f32::cos(angle);
-                let y1 = 500.0 - 300.0*f32::sin(angle);
-                let x2 = 500.0 + 300.0*f32::cos(angle);
-                let y2 = 500.0 + 300.0*f32::sin(angle);
+                let x1 = 500.0 - 300.0 * f32::cos(angle);
+                let y1 = 500.0 - 300.0 * f32::sin(angle);
+                let x2 = 500.0 + 300.0 * f32::cos(angle);
+                let y2 = 500.0 + 300.0 * f32::sin(angle);
 
                 // Draw a circle using the gradient
                 gc.new_path();

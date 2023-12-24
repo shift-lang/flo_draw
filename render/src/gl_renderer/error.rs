@@ -10,7 +10,7 @@ pub enum GlError {
 
     /// Error where we can provide a string version
     #[allow(dead_code)]
-    Error(u32, String)
+    Error(u32, String),
 }
 
 ///
@@ -58,9 +58,9 @@ fn check_next_gl_error() -> Option<GlError> {
     let error = unsafe { gl::GetError() };
 
     match error {
-        gl::NO_ERROR            => None,
-        gl::INVALID_OPERATION   => Some(GlError::InvalidOperation),
-        gl::INVALID_ENUM        => Some(GlError::InvalidEnum),
-        unknown                 => Some(GlError::UnknownError(unknown))
+        gl::NO_ERROR => None,
+        gl::INVALID_OPERATION => Some(GlError::InvalidOperation),
+        gl::INVALID_ENUM => Some(GlError::InvalidEnum),
+        unknown => Some(GlError::UnknownError(unknown))
     }
 }

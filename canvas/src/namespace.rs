@@ -1,17 +1,15 @@
+use once_cell::sync::Lazy;
 use uuid::*;
-use lazy_static::*;
 
-use std::collections::{HashMap};
+use std::collections::HashMap;
 use std::hash::{Hash, Hasher};
-use std::sync::*;
 use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::*;
 
 /// The next local ID to assign (so every new namespace has a unique ID)
 static NEXT_LOCAL_ID: AtomicUsize = AtomicUsize::new(0);
 
-lazy_static! {
-    static ref KNOWN_IDS: Mutex<HashMap<Uuid, usize>> = Mutex::new(HashMap::new());
-}
+static KNOWN_IDS: Lazy<Mutex<HashMap<Uuid, usize>>> = Lazy::new(|| Mutex::new(HashMap::new()));
 
 ///
 /// Specifies the ID of a namespace
@@ -40,13 +38,16 @@ impl NamespaceId {
     ///
     pub fn new() -> NamespaceId {
         // Generate IDs
-        let local_id    = NEXT_LOCAL_ID.fetch_add(1, Ordering::Relaxed);
-        let global_id   = Uuid::new_v4();
+        let local_id = NEXT_LOCAL_ID.fetch_add(1, Ordering::Relaxed);
+        let global_id = Uuid::new_v4();
 
         // Associate the global ID with the local ID
         KNOWN_IDS.lock().unwrap().insert(global_id, local_id);
 
-        NamespaceId { local_id, global_id }
+        NamespaceId {
+            local_id,
+            global_id,
+        }
     }
 
     ///
@@ -57,21 +58,31 @@ impl NamespaceId {
 
         if let Some(local_id) = known_ids.get(&global_id).copied() {
             // Seen this ID before, re-use the local ID
-            NamespaceId { local_id, global_id }
+            NamespaceId {
+                local_id,
+                global_id,
+            }
         } else {
             // New ID
             let local_id = NEXT_LOCAL_ID.fetch_add(1, Ordering::Relaxed);
             known_ids.insert(global_id, local_id);
 
-            NamespaceId { local_id, global_id }
+            NamespaceId {
+                local_id,
+                global_id,
+            }
         }
     }
 
     /// Retrieves the local ID (unique within this process) for this namespace
-    pub fn local_id(&self) -> usize { self.local_id }
+    pub fn local_id(&self) -> usize {
+        self.local_id
+    }
 
     /// Retrieves the global ID (globally unique) for this namespace
-    pub fn global_id(&self) -> Uuid { self.global_id }
+    pub fn global_id(&self) -> Uuid {
+        self.global_id
+    }
 }
 
 impl PartialEq for NamespaceId {
@@ -81,7 +92,7 @@ impl PartialEq for NamespaceId {
     }
 }
 
-impl Eq for NamespaceId { }
+impl Eq for NamespaceId {}
 
 impl Hash for NamespaceId {
     #[inline]
@@ -114,7 +125,13 @@ mod test {
 
     #[test]
     fn create_known_id() {
-        assert!(NamespaceId::with_id(uuid!["498D1CE4-D05B-43D0-BBDD-DDBE6F3AF6E7"]) != NamespaceId::default());
-        assert!(NamespaceId::with_id(uuid!["498D1CE4-D05B-43D0-BBDD-DDBE6F3AF6E7"]) == NamespaceId::with_id(uuid!["498D1CE4-D05B-43D0-BBDD-DDBE6F3AF6E7"]));
+        assert!(
+            NamespaceId::with_id(uuid!["498D1CE4-D05B-43D0-BBDD-DDBE6F3AF6E7"])
+                != NamespaceId::default()
+        );
+        assert!(
+            NamespaceId::with_id(uuid!["498D1CE4-D05B-43D0-BBDD-DDBE6F3AF6E7"])
+                == NamespaceId::with_id(uuid!["498D1CE4-D05B-43D0-BBDD-DDBE6F3AF6E7"])
+        );
     }
 }

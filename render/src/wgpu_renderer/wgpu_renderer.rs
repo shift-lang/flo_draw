@@ -15,7 +15,7 @@ use super::reduce_filter::*;
 use super::alpha_blend_filter::*;
 use super::displacement_map_filter::*;
 
-#[cfg(feature="profile")]
+#[cfg(feature = "profile")]
 use crate::profiler::*;
 
 use crate::action::*;
@@ -34,14 +34,14 @@ use std::sync::*;
 use std::collections::{HashMap};
 use std::ffi::{c_void};
 
-#[cfg(feature="profile")]
+#[cfg(feature = "profile")]
 use std::cell::*;
-#[cfg(feature="profile")]
+#[cfg(feature = "profile")]
 use std::rc::*;
 
-#[cfg(feature="wgpu-profiler")]
+#[cfg(feature = "wgpu-profiler")]
 use wgpu_profiler::{wgpu_profiler, GpuProfiler};
-#[cfg(feature="wgpu-profiler")]
+#[cfg(feature = "wgpu-profiler")]
 use std::path::{Path};
 
 ///
@@ -106,11 +106,11 @@ pub struct WgpuRenderer {
     samplers: Samplers,
 
     /// Profiler is used to display a breakdown of the time spent during a render pass
-    #[cfg(feature="profile")]
+    #[cfg(feature = "profile")]
     profiler: Rc<RefCell<RenderProfiler<RenderActionType>>>,
 
     /// The WGPU profiler can also be used to generate flo_draw_profile.json files
-    #[cfg(feature="wgpu-profiler")]
+    #[cfg(feature = "wgpu-profiler")]
     wgpu_profiler: GpuProfiler,
 }
 
@@ -119,70 +119,70 @@ impl WgpuRenderer {
     /// Creates a new WGPU renderer
     ///
     pub fn from_surface(device: Arc<wgpu::Device>, queue: Arc<wgpu::Queue>, target_surface: Arc<wgpu::Surface>, target_adapter: Arc<wgpu::Adapter>) -> WgpuRenderer {
-        #[cfg(feature="wgpu-profiler")]
-        let wgpu_profiler = GpuProfiler::new(4, queue.get_timestamp_period(), GpuProfiler::ALL_WGPU_TIMER_FEATURES);
+        #[cfg(feature = "wgpu-profiler")]
+            let wgpu_profiler = GpuProfiler::new(4, queue.get_timestamp_period(), GpuProfiler::ALL_WGPU_TIMER_FEATURES);
 
         WgpuRenderer {
-            adapter:                target_adapter,
-            device:                 device.clone(),
-            queue:                  queue,
-            target_surface:         Some(target_surface),
-            target_format:          None,
+            adapter: target_adapter,
+            device: device.clone(),
+            queue: queue,
+            target_surface: Some(target_surface),
+            target_format: None,
             target_surface_texture: None,
-            target_texture:         None,
-            vertex_buffers:         vec![],
-            index_buffers:          vec![],
-            textures:               vec![],
-            render_targets:         vec![],
-            pipeline_states:        HashMap::new(),
-            shader_cache:           ShaderCache::empty(device.clone()),
-            width:                  0,
-            height:                 0,
-            active_render_target:   None,
-            active_shader:          Some(ShaderType::Simple { clip_texture: None }),
-            active_blend_mode:      Some(BlendMode::SourceOver),
-            samplers:               Samplers::new(&*device),
+            target_texture: None,
+            vertex_buffers: vec![],
+            index_buffers: vec![],
+            textures: vec![],
+            render_targets: vec![],
+            pipeline_states: HashMap::new(),
+            shader_cache: ShaderCache::empty(device.clone()),
+            width: 0,
+            height: 0,
+            active_render_target: None,
+            active_shader: Some(ShaderType::Simple { clip_texture: None }),
+            active_blend_mode: Some(BlendMode::SourceOver),
+            samplers: Samplers::new(&*device),
 
-            #[cfg(feature="profile")]
-            profiler:               Rc::new(RefCell::new(RenderProfiler::new())),
+            #[cfg(feature = "profile")]
+            profiler: Rc::new(RefCell::new(RenderProfiler::new())),
 
-            #[cfg(feature="wgpu-profiler")]
-            wgpu_profiler:          wgpu_profiler,
+            #[cfg(feature = "wgpu-profiler")]
+            wgpu_profiler: wgpu_profiler,
         }
     }
     ///
     /// Creates a new WGPU renderer
     ///
     pub fn from_texture(device: Arc<wgpu::Device>, queue: Arc<wgpu::Queue>, target_texture: Arc<wgpu::Texture>, target_adapter: Arc<wgpu::Adapter>, texture_format: wgpu::TextureFormat, texture_size: (u32, u32)) -> WgpuRenderer {
-        #[cfg(feature="wgpu-profiler")]
-        let wgpu_profiler = GpuProfiler::new(4, queue.get_timestamp_period(), GpuProfiler::ALL_WGPU_TIMER_FEATURES);
+        #[cfg(feature = "wgpu-profiler")]
+            let wgpu_profiler = GpuProfiler::new(4, queue.get_timestamp_period(), GpuProfiler::ALL_WGPU_TIMER_FEATURES);
 
         WgpuRenderer {
-            adapter:                target_adapter,
-            device:                 device.clone(),
-            queue:                  queue,
-            target_surface:         None,
-            target_format:          Some(texture_format),
+            adapter: target_adapter,
+            device: device.clone(),
+            queue: queue,
+            target_surface: None,
+            target_format: Some(texture_format),
             target_surface_texture: None,
-            target_texture:         Some(target_texture),
-            vertex_buffers:         vec![],
-            index_buffers:          vec![],
-            textures:               vec![],
-            render_targets:         vec![],
-            pipeline_states:        HashMap::new(),
-            shader_cache:           ShaderCache::empty(device.clone()),
-            width:                  texture_size.0,
-            height:                 texture_size.1,
-            active_render_target:   None,
-            active_shader:          Some(ShaderType::Simple { clip_texture: None }),
-            active_blend_mode:      Some(BlendMode::SourceOver),
-            samplers:               Samplers::new(&*device),
+            target_texture: Some(target_texture),
+            vertex_buffers: vec![],
+            index_buffers: vec![],
+            textures: vec![],
+            render_targets: vec![],
+            pipeline_states: HashMap::new(),
+            shader_cache: ShaderCache::empty(device.clone()),
+            width: texture_size.0,
+            height: texture_size.1,
+            active_render_target: None,
+            active_shader: Some(ShaderType::Simple { clip_texture: None }),
+            active_blend_mode: Some(BlendMode::SourceOver),
+            samplers: Samplers::new(&*device),
 
-            #[cfg(feature="profile")]
-            profiler:               Rc::new(RefCell::new(RenderProfiler::new())),
+            #[cfg(feature = "profile")]
+            profiler: Rc::new(RefCell::new(RenderProfiler::new())),
 
-            #[cfg(feature="wgpu-profiler")]
-            wgpu_profiler:          wgpu_profiler,
+            #[cfg(feature = "wgpu-profiler")]
+            wgpu_profiler: wgpu_profiler,
         }
     }
 
@@ -200,25 +200,25 @@ impl WgpuRenderer {
 
         if let Some(target_surface) = &self.target_surface {
             // Fetch the format
-            let possible_formats    = target_surface.get_capabilities(&*self.adapter).formats;
-            let actual_format       = possible_formats.iter().filter(|format| !format.is_srgb()).next().copied();
-            let actual_format       = actual_format.unwrap_or(possible_formats[0]);
+            let possible_formats = target_surface.get_capabilities(&*self.adapter).formats;
+            let actual_format = possible_formats.iter().filter(|format| !format.is_srgb()).next().copied();
+            let actual_format = actual_format.unwrap_or(possible_formats[0]);
 
-            let surface_config      = wgpu::SurfaceConfiguration {
-                usage:          wgpu::TextureUsages::RENDER_ATTACHMENT,
-                format:         actual_format,
-                width:          width,
-                height:         height,
-                present_mode:   wgpu::PresentMode::AutoVsync,
-                alpha_mode:     wgpu::CompositeAlphaMode::Auto,
-                view_formats:   vec![actual_format]
+            let surface_config = wgpu::SurfaceConfiguration {
+                usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
+                format: actual_format,
+                width: width,
+                height: height,
+                present_mode: wgpu::PresentMode::AutoVsync,
+                alpha_mode: wgpu::CompositeAlphaMode::Auto,
+                view_formats: vec![actual_format],
             };
 
             target_surface.configure(&*self.device, &surface_config);
 
-            self.width          = width;
-            self.height         = height;
-            self.target_format  = Some(actual_format);
+            self.width = width;
+            self.height = height;
+            self.target_format = Some(actual_format);
         }
     }
 
@@ -229,14 +229,14 @@ impl WgpuRenderer {
     /// on it.
     ///
     pub fn render_to_surface<Actions: IntoIterator<Item=RenderAction>>(&mut self, actions: Actions) -> Option<wgpu::SurfaceTexture> {
-        #[cfg(feature="profile")]
+        #[cfg(feature = "profile")]
         self.profiler.borrow_mut().start_frame();
 
         // Create the render state
-        let mut render_state    = RendererState::new(Arc::clone(&self.queue), Arc::clone(&self.device));
+        let mut render_state = RendererState::new(Arc::clone(&self.queue), Arc::clone(&self.device));
 
         // If wgpu-profiler is enabled, then start a new scope
-        #[cfg(feature="wgpu-profiler")] self.wgpu_profiler.begin_scope("render_to_surface", &mut render_state.encoder, &*self.device);
+        #[cfg(feature = "wgpu-profiler")] self.wgpu_profiler.begin_scope("render_to_surface", &mut render_state.encoder, &*self.device);
 
         // Select the most recent render target, or the main frame buffer if the active render target is not set or does not exist
         self.select_main_frame_buffer(&mut render_state);
@@ -257,72 +257,72 @@ impl WgpuRenderer {
         for action in actions {
             use self::RenderAction::*;
 
-            #[cfg(feature="profile")]
-            let action_type = RenderActionType::from(&action);
+            #[cfg(feature = "profile")]
+                let action_type = RenderActionType::from(&action);
 
-            #[cfg(feature="profile")]
+            #[cfg(feature = "profile")]
             self.profiler.borrow_mut().start_action(action_type);
 
             match action {
-                SetTransform(matrix)                                                            => { self.set_transform(matrix, &mut render_state); }
-                CreateVertex2DBuffer(id, vertices)                                              => { self.create_vertex_buffer_2d(id, vertices); }
-                CreateIndexBuffer(id, indices)                                                  => { self.create_index_buffer(id, indices); }
-                FreeVertexBuffer(id)                                                            => { self.free_vertex_buffer(id); }
-                FreeIndexBuffer(id)                                                             => { self.free_index_buffer(id); }
-                BlendMode(blend_mode)                                                           => { self.blend_mode(blend_mode, &mut render_state); }
-                CreateRenderTarget(render_id, texture_id, Size2D(width, height), render_type)   => { self.create_render_target(render_id, texture_id, width, height, render_type); }
-                FreeRenderTarget(render_id)                                                     => { self.free_render_target(render_id); }
-                SelectRenderTarget(render_id)                                                   => { self.select_render_target(render_id, &mut render_state); }
-                RenderToFrameBuffer                                                             => { self.select_main_frame_buffer(&mut render_state); }
-                DrawFrameBuffer(render_id, region, Alpha(alpha))                                => { self.draw_frame_buffer(render_id, region, alpha, &mut render_state); }
-                ShowFrameBuffer                                                                 => { self.show_frame_buffer(&mut render_state); }
-                CreateTextureBgra(texture_id, Size2D(width, height))                            => { self.create_bgra_texture(texture_id, width, height); }
-                CreateTextureMono(texture_id, Size2D(width, height))                            => { self.create_mono_texture(texture_id, width, height); }
-                Create1DTextureBgra(texture_id, Size1D(width))                                  => { self.create_bgra_1d_texture(texture_id, width); }
-                Create1DTextureMono(texture_id, Size1D(width))                                  => { self.create_mono_1d_texture(texture_id, width); }
-                WriteTextureData(texture_id, Position2D(x1, y1), Position2D(x2, y2), data)      => { self.write_texture_data_2d(texture_id, x1, y1, x2, y2, data, &mut render_state); }
-                WriteTexture1D(texture_id, Position1D(x1), Position1D(x2), data)                => { self.write_texture_data_1d(texture_id, x1, x2, data, &mut render_state); }
-                CreateMipMaps(texture_id)                                                       => { self.create_mipmaps(texture_id, &mut render_state); }
-                CopyTexture(src_texture, tgt_texture)                                           => { self.copy_texture(src_texture, tgt_texture, &mut render_state); }
-                FilterTexture(texture, filter)                                                  => { self.filter_texture(texture, filter, &mut render_state); }
-                FreeTexture(texture_id)                                                         => { self.free_texture(texture_id); }
-                Clear(color)                                                                    => { self.clear(color, &mut render_state); }
-                UseShader(shader_type)                                                          => { self.use_shader(shader_type, &mut render_state); }
-                DrawTriangles(buffer_id, buffer_range)                                          => { self.draw_triangles(buffer_id, buffer_range, &mut render_state); }
-                DrawIndexedTriangles(vertex_buffer, index_buffer, num_vertices)                 => { self.draw_indexed_triangles(vertex_buffer, index_buffer, num_vertices, &mut render_state); }
+                SetTransform(matrix) => { self.set_transform(matrix, &mut render_state); }
+                CreateVertex2DBuffer(id, vertices) => { self.create_vertex_buffer_2d(id, vertices); }
+                CreateIndexBuffer(id, indices) => { self.create_index_buffer(id, indices); }
+                FreeVertexBuffer(id) => { self.free_vertex_buffer(id); }
+                FreeIndexBuffer(id) => { self.free_index_buffer(id); }
+                BlendMode(blend_mode) => { self.blend_mode(blend_mode, &mut render_state); }
+                CreateRenderTarget(render_id, texture_id, Size2D(width, height), render_type) => { self.create_render_target(render_id, texture_id, width, height, render_type); }
+                FreeRenderTarget(render_id) => { self.free_render_target(render_id); }
+                SelectRenderTarget(render_id) => { self.select_render_target(render_id, &mut render_state); }
+                RenderToFrameBuffer => { self.select_main_frame_buffer(&mut render_state); }
+                DrawFrameBuffer(render_id, region, Alpha(alpha)) => { self.draw_frame_buffer(render_id, region, alpha, &mut render_state); }
+                ShowFrameBuffer => { self.show_frame_buffer(&mut render_state); }
+                CreateTextureBgra(texture_id, Size2D(width, height)) => { self.create_bgra_texture(texture_id, width, height); }
+                CreateTextureMono(texture_id, Size2D(width, height)) => { self.create_mono_texture(texture_id, width, height); }
+                Create1DTextureBgra(texture_id, Size1D(width)) => { self.create_bgra_1d_texture(texture_id, width); }
+                Create1DTextureMono(texture_id, Size1D(width)) => { self.create_mono_1d_texture(texture_id, width); }
+                WriteTextureData(texture_id, Position2D(x1, y1), Position2D(x2, y2), data) => { self.write_texture_data_2d(texture_id, x1, y1, x2, y2, data, &mut render_state); }
+                WriteTexture1D(texture_id, Position1D(x1), Position1D(x2), data) => { self.write_texture_data_1d(texture_id, x1, x2, data, &mut render_state); }
+                CreateMipMaps(texture_id) => { self.create_mipmaps(texture_id, &mut render_state); }
+                CopyTexture(src_texture, tgt_texture) => { self.copy_texture(src_texture, tgt_texture, &mut render_state); }
+                FilterTexture(texture, filter) => { self.filter_texture(texture, filter, &mut render_state); }
+                FreeTexture(texture_id) => { self.free_texture(texture_id); }
+                Clear(color) => { self.clear(color, &mut render_state); }
+                UseShader(shader_type) => { self.use_shader(shader_type, &mut render_state); }
+                DrawTriangles(buffer_id, buffer_range) => { self.draw_triangles(buffer_id, buffer_range, &mut render_state); }
+                DrawIndexedTriangles(vertex_buffer, index_buffer, num_vertices) => { self.draw_indexed_triangles(vertex_buffer, index_buffer, num_vertices, &mut render_state); }
             }
 
-            #[cfg(feature="profile")]
+            #[cfg(feature = "profile")]
             self.profiler.borrow_mut().finish_action(action_type);
         }
 
         // Finish any pending render pass in the state
-        #[cfg(feature="profile")] self.profiler.borrow_mut().start_action(RenderActionType::RunRenderPass);
+        #[cfg(feature = "profile")] self.profiler.borrow_mut().start_action(RenderActionType::RunRenderPass);
         render_state.run_render_pass();
-        #[cfg(feature="profile")] self.profiler.borrow_mut().finish_action(RenderActionType::RunRenderPass);
+        #[cfg(feature = "profile")] self.profiler.borrow_mut().finish_action(RenderActionType::RunRenderPass);
 
         // Submit the queue
-        #[cfg(feature="wgpu-profiler")] self.wgpu_profiler.resolve_queries(&mut render_state.encoder);
-        #[cfg(feature="wgpu-profiler")] self.wgpu_profiler.end_scope(&mut render_state.encoder);
-        #[cfg(feature="profile")] self.profiler.borrow_mut().start_action(RenderActionType::SubmitQueue);
+        #[cfg(feature = "wgpu-profiler")] self.wgpu_profiler.resolve_queries(&mut render_state.encoder);
+        #[cfg(feature = "wgpu-profiler")] self.wgpu_profiler.end_scope(&mut render_state.encoder);
+        #[cfg(feature = "profile")] self.profiler.borrow_mut().start_action(RenderActionType::SubmitQueue);
 
         self.queue.submit(Some(render_state.encoder.finish()));
 
-        #[cfg(feature="profile")] self.profiler.borrow_mut().finish_action(RenderActionType::SubmitQueue);
+        #[cfg(feature = "profile")] self.profiler.borrow_mut().finish_action(RenderActionType::SubmitQueue);
 
         // Display the profiler information
-        #[cfg(feature="profile")]
+        #[cfg(feature = "profile")]
         {
             self.profiler.borrow_mut().finish_frame();
             println!("\n\n= WGPU {}", self.profiler.borrow_mut().summary_string())
         }
 
         // Rewrite the chrometrace file every frame (TODO: some other cadence/write multiple files)
-        #[cfg(feature="wgpu-profiler")]
+        #[cfg(feature = "wgpu-profiler")]
         if let Some(profiling_data) = self.wgpu_profiler.process_finished_frame() {
             wgpu_profiler::chrometrace::write_chrometrace(Path::new("flo_draw_profile.json"), &profiling_data);
         }
-        
+
         // Result is the surface texture that was last presented
         render_state.present.take()
     }
@@ -331,11 +331,11 @@ impl WgpuRenderer {
     /// Loads a pipeline from a configuration object
     ///
     fn pipeline_for_configuration(&mut self, config: PipelineConfiguration) -> Arc<Pipeline> {
-        let device          = &self.device;
-        let shader_cache    = &mut self.shader_cache;  
+        let device = &self.device;
+        let shader_cache = &mut self.shader_cache;
         let pipeline_states = &mut self.pipeline_states;
 
-        let pipeline        = pipeline_states.entry(config.clone())
+        let pipeline = pipeline_states.entry(config.clone())
             .or_insert_with(|| {
                 // Create the pipeline if we don't have one matching the configuration already
                 Arc::new(Pipeline::from_configuration(&config, device, shader_cache))
@@ -358,23 +358,23 @@ impl WgpuRenderer {
                 render_state.active_pipeline_configuration = Some(render_state.pipeline_configuration.clone());
 
                 // Retrieve the pipeline from the cache or generate a new one
-                let pipeline            = self.pipeline_for_configuration(render_state.pipeline_configuration.clone());
-                render_state.pipeline   = Some(Arc::clone(&pipeline));
+                let pipeline = self.pipeline_for_configuration(render_state.pipeline_configuration.clone());
+                render_state.pipeline = Some(Arc::clone(&pipeline));
 
                 // Store the pipeline itself in the resources
                 let render_pipeline = Arc::clone(&pipeline.pipeline);
-                let pipeline_index  = render_state.render_pass_resources.pipelines.len();
+                let pipeline_index = render_state.render_pass_resources.pipelines.len();
                 render_state.render_pass_resources.pipelines.push(render_pipeline);
 
                 // Add a callback function to actually set up the render pipeline (we have to do it indirectly later on because it borrows its resources)
-                #[cfg(feature="profile")] let profiler = self.profiler.clone();
+                #[cfg(feature = "profile")] let profiler = self.profiler.clone();
                 render_state.render_pass.push(Box::new(move |resources, render_pass| {
-                    #[cfg(feature="profile")] profiler.borrow_mut().start_action(RenderActionType::RenderPassSetPipeline);
+                    #[cfg(feature = "profile")] profiler.borrow_mut().start_action(RenderActionType::RenderPassSetPipeline);
 
                     // Set the pipeline
                     render_pass.set_pipeline(&resources.pipelines[pipeline_index]);
 
-                    #[cfg(feature="profile")] profiler.borrow_mut().finish_action(RenderActionType::RenderPassSetPipeline);
+                    #[cfg(feature = "profile")] profiler.borrow_mut().finish_action(RenderActionType::RenderPassSetPipeline);
                 }));
 
                 // Rebind everything else
@@ -396,7 +396,7 @@ impl WgpuRenderer {
             render_state.bind_current_texture();
         }
     }
-    
+
     ///
     /// Sets the transform to used with the following render instructions
     ///
@@ -407,7 +407,7 @@ impl WgpuRenderer {
         // Set the matrix as ready to update at the next update_pipeline_if_needed call
         render_state.pipeline_matrix_changed = true;
     }
-    
+
     ///
     /// Loads a buffer of vertex data to the GPU
     ///
@@ -423,14 +423,14 @@ impl WgpuRenderer {
 
         // Store associated with the vertex ID
         if vertex_id >= self.vertex_buffers.len() {
-            self.vertex_buffers.extend((self.vertex_buffers.len()..(vertex_id+1))
+            self.vertex_buffers.extend((self.vertex_buffers.len()..(vertex_id + 1))
                 .into_iter()
                 .map(|_| None));
         }
 
         self.vertex_buffers[vertex_id] = Some(Arc::new(vertex_buffer));
     }
-    
+
     ///
     /// Loads a buffer of index data to the GPU
     ///
@@ -446,14 +446,14 @@ impl WgpuRenderer {
 
         // Store associated with the index ID
         if index_id >= self.index_buffers.len() {
-            self.index_buffers.extend((self.index_buffers.len()..(index_id+1))
+            self.index_buffers.extend((self.index_buffers.len()..(index_id + 1))
                 .into_iter()
                 .map(|_| None));
         }
 
         self.index_buffers[index_id] = Some(Arc::new(index_buffer));
     }
-    
+
     ///
     /// Indicates that a vertex buffer is unused
     ///
@@ -462,7 +462,7 @@ impl WgpuRenderer {
             *buffer = None;
         }
     }
-    
+
     ///
     /// Indicates that an index buffer is unused
     ///
@@ -471,7 +471,7 @@ impl WgpuRenderer {
             *buffer = None;
         }
     }
-    
+
     ///
     /// Sets the blend mode for the following render instructions
     ///
@@ -483,7 +483,7 @@ impl WgpuRenderer {
         self.active_blend_mode = Some(blend_mode);
         self.update_shader(self.active_shader, self.active_blend_mode, state);
     }
-    
+
     ///
     /// Creates an off-screen render target and its texture
     ///
@@ -502,28 +502,28 @@ impl WgpuRenderer {
 
         // Make space for the render target and the texture
         if render_id >= self.render_targets.len() {
-            self.render_targets.extend((self.render_targets.len()..(render_id+1))
+            self.render_targets.extend((self.render_targets.len()..(render_id + 1))
                 .into_iter()
                 .map(|_| None));
         }
 
         if texture_id >= self.textures.len() {
-            self.textures.extend((self.textures.len()..(texture_id+1))
+            self.textures.extend((self.textures.len()..(texture_id + 1))
                 .into_iter()
                 .map(|_| None));
         }
 
         // Store the render target and texture. Render target textures have pre-multiplied alphas
         let new_texture = WgpuTexture {
-            descriptor:         new_render_target.texture_descriptor(),
-            texture:            new_render_target.texture(),
-            is_premultiplied:   true,
+            descriptor: new_render_target.texture_descriptor(),
+            texture: new_render_target.texture(),
+            is_premultiplied: true,
         };
 
-        self.textures[texture_id]       = Some(new_texture);
-        self.render_targets[render_id]  = Some(new_render_target);
+        self.textures[texture_id] = Some(new_texture);
+        self.render_targets[render_id] = Some(new_render_target);
     }
-    
+
     ///
     /// Releases a render target
     ///
@@ -532,7 +532,7 @@ impl WgpuRenderer {
             *old_render_target = None;
         }
     }
-    
+
     ///
     /// Picks a render target to use
     ///
@@ -546,30 +546,30 @@ impl WgpuRenderer {
             self.active_render_target = Some(RenderTargetId(render_id));
 
             // Render to the existing render target
-            #[cfg(feature="profile")] self.profiler.borrow_mut().start_action(RenderActionType::RunRenderPass);
+            #[cfg(feature = "profile")] self.profiler.borrow_mut().start_action(RenderActionType::RunRenderPass);
             state.run_render_pass();
-            #[cfg(feature="profile")] self.profiler.borrow_mut().finish_action(RenderActionType::RunRenderPass);
+            #[cfg(feature = "profile")] self.profiler.borrow_mut().finish_action(RenderActionType::RunRenderPass);
 
             // Switch to rendering to this render target
-            let texture         = new_render_target.texture();
-            let target_size     = new_render_target.size();
-            let texture_format  = new_render_target.texture_format();
-            let samples         = new_render_target.sample_count();
-            let texture_view    = texture.create_view(&wgpu::TextureViewDescriptor::default());
+            let texture = new_render_target.texture();
+            let target_size = new_render_target.size();
+            let texture_format = new_render_target.texture_format();
+            let samples = new_render_target.sample_count();
+            let texture_view = texture.create_view(&wgpu::TextureViewDescriptor::default());
 
-            state.target_size                                   = target_size;
-            state.render_pass_resources.target_view             = Some(Arc::new(texture_view));
-            state.render_pass_resources.target_texture          = Some(texture);
-            state.pipeline_configuration.texture_format         = texture_format;
-            state.pipeline_configuration.multisampling_count    = samples;
-            state.pipeline_configuration.flip_vertical          = true;
-            state.pipeline_config_changed                       = true;
-            state.pipeline_bindings_changed                     = true;
+            state.target_size = target_size;
+            state.render_pass_resources.target_view = Some(Arc::new(texture_view));
+            state.render_pass_resources.target_texture = Some(texture);
+            state.pipeline_configuration.texture_format = texture_format;
+            state.pipeline_configuration.multisampling_count = samples;
+            state.pipeline_configuration.flip_vertical = true;
+            state.pipeline_config_changed = true;
+            state.pipeline_bindings_changed = true;
 
             self.update_pipeline_if_needed(state);
         }
     }
-    
+
     ///
     /// Renders to the main frame buffer
     ///
@@ -584,158 +584,157 @@ impl WgpuRenderer {
             }
 
             // Finish the current render pass
-            #[cfg(feature="profile")] self.profiler.borrow_mut().start_action(RenderActionType::RunRenderPass);
+            #[cfg(feature = "profile")] self.profiler.borrow_mut().start_action(RenderActionType::RunRenderPass);
             state.run_render_pass();
-            #[cfg(feature="profile")] self.profiler.borrow_mut().finish_action(RenderActionType::RunRenderPass);
+            #[cfg(feature = "profile")] self.profiler.borrow_mut().finish_action(RenderActionType::RunRenderPass);
 
             // Switch to the surface texture
-            let surface_texture     = self.target_surface_texture.as_ref().unwrap();
-            let texture_view        = surface_texture.texture.create_view(&wgpu::TextureViewDescriptor::default());
+            let surface_texture = self.target_surface_texture.as_ref().unwrap();
+            let texture_view = surface_texture.texture.create_view(&wgpu::TextureViewDescriptor::default());
 
-            state.target_size                                   = (self.width, self.height);
-            state.render_pass_resources.target_view             = Some(Arc::new(texture_view));
-            state.render_pass_resources.target_texture          = None;
-            state.pipeline_configuration.texture_format         = self.target_format.expect("prepare_to_render must be called before rendering");
-            state.pipeline_configuration.multisampling_count    = None;
-            state.pipeline_configuration.flip_vertical          = false;
-            state.pipeline_config_changed                       = true;
-            state.pipeline_bindings_changed                     = true;
+            state.target_size = (self.width, self.height);
+            state.render_pass_resources.target_view = Some(Arc::new(texture_view));
+            state.render_pass_resources.target_texture = None;
+            state.pipeline_configuration.texture_format = self.target_format.expect("prepare_to_render must be called before rendering");
+            state.pipeline_configuration.multisampling_count = None;
+            state.pipeline_configuration.flip_vertical = false;
+            state.pipeline_config_changed = true;
+            state.pipeline_bindings_changed = true;
         } else if let Some(target_texture) = &self.target_texture {
             // Finish the current render pass
-            #[cfg(feature="profile")] self.profiler.borrow_mut().start_action(RenderActionType::RunRenderPass);
+            #[cfg(feature = "profile")] self.profiler.borrow_mut().start_action(RenderActionType::RunRenderPass);
             state.run_render_pass();
-            #[cfg(feature="profile")] self.profiler.borrow_mut().finish_action(RenderActionType::RunRenderPass);
+            #[cfg(feature = "profile")] self.profiler.borrow_mut().finish_action(RenderActionType::RunRenderPass);
 
             // Switch to the target texture
             let texture_view = target_texture.create_view(&wgpu::TextureViewDescriptor::default());
 
-            state.target_size                                   = (self.width, self.height);
-            state.render_pass_resources.target_view             = Some(Arc::new(texture_view));
-            state.render_pass_resources.target_texture          = None;
-            state.pipeline_configuration.texture_format         = self.target_format.expect("prepare_to_render must be called before rendering");
-            state.pipeline_configuration.multisampling_count    = None;
-            state.pipeline_configuration.flip_vertical          = false;
-            state.pipeline_config_changed                       = true;
-            state.pipeline_bindings_changed                     = true;
+            state.target_size = (self.width, self.height);
+            state.render_pass_resources.target_view = Some(Arc::new(texture_view));
+            state.render_pass_resources.target_texture = None;
+            state.pipeline_configuration.texture_format = self.target_format.expect("prepare_to_render must be called before rendering");
+            state.pipeline_configuration.multisampling_count = None;
+            state.pipeline_configuration.flip_vertical = false;
+            state.pipeline_config_changed = true;
+            state.pipeline_bindings_changed = true;
         }
 
         self.update_pipeline_if_needed(state);
     }
-    
+
     ///
     /// Blits a frame buffer to the current render target
     ///
     fn draw_frame_buffer(&mut self, RenderTargetId(source_buffer): RenderTargetId, region: FrameBufferRegion, alpha: f64, state: &mut RendererState) {
         // Fetch the corresponding render target
-        let render_target = if let Some(Some(render_target)) = self.render_targets.get(source_buffer) { 
+        let render_target = if let Some(Some(render_target)) = self.render_targets.get(source_buffer) {
             render_target
         } else {
             return;
         };
 
         // Read the information from the render target
-        let texture         = render_target.texture();
-        let samples         = render_target.sample_count();
-        let source_size     = render_target.size();
-        let source_width    = source_size.0 as f32;
-        let source_height   = source_size.1 as f32;
+        let texture = render_target.texture();
+        let samples = render_target.sample_count();
+        let source_size = render_target.size();
+        let source_width = source_size.0 as f32;
+        let source_height = source_size.1 as f32;
 
         // Copy the values we're going to update
-        let old_texture             = state.input_texture.take();
-        let old_sampler             = state.sampler.take();
-        let old_matrix              = state.active_matrix;
-        let old_texture_settings    = state.texture_settings;
-        let old_pipeline_config     = state.pipeline_configuration.clone();
+        let old_texture = state.input_texture.take();
+        let old_sampler = state.sampler.take();
+        let old_matrix = state.active_matrix;
+        let old_texture_settings = state.texture_settings;
+        let old_pipeline_config = state.pipeline_configuration.clone();
 
         // Configure for rendering the frame buffer
         let texture_type = if samples.is_none() { InputTextureType::Sampler } else { InputTextureType::Multisampled };
 
-        state.input_texture                                     = Some(texture);
-        state.sampler                                           = Some(self.samplers.default_sampler());
-        state.pipeline_configuration.shader_module              = WgpuShader::Texture(StandardShaderVariant::NoClipping, texture_type, TexturePosition::Separate, AlphaBlendStep::Premultiply, ColorPostProcessingStep::NoPostProcessing);
-        state.pipeline_configuration.blending_mode              = Some(BlendMode::SourceOver);
-        state.pipeline_configuration.source_is_premultiplied    = true;
-        state.pipeline_config_changed                           = true;
-        state.pipeline_bindings_changed                         = true;
-        state.texture_settings                                  = TextureSettings { transform: Matrix::identity().0, alpha: alpha as _, ..Default::default() };
+        state.input_texture = Some(texture);
+        state.sampler = Some(self.samplers.default_sampler());
+        state.pipeline_configuration.shader_module = WgpuShader::Texture(StandardShaderVariant::NoClipping, texture_type, TexturePosition::Separate, AlphaBlendStep::Premultiply, ColorPostProcessingStep::NoPostProcessing);
+        state.pipeline_configuration.blending_mode = Some(BlendMode::SourceOver);
+        state.pipeline_configuration.source_is_premultiplied = true;
+        state.pipeline_config_changed = true;
+        state.pipeline_bindings_changed = true;
+        state.texture_settings = TextureSettings { transform: Matrix::identity().0, alpha: alpha as _, ..Default::default() };
 
         // Work out a viewport matrix
-        let target_size         = state.target_size;
-        let target_width        = target_size.0 as f32;
-        let target_height       = target_size.1 as f32;
+        let target_size = state.target_size;
+        let target_width = target_size.0 as f32;
+        let target_height = target_size.1 as f32;
 
-        let scale_transform     = flo_canvas::Transform2D::scale(2.0/target_width, 2.0/target_height);
-        let viewport_transform  = scale_transform * flo_canvas::Transform2D::translate(-(target_width/2.0), -(target_height/2.0));
+        let scale_transform = flo_canvas::Transform2D::scale(2.0 / target_width, 2.0 / target_height);
+        let viewport_transform = scale_transform * flo_canvas::Transform2D::translate(-(target_width / 2.0), -(target_height / 2.0));
 
-        let viewport_matrix     = transform_to_matrix(&viewport_transform);
+        let viewport_matrix = transform_to_matrix(&viewport_transform);
         state.write_matrix(&viewport_matrix);
 
         // Work out the region that's being rendered
-        let min_x                       = region.min_x();
-        let min_y                       = region.min_y();
-        let max_x                       = region.max_x();
-        let max_y                       = region.max_y();
+        let min_x = region.min_x();
+        let min_y = region.min_y();
+        let max_x = region.max_x();
+        let max_y = region.max_y();
 
-        let min_x                       = (min_x + 1.0)/2.0;
-        let min_y                       = (min_y + 1.0)/2.0;
-        let max_x                       = (max_x + 1.0)/2.0;
-        let max_y                       = (max_y + 1.0)/2.0;
+        let min_x = (min_x + 1.0) / 2.0;
+        let min_y = (min_y + 1.0) / 2.0;
+        let max_x = (max_x + 1.0) / 2.0;
+        let max_y = (max_y + 1.0) / 2.0;
 
-        let min_x                       = min_x * source_width;
-        let min_y                       = min_y * source_height;
-        let max_x                       = max_x * source_width;
-        let max_y                       = max_y * source_height;
+        let min_x = min_x * source_width;
+        let min_y = min_y * source_height;
+        let max_x = max_x * source_width;
+        let max_y = max_y * source_height;
 
         // Set up for rendering
         self.update_pipeline_if_needed(state);
 
         // Create the vertex buffer
-        let triangles       = vec![
-            Vertex2D::with_pos(min_x, min_y).with_texture_coordinates(min_x/source_width, min_y/source_height),
-            Vertex2D::with_pos(min_x, max_y).with_texture_coordinates(min_x/source_width, max_y/source_height),
-            Vertex2D::with_pos(max_x, min_y).with_texture_coordinates(max_x/source_width, min_y/source_height),
-
-            Vertex2D::with_pos(max_x, min_y).with_texture_coordinates(max_x/source_width, min_y/source_height),
-            Vertex2D::with_pos(max_x, max_y).with_texture_coordinates(max_x/source_width, max_y/source_height),
-            Vertex2D::with_pos(min_x, max_y).with_texture_coordinates(min_x/source_width, max_y/source_height),
+        let triangles = vec![
+            Vertex2D::with_pos(min_x, min_y).with_texture_coordinates(min_x / source_width, min_y / source_height),
+            Vertex2D::with_pos(min_x, max_y).with_texture_coordinates(min_x / source_width, max_y / source_height),
+            Vertex2D::with_pos(max_x, min_y).with_texture_coordinates(max_x / source_width, min_y / source_height),
+            Vertex2D::with_pos(max_x, min_y).with_texture_coordinates(max_x / source_width, min_y / source_height),
+            Vertex2D::with_pos(max_x, max_y).with_texture_coordinates(max_x / source_width, max_y / source_height),
+            Vertex2D::with_pos(min_x, max_y).with_texture_coordinates(min_x / source_width, max_y / source_height),
         ];
 
-        let contents_void   = triangles.as_ptr() as *const c_void;
-        let contents_len    = triangles.len() * mem::size_of::<Vertex2D>();
-        let contents_u8     = unsafe { slice::from_raw_parts(contents_void as *const u8, contents_len) };
+        let contents_void = triangles.as_ptr() as *const c_void;
+        let contents_len = triangles.len() * mem::size_of::<Vertex2D>();
+        let contents_u8 = unsafe { slice::from_raw_parts(contents_void as *const u8, contents_len) };
 
-        let vertex_buffer   = self.device.create_buffer_init(&util::BufferInitDescriptor {
-            label:      Some("draw_frame_buffer"),
-            contents:   contents_u8,
-            usage:      wgpu::BufferUsages::VERTEX,
+        let vertex_buffer = self.device.create_buffer_init(&util::BufferInitDescriptor {
+            label: Some("draw_frame_buffer"),
+            contents: contents_u8,
+            usage: wgpu::BufferUsages::VERTEX,
         });
-        let vertex_buffer   = Arc::new(vertex_buffer);
+        let vertex_buffer = Arc::new(vertex_buffer);
 
         // Queue up the render operation
-        let buffer_index    = state.render_pass_resources.buffers.len();
+        let buffer_index = state.render_pass_resources.buffers.len();
         state.render_pass_resources.buffers.push(vertex_buffer);
 
-        #[cfg(feature="profile")] let profiler = self.profiler.clone();
+        #[cfg(feature = "profile")] let profiler = self.profiler.clone();
         state.render_pass.push(Box::new(move |resources, render_pass| {
-            #[cfg(feature="profile")] profiler.borrow_mut().start_action(RenderActionType::RenderPassDrawFramebuffer);
+            #[cfg(feature = "profile")] profiler.borrow_mut().start_action(RenderActionType::RenderPassDrawFramebuffer);
 
             let vertex_size = mem::size_of::<Vertex2D>();
-            let start_pos   = 0;
-            let end_pos     = (6 * vertex_size) as u64;
+            let start_pos = 0;
+            let end_pos = (6 * vertex_size) as u64;
 
             render_pass.set_vertex_buffer(0, resources.buffers[buffer_index].slice(start_pos..end_pos));
             render_pass.draw(0..6, 0..1);
 
-            #[cfg(feature="profile")] profiler.borrow_mut().finish_action(RenderActionType::RenderPassDrawFramebuffer);
+            #[cfg(feature = "profile")] profiler.borrow_mut().finish_action(RenderActionType::RenderPassDrawFramebuffer);
         }));
 
         // Restore the render state
-        state.input_texture             = old_texture;
-        state.sampler                   = old_sampler;
-        state.active_matrix             = old_matrix;
-        state.texture_settings          = old_texture_settings;
-        state.pipeline_configuration    = old_pipeline_config;
-        state.pipeline_config_changed   = true;
+        state.input_texture = old_texture;
+        state.sampler = old_sampler;
+        state.active_matrix = old_matrix;
+        state.texture_settings = old_texture_settings;
+        state.pipeline_configuration = old_pipeline_config;
+        state.pipeline_config_changed = true;
         state.pipeline_bindings_changed = true;
     }
 
@@ -744,21 +743,21 @@ impl WgpuRenderer {
     ///
     fn show_frame_buffer(&mut self, render_state: &mut RendererState) {
         // Finish the current render pass (this also submits the queue, which is required before presenting the frame buffer)
-        #[cfg(feature="profile")] self.profiler.borrow_mut().start_action(RenderActionType::RunRenderPass);
+        #[cfg(feature = "profile")] self.profiler.borrow_mut().start_action(RenderActionType::RunRenderPass);
         render_state.run_render_pass();
-        #[cfg(feature="profile")] self.profiler.borrow_mut().finish_action(RenderActionType::RunRenderPass);
+        #[cfg(feature = "profile")] self.profiler.borrow_mut().finish_action(RenderActionType::RunRenderPass);
 
         // Submit the queue
-        #[cfg(feature="profile")] self.profiler.borrow_mut().start_action(RenderActionType::SubmitQueue);
+        #[cfg(feature = "profile")] self.profiler.borrow_mut().start_action(RenderActionType::SubmitQueue);
         let mut encoder = self.device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: Some("run_render_pass") });
-        mem::swap(&mut encoder, &mut  render_state.encoder);
+        mem::swap(&mut encoder, &mut render_state.encoder);
 
-        #[cfg(feature="wgpu-profiler")] self.wgpu_profiler.resolve_queries(&mut encoder);
-        #[cfg(feature="wgpu-profiler")] self.wgpu_profiler.end_scope(&mut encoder);
-        #[cfg(feature="wgpu-profiler")] self.wgpu_profiler.begin_scope("after_show_frame_buffer", &mut render_state.encoder, &*self.device);
+        #[cfg(feature = "wgpu-profiler")] self.wgpu_profiler.resolve_queries(&mut encoder);
+        #[cfg(feature = "wgpu-profiler")] self.wgpu_profiler.end_scope(&mut encoder);
+        #[cfg(feature = "wgpu-profiler")] self.wgpu_profiler.begin_scope("after_show_frame_buffer", &mut render_state.encoder, &*self.device);
 
         self.queue.submit(Some(encoder.finish()));
-        #[cfg(feature="profile")] self.profiler.borrow_mut().finish_action(RenderActionType::SubmitQueue);
+        #[cfg(feature = "profile")] self.profiler.borrow_mut().finish_action(RenderActionType::SubmitQueue);
 
         // Present the current frame buffer
         if let Some(surface_texture) = self.target_surface_texture.take() {
@@ -769,11 +768,11 @@ impl WgpuRenderer {
         // Can't render to the main surface any more
         if self.active_render_target.is_none() && self.target_surface.is_some() {
             // Will be targeting nothing for future rendering instructions
-            render_state.render_pass_resources.target_view     = None;
-            render_state.render_pass_resources.target_texture  = None;
+            render_state.render_pass_resources.target_view = None;
+            render_state.render_pass_resources.target_texture = None;
         }
     }
-    
+
     ///
     /// Creates a 2D texture with the BGRA pixel format
     ///
@@ -785,38 +784,38 @@ impl WgpuRenderer {
 
         // Texture is COPY_DST so we can write to it
         let descriptor = wgpu::TextureDescriptor {
-            label:  Some("render_target"),
-            size:   wgpu::Extent3d {
-                width:                  width as _,
-                height:                 height as _,
-                depth_or_array_layers:  1,
+            label: Some("render_target"),
+            size: wgpu::Extent3d {
+                width: width as _,
+                height: height as _,
+                depth_or_array_layers: 1,
             },
-            mip_level_count:    1,
-            sample_count:       1,
-            dimension:          wgpu::TextureDimension::D2,
-            format:             wgpu::TextureFormat::Rgba8Unorm,
-            usage:              wgpu::TextureUsages::COPY_SRC | wgpu::TextureUsages::COPY_DST | wgpu::TextureUsages::TEXTURE_BINDING,
-            view_formats:       &[],
+            mip_level_count: 1,
+            sample_count: 1,
+            dimension: wgpu::TextureDimension::D2,
+            format: wgpu::TextureFormat::Rgba8Unorm,
+            usage: wgpu::TextureUsages::COPY_SRC | wgpu::TextureUsages::COPY_DST | wgpu::TextureUsages::TEXTURE_BINDING,
+            view_formats: &[],
         };
 
         // Create the texture
         let new_texture = self.device.create_texture(&descriptor);
         let new_texture = WgpuTexture {
-            descriptor:         descriptor,
-            texture:            Arc::new(new_texture),
-            is_premultiplied:   false,
+            descriptor: descriptor,
+            texture: Arc::new(new_texture),
+            is_premultiplied: false,
         };
 
         // Store the texture
         if texture_id >= self.textures.len() {
-            self.textures.extend((self.textures.len()..(texture_id+1))
+            self.textures.extend((self.textures.len()..(texture_id + 1))
                 .into_iter()
                 .map(|_| None));
         }
 
         self.textures[texture_id] = Some(new_texture);
     }
-    
+
     ///
     /// Creates a 2D monochrome texture
     ///
@@ -828,38 +827,38 @@ impl WgpuRenderer {
 
         // Texture is COPY_DST so we can write to it
         let descriptor = wgpu::TextureDescriptor {
-            label:  Some("render_target"),
-            size:   wgpu::Extent3d {
-                width:                  width as _,
-                height:                 height as _,
-                depth_or_array_layers:  1,
+            label: Some("render_target"),
+            size: wgpu::Extent3d {
+                width: width as _,
+                height: height as _,
+                depth_or_array_layers: 1,
             },
-            mip_level_count:    1,
-            sample_count:       1,
-            dimension:          wgpu::TextureDimension::D2,
-            format:             wgpu::TextureFormat::R8Unorm,
-            usage:              wgpu::TextureUsages::COPY_SRC | wgpu::TextureUsages::COPY_DST | wgpu::TextureUsages::TEXTURE_BINDING,
-            view_formats:       &[],
+            mip_level_count: 1,
+            sample_count: 1,
+            dimension: wgpu::TextureDimension::D2,
+            format: wgpu::TextureFormat::R8Unorm,
+            usage: wgpu::TextureUsages::COPY_SRC | wgpu::TextureUsages::COPY_DST | wgpu::TextureUsages::TEXTURE_BINDING,
+            view_formats: &[],
         };
 
         // Create the texture
         let new_texture = self.device.create_texture(&descriptor);
         let new_texture = WgpuTexture {
-            descriptor:         descriptor,
-            texture:            Arc::new(new_texture),
-            is_premultiplied:   false,
+            descriptor: descriptor,
+            texture: Arc::new(new_texture),
+            is_premultiplied: false,
         };
 
         // Store the texture
         if texture_id >= self.textures.len() {
-            self.textures.extend((self.textures.len()..(texture_id+1))
+            self.textures.extend((self.textures.len()..(texture_id + 1))
                 .into_iter()
                 .map(|_| None));
         }
 
         self.textures[texture_id] = Some(new_texture);
     }
-    
+
     ///
     /// Creates a 1D BGRA texture
     ///
@@ -871,38 +870,38 @@ impl WgpuRenderer {
 
         // Texture is COPY_DST so we can write to it
         let descriptor = wgpu::TextureDescriptor {
-            label:  Some("render_target"),
-            size:   wgpu::Extent3d {
-                width:                  width as _,
-                height:                 1,
-                depth_or_array_layers:  1,
+            label: Some("render_target"),
+            size: wgpu::Extent3d {
+                width: width as _,
+                height: 1,
+                depth_or_array_layers: 1,
             },
-            mip_level_count:    1,
-            sample_count:       1,
-            dimension:          wgpu::TextureDimension::D1,
-            format:             wgpu::TextureFormat::Rgba8Unorm,
-            usage:              wgpu::TextureUsages::COPY_SRC | wgpu::TextureUsages::COPY_DST | wgpu::TextureUsages::TEXTURE_BINDING,
-            view_formats:       &[],
+            mip_level_count: 1,
+            sample_count: 1,
+            dimension: wgpu::TextureDimension::D1,
+            format: wgpu::TextureFormat::Rgba8Unorm,
+            usage: wgpu::TextureUsages::COPY_SRC | wgpu::TextureUsages::COPY_DST | wgpu::TextureUsages::TEXTURE_BINDING,
+            view_formats: &[],
         };
 
         // Create the texture
         let new_texture = self.device.create_texture(&descriptor);
         let new_texture = WgpuTexture {
-            descriptor:         descriptor,
-            texture:            Arc::new(new_texture),
-            is_premultiplied:   false,
+            descriptor: descriptor,
+            texture: Arc::new(new_texture),
+            is_premultiplied: false,
         };
 
         // Store the texture
         if texture_id >= self.textures.len() {
-            self.textures.extend((self.textures.len()..(texture_id+1))
+            self.textures.extend((self.textures.len()..(texture_id + 1))
                 .into_iter()
                 .map(|_| None));
         }
 
         self.textures[texture_id] = Some(new_texture);
     }
-    
+
     ///
     /// Creates a 1D monochrome texture
     ///
@@ -914,105 +913,105 @@ impl WgpuRenderer {
 
         // Texture is COPY_DST so we can write to it
         let descriptor = wgpu::TextureDescriptor {
-            label:  Some("render_target"),
-            size:   wgpu::Extent3d {
-                width:                  width as _,
-                height:                 1,
-                depth_or_array_layers:  1,
+            label: Some("render_target"),
+            size: wgpu::Extent3d {
+                width: width as _,
+                height: 1,
+                depth_or_array_layers: 1,
             },
-            mip_level_count:    1,
-            sample_count:       1,
-            dimension:          wgpu::TextureDimension::D1,
-            format:             wgpu::TextureFormat::R8Unorm,
-            usage:              wgpu::TextureUsages::COPY_SRC | wgpu::TextureUsages::COPY_DST | wgpu::TextureUsages::TEXTURE_BINDING,
-            view_formats:       &[],
+            mip_level_count: 1,
+            sample_count: 1,
+            dimension: wgpu::TextureDimension::D1,
+            format: wgpu::TextureFormat::R8Unorm,
+            usage: wgpu::TextureUsages::COPY_SRC | wgpu::TextureUsages::COPY_DST | wgpu::TextureUsages::TEXTURE_BINDING,
+            view_formats: &[],
         };
 
         // Create the texture
         let new_texture = self.device.create_texture(&descriptor);
         let new_texture = WgpuTexture {
-            descriptor:         descriptor,
-            texture:            Arc::new(new_texture),
-            is_premultiplied:   false,
+            descriptor: descriptor,
+            texture: Arc::new(new_texture),
+            is_premultiplied: false,
         };
 
         // Store the texture
         if texture_id >= self.textures.len() {
-            self.textures.extend((self.textures.len()..(texture_id+1))
+            self.textures.extend((self.textures.len()..(texture_id + 1))
                 .into_iter()
                 .map(|_| None));
         }
 
         self.textures[texture_id] = Some(new_texture);
     }
-    
+
     ///
     /// Writes byte data to a region of a 2D texture
     ///
     fn write_texture_data_2d(&mut self, TextureId(texture_id): TextureId, x1: usize, y1: usize, x2: usize, y2: usize, data: Arc<Vec<u8>>, state: &mut RendererState) {
         if let Some(Some(texture)) = self.textures.get(texture_id) {
-            #[cfg(feature="profile")] self.profiler.borrow_mut().start_action(RenderActionType::RunRenderPass);
+            #[cfg(feature = "profile")] self.profiler.borrow_mut().start_action(RenderActionType::RunRenderPass);
             state.run_render_pass();
-            #[cfg(feature="profile")] self.profiler.borrow_mut().finish_action(RenderActionType::RunRenderPass);
+            #[cfg(feature = "profile")] self.profiler.borrow_mut().finish_action(RenderActionType::RunRenderPass);
 
-            let (x1, x2)        = if x1 > x2 { (x2, x1) } else { (x1, x2) };
-            let (y1, y2)        = if y1 > y2 { (y2, y1) } else { (y1, y2) };
+            let (x1, x2) = if x1 > x2 { (x2, x1) } else { (x1, x2) };
+            let (y1, y2) = if y1 > y2 { (y2, y1) } else { (y1, y2) };
 
             let bytes_per_pixel = texture.descriptor.format.block_size(None).unwrap() as u64;
 
-            let line_offset     = (y1 as u64) * (texture.descriptor.size.width as u64) * bytes_per_pixel;
-            let pixel_offset    = (x1 as u64) * bytes_per_pixel;
-            let bytes_per_row   = (texture.descriptor.size.width as u64) * bytes_per_pixel;
+            let line_offset = (y1 as u64) * (texture.descriptor.size.width as u64) * bytes_per_pixel;
+            let pixel_offset = (x1 as u64) * bytes_per_pixel;
+            let bytes_per_row = (texture.descriptor.size.width as u64) * bytes_per_pixel;
 
-            let layout          = wgpu::ImageDataLayout {
-                offset:         line_offset + pixel_offset,
-                bytes_per_row:  Some(bytes_per_row as u32),
+            let layout = wgpu::ImageDataLayout {
+                offset: line_offset + pixel_offset,
+                bytes_per_row: Some(bytes_per_row as u32),
                 rows_per_image: None,
             };
 
-            self.queue.write_texture(texture.texture.as_image_copy(), &*data, layout, wgpu::Extent3d { width: (x2-x1) as u32, height: (y2-y1) as u32, depth_or_array_layers: 1 });
+            self.queue.write_texture(texture.texture.as_image_copy(), &*data, layout, wgpu::Extent3d { width: (x2 - x1) as u32, height: (y2 - y1) as u32, depth_or_array_layers: 1 });
             state.render_pass_resources.textures.push(Arc::clone(&texture.texture));
         }
     }
-    
+
     ///
     /// Writes bytes data to a region of a 1D texture
     ///
     fn write_texture_data_1d(&mut self, TextureId(texture_id): TextureId, x1: usize, x2: usize, data: Arc<Vec<u8>>, state: &mut RendererState) {
         if let Some(Some(texture)) = self.textures.get(texture_id) {
             let bytes_per_pixel = texture.descriptor.format.block_size(None).unwrap() as u64;
-            let layout          = wgpu::ImageDataLayout {
-                offset:         (x1 as u64) * bytes_per_pixel,
-                bytes_per_row:  Some(((texture.descriptor.size.width as u64) * bytes_per_pixel) as u32),
+            let layout = wgpu::ImageDataLayout {
+                offset: (x1 as u64) * bytes_per_pixel,
+                bytes_per_row: Some(((texture.descriptor.size.width as u64) * bytes_per_pixel) as u32),
                 rows_per_image: None,
             };
 
-            self.queue.write_texture(texture.texture.as_image_copy(), &*data, layout, wgpu::Extent3d { width: (x2-x1) as u32, height: 1, depth_or_array_layers: 1 });
+            self.queue.write_texture(texture.texture.as_image_copy(), &*data, layout, wgpu::Extent3d { width: (x2 - x1) as u32, height: 1, depth_or_array_layers: 1 });
             state.render_pass_resources.textures.push(Arc::clone(&texture.texture));
         }
     }
-    
+
     ///
     /// Generates the mipmap textures for a particular texture
     ///
     fn create_mipmaps(&mut self, TextureId(texture_id): TextureId, state: &mut RendererState) {
         if let Some(Some(src_texture)) = self.textures.get(texture_id) {
-            let src_texture                 = src_texture.clone();
+            let src_texture = src_texture.clone();
 
             if src_texture.descriptor.dimension == wgpu::TextureDimension::D2 {
                 // We use the reduce filter to generate the mipmaps
-                let mut reduce_pipeline         = PipelineConfiguration::for_texture(&src_texture);
-                reduce_pipeline.blending_mode   = None;
-                reduce_pipeline.shader_module   = WgpuShader::Filter(FilterShader::Reduce);
-                let reduce_pipeline             = self.pipeline_for_configuration(reduce_pipeline);
+                let mut reduce_pipeline = PipelineConfiguration::for_texture(&src_texture);
+                reduce_pipeline.blending_mode = None;
+                reduce_pipeline.shader_module = WgpuShader::Filter(FilterShader::Reduce);
+                let reduce_pipeline = self.pipeline_for_configuration(reduce_pipeline);
 
                 // Create the mipmaps from the texture
-                let mipmapped_texture       = create_mipmaps(&*self.device, &mut state.encoder, &*reduce_pipeline, &src_texture);
-                self.textures[texture_id]   = Some(mipmapped_texture);
+                let mipmapped_texture = create_mipmaps(&*self.device, &mut state.encoder, &*reduce_pipeline, &src_texture);
+                self.textures[texture_id] = Some(mipmapped_texture);
             }
         }
     }
-    
+
     ///
     /// Creates a copy of a texture with a new ID
     ///
@@ -1023,7 +1022,7 @@ impl WgpuRenderer {
 
             // Clear out the destination texture if it already exists
             if tgt_texture_id >= self.textures.len() {
-                self.textures.extend((self.textures.len()..(tgt_texture_id+1))
+                self.textures.extend((self.textures.len()..(tgt_texture_id + 1))
                     .into_iter()
                     .map(|_| None));
             }
@@ -1031,18 +1030,18 @@ impl WgpuRenderer {
             self.textures[tgt_texture_id] = None;
 
             // Create a new texture using the same definition as the original texture
-            let new_texture_descriptor  = src_texture.descriptor.clone();
-            let new_texture             = self.device.create_texture(&new_texture_descriptor);
-            let new_texture             = WgpuTexture {
-                descriptor:         new_texture_descriptor,
-                texture:            Arc::new(new_texture),
-                is_premultiplied:   src_texture.is_premultiplied,
+            let new_texture_descriptor = src_texture.descriptor.clone();
+            let new_texture = self.device.create_texture(&new_texture_descriptor);
+            let new_texture = WgpuTexture {
+                descriptor: new_texture_descriptor,
+                texture: Arc::new(new_texture),
+                is_premultiplied: src_texture.is_premultiplied,
             };
 
             // Finish the render pass (especially for the case where the source texture is also the render target)
-            #[cfg(feature="profile")] self.profiler.borrow_mut().start_action(RenderActionType::RunRenderPass);
+            #[cfg(feature = "profile")] self.profiler.borrow_mut().start_action(RenderActionType::RunRenderPass);
             state.run_render_pass();
-            #[cfg(feature="profile")] self.profiler.borrow_mut().finish_action(RenderActionType::RunRenderPass);
+            #[cfg(feature = "profile")] self.profiler.borrow_mut().finish_action(RenderActionType::RunRenderPass);
 
             // Copy the source texture to the target texture
             state.encoder.copy_texture_to_texture(src_texture.texture.as_image_copy(), new_texture.texture.as_image_copy(), src_texture.descriptor.size);
@@ -1051,7 +1050,7 @@ impl WgpuRenderer {
             self.textures[tgt_texture_id] = Some(new_texture);
         }
     }
-    
+
     ///
     /// Applies a filter effect to the content of a texture
     ///
@@ -1060,109 +1059,109 @@ impl WgpuRenderer {
             let mut final_texture = texture.clone();
 
             // Finish the current render pass (in case it's updating the current texture)
-            #[cfg(feature="profile")] self.profiler.borrow_mut().start_action(RenderActionType::RunRenderPass);
+            #[cfg(feature = "profile")] self.profiler.borrow_mut().start_action(RenderActionType::RunRenderPass);
             state.run_render_pass();
-            #[cfg(feature="profile")] self.profiler.borrow_mut().finish_action(RenderActionType::RunRenderPass);
+            #[cfg(feature = "profile")] self.profiler.borrow_mut().finish_action(RenderActionType::RunRenderPass);
 
             // Run the filters
             for filter in texture_filters {
                 match filter {
                     TextureFilter::AlphaBlend(alpha_amount) => {
-                        let mut alpha_blend_pipeline        = PipelineConfiguration::for_texture(&final_texture);
-                        alpha_blend_pipeline.blending_mode  = None;
-                        alpha_blend_pipeline.shader_module  = WgpuShader::Filter(FilterShader::AlphaBlend(FilterSourceFormat::from_texture(&final_texture)));
-                        let alpha_blend_pipeline            = self.pipeline_for_configuration(alpha_blend_pipeline);
+                        let mut alpha_blend_pipeline = PipelineConfiguration::for_texture(&final_texture);
+                        alpha_blend_pipeline.blending_mode = None;
+                        alpha_blend_pipeline.shader_module = WgpuShader::Filter(FilterShader::AlphaBlend(FilterSourceFormat::from_texture(&final_texture)));
+                        let alpha_blend_pipeline = self.pipeline_for_configuration(alpha_blend_pipeline);
 
                         if alpha_amount < 1.0 {
                             final_texture = alpha_blend(&*self.device, &mut state.encoder, &*alpha_blend_pipeline, &final_texture, alpha_amount);
                         }
                     }
 
-                    TextureFilter::GaussianBlurHorizontal29(sigma, step)            |
-                    TextureFilter::GaussianBlurVertical29(sigma, step)              |
-                    TextureFilter::GaussianBlurHorizontal61(sigma, step)            |
-                    TextureFilter::GaussianBlurVertical61(sigma, step)              |
-                    TextureFilter::GaussianBlurVertical9(sigma, step)               |
-                    TextureFilter::GaussianBlurHorizontal9(sigma, step)             => {
-                        let mut blur_pipeline       = PipelineConfiguration::for_texture(&final_texture);
+                    TextureFilter::GaussianBlurHorizontal29(sigma, step) |
+                    TextureFilter::GaussianBlurVertical29(sigma, step) |
+                    TextureFilter::GaussianBlurHorizontal61(sigma, step) |
+                    TextureFilter::GaussianBlurVertical61(sigma, step) |
+                    TextureFilter::GaussianBlurVertical9(sigma, step) |
+                    TextureFilter::GaussianBlurHorizontal9(sigma, step) => {
+                        let mut blur_pipeline = PipelineConfiguration::for_texture(&final_texture);
                         blur_pipeline.blending_mode = None;
                         blur_pipeline.shader_module = match filter {
-                            TextureFilter::GaussianBlurVertical9(..)    => WgpuShader::Filter(FilterShader::BlurFixed(BlurDirection::Horizontal, BlurFixedSize::Size9)),
-                            TextureFilter::GaussianBlurHorizontal9(..)  => WgpuShader::Filter(FilterShader::BlurFixed(BlurDirection::Vertical, BlurFixedSize::Size9)),
+                            TextureFilter::GaussianBlurVertical9(..) => WgpuShader::Filter(FilterShader::BlurFixed(BlurDirection::Horizontal, BlurFixedSize::Size9)),
+                            TextureFilter::GaussianBlurHorizontal9(..) => WgpuShader::Filter(FilterShader::BlurFixed(BlurDirection::Vertical, BlurFixedSize::Size9)),
                             TextureFilter::GaussianBlurHorizontal29(..) => WgpuShader::Filter(FilterShader::BlurFixed(BlurDirection::Horizontal, BlurFixedSize::Size29)),
-                            TextureFilter::GaussianBlurVertical29(..)   => WgpuShader::Filter(FilterShader::BlurFixed(BlurDirection::Vertical, BlurFixedSize::Size29)),
+                            TextureFilter::GaussianBlurVertical29(..) => WgpuShader::Filter(FilterShader::BlurFixed(BlurDirection::Vertical, BlurFixedSize::Size29)),
                             TextureFilter::GaussianBlurHorizontal61(..) => WgpuShader::Filter(FilterShader::BlurFixed(BlurDirection::Horizontal, BlurFixedSize::Size61)),
-                            TextureFilter::GaussianBlurVertical61(..)   => WgpuShader::Filter(FilterShader::BlurFixed(BlurDirection::Vertical, BlurFixedSize::Size61)),
+                            TextureFilter::GaussianBlurVertical61(..) => WgpuShader::Filter(FilterShader::BlurFixed(BlurDirection::Vertical, BlurFixedSize::Size61)),
 
                             _ => WgpuShader::Filter(FilterShader::BlurFixed(BlurDirection::Horizontal, BlurFixedSize::Size9)),
                         };
-                        let blur_pipeline           = self.pipeline_for_configuration(blur_pipeline);
+                        let blur_pipeline = self.pipeline_for_configuration(blur_pipeline);
 
-                        let kernel_size             = filter.kernel_size();
-                        let weights                 = TextureFilter::weights_for_gaussian_blur(sigma, step, kernel_size);
-                        let (weights, offsets)      = TextureFilter::weights_and_offsets_for_gaussian_blur(weights);
+                        let kernel_size = filter.kernel_size();
+                        let weights = TextureFilter::weights_for_gaussian_blur(sigma, step, kernel_size);
+                        let (weights, offsets) = TextureFilter::weights_and_offsets_for_gaussian_blur(weights);
 
                         final_texture = blur_fixed(&*self.device, &mut state.encoder, &*blur_pipeline, &final_texture, weights, offsets);
                     }
 
                     TextureFilter::GaussianBlurHorizontal(sigma, step, kernel_size) |
-                    TextureFilter::GaussianBlurVertical(sigma, step, kernel_size)   => {
-                        let mut blur_pipeline       = PipelineConfiguration::for_texture(&final_texture);
+                    TextureFilter::GaussianBlurVertical(sigma, step, kernel_size) => {
+                        let mut blur_pipeline = PipelineConfiguration::for_texture(&final_texture);
                         blur_pipeline.blending_mode = None;
                         blur_pipeline.shader_module = match filter {
-                            TextureFilter::GaussianBlurVertical(..)     => WgpuShader::Filter(FilterShader::BlurTexture(BlurDirection::Horizontal)),
-                            TextureFilter::GaussianBlurHorizontal(..)   => WgpuShader::Filter(FilterShader::BlurTexture(BlurDirection::Vertical)),
+                            TextureFilter::GaussianBlurVertical(..) => WgpuShader::Filter(FilterShader::BlurTexture(BlurDirection::Horizontal)),
+                            TextureFilter::GaussianBlurHorizontal(..) => WgpuShader::Filter(FilterShader::BlurTexture(BlurDirection::Vertical)),
 
                             _ => WgpuShader::Filter(FilterShader::BlurTexture(BlurDirection::Horizontal)),
                         };
-                        let blur_pipeline           = self.pipeline_for_configuration(blur_pipeline);
+                        let blur_pipeline = self.pipeline_for_configuration(blur_pipeline);
 
-                        let weights                 = TextureFilter::weights_for_gaussian_blur(sigma, step, kernel_size);
-                        let (weights, offsets)      = TextureFilter::weights_and_offsets_for_gaussian_blur(weights);
+                        let weights = TextureFilter::weights_for_gaussian_blur(sigma, step, kernel_size);
+                        let (weights, offsets) = TextureFilter::weights_and_offsets_for_gaussian_blur(weights);
 
-                        let queue   = &state.queue;
+                        let queue = &state.queue;
                         let encoder = &mut state.encoder;
 
                         final_texture = blur_texture(&*self.device, queue, encoder, &*blur_pipeline, &final_texture, weights, offsets);
                     }
-                    
-                    TextureFilter::Mask(TextureId(mask_texture)) => { 
-                        let mut mask_pipeline       = PipelineConfiguration::for_texture(&final_texture);
+
+                    TextureFilter::Mask(TextureId(mask_texture)) => {
+                        let mut mask_pipeline = PipelineConfiguration::for_texture(&final_texture);
                         mask_pipeline.blending_mode = None;
                         mask_pipeline.shader_module = WgpuShader::Filter(FilterShader::Mask(FilterSourceFormat::from_texture(&final_texture)));
-                        let mask_pipeline           = self.pipeline_for_configuration(mask_pipeline);
+                        let mask_pipeline = self.pipeline_for_configuration(mask_pipeline);
 
                         if let Some(Some(mask_texture)) = self.textures.get(mask_texture) {
-                            let encoder     = &mut state.encoder;
+                            let encoder = &mut state.encoder;
 
-                            final_texture   = mask(&*self.device, encoder, &*mask_pipeline, &final_texture, mask_texture);
+                            final_texture = mask(&*self.device, encoder, &*mask_pipeline, &final_texture, mask_texture);
                         }
                     }
 
-                    TextureFilter::DisplacementMap(TextureId(displacement_texture), x, y)                   => {
-                        let mut displacement_pipeline       = PipelineConfiguration::for_texture(&final_texture);
+                    TextureFilter::DisplacementMap(TextureId(displacement_texture), x, y) => {
+                        let mut displacement_pipeline = PipelineConfiguration::for_texture(&final_texture);
                         displacement_pipeline.blending_mode = None;
                         displacement_pipeline.shader_module = WgpuShader::Filter(FilterShader::DisplacementMap);
-                        let displacement_pipeline           = self.pipeline_for_configuration(displacement_pipeline);
+                        let displacement_pipeline = self.pipeline_for_configuration(displacement_pipeline);
 
                         if let Some(Some(displacement_texture)) = self.textures.get(displacement_texture) {
-                            let encoder     = &mut state.encoder;
+                            let encoder = &mut state.encoder;
 
-                            final_texture   = displacement_map(&*self.device, encoder, &*displacement_pipeline, &final_texture, displacement_texture, (x, y));
+                            final_texture = displacement_map(&*self.device, encoder, &*displacement_pipeline, &final_texture, displacement_texture, (x, y));
                         }
                     }
-                } 
+                }
             }
 
             // No pipeline is set
-            state.pipeline_config_changed       = true;
+            state.pipeline_config_changed = true;
             state.active_pipeline_configuration = None;
 
             // Update the texture to the output version
             self.textures[texture_id] = Some(final_texture);
         }
     }
-    
+
     ///
     /// Releases the data associated with a texture
     ///
@@ -1171,7 +1170,7 @@ impl WgpuRenderer {
             *old_texture = None;
         }
     }
-    
+
     ///
     /// Clears the current render target to a single colour
     ///
@@ -1179,25 +1178,25 @@ impl WgpuRenderer {
         // Commit any existing rendering
         self.update_pipeline_if_needed(state);
 
-        #[cfg(feature="profile")] self.profiler.borrow_mut().start_action(RenderActionType::RunRenderPass);
+        #[cfg(feature = "profile")] self.profiler.borrow_mut().start_action(RenderActionType::RunRenderPass);
         state.run_render_pass();
-        #[cfg(feature="profile")] self.profiler.borrow_mut().finish_action(RenderActionType::RunRenderPass);
+        #[cfg(feature = "profile")] self.profiler.borrow_mut().finish_action(RenderActionType::RunRenderPass);
 
         // Set the clear color for the next render pass
         let Rgba8([r, g, b, a]) = color;
 
-        let r       = (r as f64) / 255.0;
-        let g       = (g as f64) / 255.0;
-        let b       = (b as f64) / 255.0;
-        let a       = (a as f64) / 255.0;
-        let color   = wgpu::Color { r, g, b, a };
-        
+        let r = (r as f64) / 255.0;
+        let g = (g as f64) / 255.0;
+        let b = (b as f64) / 255.0;
+        let a = (a as f64) / 255.0;
+        let color = wgpu::Color { r, g, b, a };
+
         state.render_pass_resources.clear = Some(color);
 
         // Having an action in the render pass will ensure that the clear action is rendered even if there are no other actions to do
-        state.render_pass.push(Box::new(|_, _| { }));
+        state.render_pass.push(Box::new(|_, _| {}));
     }
-    
+
     ///
     /// Uses a particular shader for future rendering
     ///
@@ -1217,23 +1216,23 @@ impl WgpuRenderer {
         use self::ShaderType::*;
 
         let shader_type = if let Some(shader_type) = shader_type { shader_type } else { return; };
-        let blend_mode  = if let Some(blend_mode) = blend_mode { blend_mode } else { return; };
+        let blend_mode = if let Some(blend_mode) = blend_mode { blend_mode } else { return; };
 
         // Set the blend mode in the pipeline
         state.pipeline_configuration.blending_mode = Some(blend_mode);
 
         // The post-processing step depends on the blend mode
         let post_processing = match blend_mode {
-            BlendMode::Multiply     => ColorPostProcessingStep::InvertColorAlpha,
-            BlendMode::Screen       => ColorPostProcessingStep::MultiplyAlpha,
+            BlendMode::Multiply => ColorPostProcessingStep::InvertColorAlpha,
+            BlendMode::Screen => ColorPostProcessingStep::MultiplyAlpha,
 
-            _                       => ColorPostProcessingStep::NoPostProcessing
+            _ => ColorPostProcessingStep::NoPostProcessing
         };
 
         // Set up the pipeline based on the shader type
         match shader_type {
             Simple { clip_texture } => {
-                let clip_texture    = if let Some(TextureId(clip_texture)) = clip_texture {
+                let clip_texture = if let Some(TextureId(clip_texture)) = clip_texture {
                     if let Some(Some(texture)) = self.textures.get(clip_texture) {
                         Some(Arc::clone(&texture.texture))
                     } else {
@@ -1242,10 +1241,10 @@ impl WgpuRenderer {
                 } else {
                     None
                 };
-                let variant         = if clip_texture.is_some() { StandardShaderVariant::ClippingMask } else { StandardShaderVariant::NoClipping };
+                let variant = if clip_texture.is_some() { StandardShaderVariant::ClippingMask } else { StandardShaderVariant::NoClipping };
 
-                state.pipeline_configuration.shader_module              = WgpuShader::Simple(variant, post_processing);
-                state.pipeline_configuration.source_is_premultiplied    = false;
+                state.pipeline_configuration.shader_module = WgpuShader::Simple(variant, post_processing);
+                state.pipeline_configuration.source_is_premultiplied = false;
             }
 
             DashedLine { .. } => {
@@ -1254,15 +1253,15 @@ impl WgpuRenderer {
 
             Texture { texture, texture_transform, repeat, alpha, clip_texture } => {
                 // Fetch the input texture
-                let TextureId(texture_id)   = texture;
-                let texture                 = if let Some(Some(texture)) = self.textures.get(texture_id) {
+                let TextureId(texture_id) = texture;
+                let texture = if let Some(Some(texture)) = self.textures.get(texture_id) {
                     Some(texture)
                 } else {
                     None
                 };
 
                 // Work out which clip texture to use (and the corresponding shader variant)
-                let clip_texture    = if let Some(TextureId(clip_texture)) = clip_texture {
+                let clip_texture = if let Some(TextureId(clip_texture)) = clip_texture {
                     if let Some(Some(texture)) = self.textures.get(clip_texture) {
                         Some(Arc::clone(&texture.texture))
                     } else {
@@ -1271,10 +1270,10 @@ impl WgpuRenderer {
                 } else {
                     None
                 };
-                let variant         = if clip_texture.is_some() { StandardShaderVariant::ClippingMask } else { StandardShaderVariant::NoClipping };
+                let variant = if clip_texture.is_some() { StandardShaderVariant::ClippingMask } else { StandardShaderVariant::NoClipping };
 
                 // Alpha blend step depends on if the texture is pre-multiplied
-                let alpha_blend = if let Some(true) = texture.map(|t| t.is_premultiplied) { 
+                let alpha_blend = if let Some(true) = texture.map(|t| t.is_premultiplied) {
                     AlphaBlendStep::Premultiply
                 } else {
                     AlphaBlendStep::NoPremultiply
@@ -1282,40 +1281,40 @@ impl WgpuRenderer {
 
                 // See if the texture is multisampled or not
                 let texture_type = match texture.map(|t| t.descriptor.sample_count) {
-                    None    |
+                    None |
                     Some(0) |
                     Some(1) => InputTextureType::Sampler,
-                    _       => InputTextureType::Multisampled,
+                    _ => InputTextureType::Multisampled,
                 };
 
                 // Set up the state
-                state.texture_settings  = TextureSettings { transform: texture_transform.0, alpha: alpha as _, ..Default::default() };
-                state.input_texture     = texture.map(|t| Arc::clone(&t.texture));
+                state.texture_settings = TextureSettings { transform: texture_transform.0, alpha: alpha as _, ..Default::default() };
+                state.input_texture = texture.map(|t| Arc::clone(&t.texture));
                 if repeat {
-                    state.sampler       = Some(self.samplers.default_sampler());
+                    state.sampler = Some(self.samplers.default_sampler());
                 } else {
-                    state.sampler       = Some(self.samplers.non_repeating_sampler());    
+                    state.sampler = Some(self.samplers.non_repeating_sampler());
                 }
 
                 if let Some(texture) = &texture {
-                    state.pipeline_configuration.shader_module              = WgpuShader::Texture(variant, texture_type, TexturePosition::InputPosition, alpha_blend, post_processing);
-                    state.pipeline_configuration.source_is_premultiplied    = texture.is_premultiplied;
+                    state.pipeline_configuration.shader_module = WgpuShader::Texture(variant, texture_type, TexturePosition::InputPosition, alpha_blend, post_processing);
+                    state.pipeline_configuration.source_is_premultiplied = texture.is_premultiplied;
                 } else {
-                    state.pipeline_configuration.shader_module              = WgpuShader::Simple(variant, post_processing);
-                    state.pipeline_configuration.source_is_premultiplied    = false;
+                    state.pipeline_configuration.shader_module = WgpuShader::Simple(variant, post_processing);
+                    state.pipeline_configuration.source_is_premultiplied = false;
                 }
             }
 
             LinearGradient { texture, texture_transform, repeat, alpha, clip_texture } => {
-                let TextureId(texture_id)   = texture;
-                let texture                 = if let Some(Some(texture)) = self.textures.get(texture_id) {
+                let TextureId(texture_id) = texture;
+                let texture = if let Some(Some(texture)) = self.textures.get(texture_id) {
                     Some(texture)
                 } else {
                     None
                 };
 
                 // Work out which clip texture to use (and the corresponding shader variant)
-                let clip_texture    = if let Some(TextureId(clip_texture)) = clip_texture {
+                let clip_texture = if let Some(TextureId(clip_texture)) = clip_texture {
                     if let Some(Some(texture)) = self.textures.get(clip_texture) {
                         Some(Arc::clone(&texture.texture))
                     } else {
@@ -1324,105 +1323,105 @@ impl WgpuRenderer {
                 } else {
                     None
                 };
-                let variant         = if clip_texture.is_some() { StandardShaderVariant::ClippingMask } else { StandardShaderVariant::NoClipping };
+                let variant = if clip_texture.is_some() { StandardShaderVariant::ClippingMask } else { StandardShaderVariant::NoClipping };
 
                 // Alpha blend step depends on if the texture is pre-multiplied
-                let alpha_blend = if let Some(true) = texture.map(|t| t.is_premultiplied) { 
+                let alpha_blend = if let Some(true) = texture.map(|t| t.is_premultiplied) {
                     AlphaBlendStep::Premultiply
                 } else {
                     AlphaBlendStep::NoPremultiply
                 };
 
                 // Set up the state
-                state.texture_settings  = TextureSettings { transform: texture_transform.0, alpha: alpha as _, ..Default::default() };
-                state.input_texture     = texture.map(|t| Arc::clone(&t.texture));
+                state.texture_settings = TextureSettings { transform: texture_transform.0, alpha: alpha as _, ..Default::default() };
+                state.input_texture = texture.map(|t| Arc::clone(&t.texture));
                 if repeat {
-                    state.sampler       = Some(self.samplers.gradient_sampler());
+                    state.sampler = Some(self.samplers.gradient_sampler());
                 } else {
-                    state.sampler       = Some(self.samplers.non_repeating_gradient_sampler());    
+                    state.sampler = Some(self.samplers.non_repeating_gradient_sampler());
                 }
 
                 if let Some(texture) = &texture {
-                    state.pipeline_configuration.shader_module              = WgpuShader::LinearGradient(variant, TexturePosition::InputPosition, alpha_blend, post_processing);
-                    state.pipeline_configuration.source_is_premultiplied    = texture.is_premultiplied;
+                    state.pipeline_configuration.shader_module = WgpuShader::LinearGradient(variant, TexturePosition::InputPosition, alpha_blend, post_processing);
+                    state.pipeline_configuration.source_is_premultiplied = texture.is_premultiplied;
                 } else {
-                    state.pipeline_configuration.shader_module              = WgpuShader::Simple(variant, post_processing);
-                    state.pipeline_configuration.source_is_premultiplied    = false;
+                    state.pipeline_configuration.shader_module = WgpuShader::Simple(variant, post_processing);
+                    state.pipeline_configuration.source_is_premultiplied = false;
                 }
             }
         }
 
         // Mark the pipeline configuration as changed
-        state.pipeline_config_changed   = true;
+        state.pipeline_config_changed = true;
         state.pipeline_bindings_changed = true;
     }
-    
+
     ///
     /// Renders a set of triangles in a vertex buffer
     ///
     fn draw_triangles(&mut self, VertexBufferId(vertex_buffer_id): VertexBufferId, range: Range<usize>, state: &mut RendererState) {
         if let Some(Some(buffer)) = self.vertex_buffers.get(vertex_buffer_id) {
-            #[cfg(feature="profile")]
+            #[cfg(feature = "profile")]
             self.profiler.borrow_mut().count_primitives(range.len());
 
-            let buffer          = Arc::clone(&buffer);
+            let buffer = Arc::clone(&buffer);
 
             // Make sure that the pipeline is up to date
             self.update_pipeline_if_needed(state);
 
             // Add the buffer to the render pass resources
-            let buffer_index    = state.render_pass_resources.buffers.len();
+            let buffer_index = state.render_pass_resources.buffers.len();
             state.render_pass_resources.buffers.push(buffer);
 
             // Set up a vertex buffer and draw the triangles during the render pass
-            #[cfg(feature="profile")] let profiler = self.profiler.clone();
+            #[cfg(feature = "profile")] let profiler = self.profiler.clone();
 
             state.render_pass.push(Box::new(move |resources, render_pass| {
-                #[cfg(feature="profile")] profiler.borrow_mut().start_action(RenderActionType::RenderPassDrawTriangles);
+                #[cfg(feature = "profile")] profiler.borrow_mut().start_action(RenderActionType::RenderPassDrawTriangles);
 
                 let vertex_size = mem::size_of::<Vertex2D>();
-                let start_pos   = (range.start * vertex_size) as u64;
-                let end_pos     = (range.end * vertex_size) as u64;
+                let start_pos = (range.start * vertex_size) as u64;
+                let end_pos = (range.end * vertex_size) as u64;
 
                 render_pass.set_vertex_buffer(0, resources.buffers[buffer_index].slice(start_pos..end_pos));
                 render_pass.draw(0..range.len() as u32, 0..1);
 
-                #[cfg(feature="profile")] profiler.borrow_mut().finish_action(RenderActionType::RenderPassDrawTriangles);
+                #[cfg(feature = "profile")] profiler.borrow_mut().finish_action(RenderActionType::RenderPassDrawTriangles);
             }));
         }
     }
-    
+
     ///
     /// Renders a set of triangles by looking up vertices referenced by an index buffer
     ///
     fn draw_indexed_triangles(&mut self, VertexBufferId(vertex_buffer_id): VertexBufferId, IndexBufferId(index_buffer_id): IndexBufferId, num_vertices: usize, state: &mut RendererState) {
         if let (Some(Some(vertex_buffer)), Some(Some(index_buffer))) = (self.vertex_buffers.get(vertex_buffer_id), self.index_buffers.get(index_buffer_id)) {
-            #[cfg(feature="profile")]
+            #[cfg(feature = "profile")]
             self.profiler.borrow_mut().count_primitives(num_vertices);
 
-            let vertex_buffer       = Arc::clone(vertex_buffer);
-            let index_buffer        = Arc::clone(index_buffer);
+            let vertex_buffer = Arc::clone(vertex_buffer);
+            let index_buffer = Arc::clone(index_buffer);
 
             // Make sure that the pipeline is up to date
             self.update_pipeline_if_needed(state);
 
             // Add the buffers to the render pass resources
             let vertex_buffer_index = state.render_pass_resources.buffers.len();
-            let index_buffer_index  = state.render_pass_resources.buffers.len()+1;
+            let index_buffer_index = state.render_pass_resources.buffers.len() + 1;
 
             state.render_pass_resources.buffers.push(vertex_buffer);
             state.render_pass_resources.buffers.push(index_buffer);
 
             // Set up a vertex buffer and draw the triangles during the render pass
-            #[cfg(feature="profile")] let profiler = self.profiler.clone();
+            #[cfg(feature = "profile")] let profiler = self.profiler.clone();
             state.render_pass.push(Box::new(move |resources, render_pass| {
-                #[cfg(feature="profile")] profiler.borrow_mut().start_action(RenderActionType::RenderPassDrawIndexedTriangles);
+                #[cfg(feature = "profile")] profiler.borrow_mut().start_action(RenderActionType::RenderPassDrawIndexedTriangles);
 
                 render_pass.set_vertex_buffer(0, resources.buffers[vertex_buffer_index].slice(..));
                 render_pass.set_index_buffer(resources.buffers[index_buffer_index].slice(..), wgpu::IndexFormat::Uint16);
                 render_pass.draw_indexed(0..num_vertices as u32, 0, 0..1);
 
-                #[cfg(feature="profile")] profiler.borrow_mut().finish_action(RenderActionType::RenderPassDrawIndexedTriangles);
+                #[cfg(feature = "profile")] profiler.borrow_mut().finish_action(RenderActionType::RenderPassDrawIndexedTriangles);
             }));
         }
     }
@@ -1438,6 +1437,6 @@ fn transform_to_matrix(transform: &flo_canvas::Transform2D) -> Matrix {
         [t[0][0], t[0][1], 0.0, t[0][2]],
         [t[1][0], t[1][1], 0.0, t[1][2]],
         [t[2][0], t[2][1], 1.0, t[2][2]],
-        [0.0,     0.0,     0.0, 1.0]
+        [0.0, 0.0, 0.0, 1.0]
     ])
 }

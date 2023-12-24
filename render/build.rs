@@ -10,14 +10,13 @@ fn main() {
     compile_metal();
 }
 
-#[cfg(not(feature="osx-metal"))]
-fn compile_metal() {
-}
+#[cfg(not(feature = "osx-metal"))]
+fn compile_metal() {}
 
 ///
 /// Compiles a shader in the Metal shader language
 ///
-#[cfg(feature="osx-metal")]
+#[cfg(feature = "osx-metal")]
 fn compile_metal_shader(input_path: &str, output_path: &str) {
     let out_dir = env::var_os("OUT_DIR").unwrap().into_string().unwrap();
 
@@ -42,7 +41,7 @@ fn compile_metal_shader(input_path: &str, output_path: &str) {
 ///
 /// Links some shaders compiled by compile_metal_shader
 ///
-#[cfg(feature="osx-metal")]
+#[cfg(feature = "osx-metal")]
 fn link_metal_shaders(input_paths: Vec<&str>, output_path: &str) {
     let out_dir = env::var_os("OUT_DIR").unwrap().into_string().unwrap();
 
@@ -61,7 +60,7 @@ fn link_metal_shaders(input_paths: Vec<&str>, output_path: &str) {
     }
 }
 
-#[cfg(feature="osx-metal")]
+#[cfg(feature = "osx-metal")]
 fn compile_metal() {
     // Compile the shaders
     println!("cargo:rerun-if-changed=shaders");
@@ -76,14 +75,14 @@ fn compile_metal() {
     println!("cargo:rerun-if-changed=bindings");
 
     let bindings = match &env::var("CARGO_CFG_TARGET_ARCH").unwrap()[..] {
-        "aarch64"   |
-        "arm64"     => {
+        "aarch64" |
+        "arm64" => {
             bindgen::Builder::default()
                 .header("bindings/metal_vertex2d.h")
                 .parse_callbacks(Box::new(bindgen::CargoCallbacks))
-                .clang_args(vec![ "-arch", "arm64" ])
+                .clang_args(vec!["-arch", "arm64"])
                 .generate()
-            }
+        }
 
         _ => {
             bindgen::Builder::default()

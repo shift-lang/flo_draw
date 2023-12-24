@@ -1,8 +1,8 @@
+use std::thread;
+use std::time::Duration;
+
 use flo_draw::*;
 use flo_draw::canvas::*;
-
-use std::thread;
-use std::time::{Duration};
 
 ///
 /// Draws FlowBetween's mascot as vector graphics in a window by pre-rendering to a sprite
@@ -13,7 +13,9 @@ use std::time::{Duration};
 pub fn main() {
     with_2d_graphics(|| {
         // Decode
-        let mascot = decode_drawing(MASCOT.chars()).collect::<Result<Vec<Draw>, _>>().unwrap();
+        let mascot = decode_drawing(MASCOT.chars())
+            .collect::<Result<Vec<Draw>, _>>()
+            .unwrap();
 
         let canvas = create_drawing_window("Flo as a sprite");
 
@@ -35,9 +37,9 @@ pub fn main() {
         let mut iter = 0;
 
         loop {
-            let phase_1 = (iter as f32)/20.0;
-            let phase_2 = (iter as f32)/23.0;
-            let phase_3 = (iter as f32)/27.0;
+            let phase_1 = (iter as f32) / 20.0;
+            let phase_2 = (iter as f32) / 23.0;
+            let phase_3 = (iter as f32) / 27.0;
 
             let x_off = phase_1.sin() * 50.0;
             let y_off = phase_2.sin() * 50.0;
@@ -55,7 +57,6 @@ pub fn main() {
                 gc.sprite_transform(SpriteTransform::Translate(x_off, y_off));
                 gc.draw_sprite(SpriteId(0));
             });
-
 
             // Wait for the next frame
             thread::sleep(Duration::from_nanos(1_000_000_000 / 60));

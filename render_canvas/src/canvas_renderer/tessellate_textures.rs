@@ -14,19 +14,19 @@ impl CanvasRenderer {
     /// Dispatches a texture operation
     ///
     #[inline]
-    pub (super) fn tes_texture(&mut self, namespace_id: usize, texture_id: canvas::TextureId, op: canvas::TextureOp) {
+    pub(super) fn tes_texture(&mut self, namespace_id: usize, texture_id: canvas::TextureId, op: canvas::TextureOp) {
         use canvas::TextureOp::*;
         use canvas::{TextureSize, TextureFormat};
 
         match op {
-            Create(TextureSize(w, h), TextureFormat::Rgba)              => self.tes_texture_create_rgba(namespace_id, texture_id, w, h),
-            Free                                                        => self.tes_texture_free(namespace_id, texture_id),
-            SetBytes(position, size, bytes)                             => self.tes_texture_set_bytes(namespace_id, texture_id, position, size, bytes),
-            SetFromSprite(sprite_id, bounds)                            => self.tes_texture_set_from_sprite(namespace_id, texture_id, sprite_id, bounds),
-            CreateDynamicSprite(sprite_id, sprite_bounds, canvas_size)  => self.tes_texture_create_dynamic_sprite(namespace_id, texture_id, sprite_id, sprite_bounds, canvas_size),
-            FillTransparency(alpha)                                     => self.tes_texture_fill_transparency(namespace_id, texture_id, alpha),
-            Copy(target_texture_id)                                     => self.tes_texture_copy(namespace_id, texture_id, namespace_id, target_texture_id),
-            Filter(filter)                                              => self.tes_texture_filter(namespace_id, texture_id, filter),
+            Create(TextureSize(w, h), TextureFormat::Rgba) => self.tes_texture_create_rgba(namespace_id, texture_id, w, h),
+            Free => self.tes_texture_free(namespace_id, texture_id),
+            SetBytes(position, size, bytes) => self.tes_texture_set_bytes(namespace_id, texture_id, position, size, bytes),
+            SetFromSprite(sprite_id, bounds) => self.tes_texture_set_from_sprite(namespace_id, texture_id, sprite_id, bounds),
+            CreateDynamicSprite(sprite_id, sprite_bounds, canvas_size) => self.tes_texture_create_dynamic_sprite(namespace_id, texture_id, sprite_id, sprite_bounds, canvas_size),
+            FillTransparency(alpha) => self.tes_texture_fill_transparency(namespace_id, texture_id, alpha),
+            Copy(target_texture_id) => self.tes_texture_copy(namespace_id, texture_id, namespace_id, target_texture_id),
+            Filter(filter) => self.tes_texture_filter(namespace_id, texture_id, filter),
         }
     }
 
@@ -37,8 +37,8 @@ impl CanvasRenderer {
         self.core.sync(|core| {
             // If the texture ID was previously in use, reduce the usage count
             let render_texture = if let Some(old_render_texture) = core.canvas_textures.get(&(namespace_id, texture_id)) {
-                let old_render_texture  = old_render_texture.into();
-                let usage_count         = core.used_textures.get_mut(&old_render_texture);
+                let old_render_texture = old_render_texture.into();
+                let usage_count = core.used_textures.get_mut(&old_render_texture);
 
                 if usage_count == Some(&mut 1) {
                     // Leave the usage count as is and reallocate the existing texture
@@ -46,7 +46,7 @@ impl CanvasRenderer {
                     old_render_texture
                 } else {
                     // Reduce the usage count
-                    usage_count.map(|usage_count| *usage_count -=1);
+                    usage_count.map(|usage_count| *usage_count -= 1);
 
                     // Allocate a new texture
                     core.allocate_texture()
@@ -79,7 +79,7 @@ impl CanvasRenderer {
             if let Some(old_render_texture) = core.canvas_textures.get(&(namespace_id, texture_id)) {
                 let old_render_texture = old_render_texture.into();
                 core.used_textures.get_mut(&old_render_texture)
-                    .map(|usage_count| *usage_count -=1);
+                    .map(|usage_count| *usage_count -= 1);
             }
 
             // Unmap the texture
@@ -107,7 +107,7 @@ impl CanvasRenderer {
                 // The texture is updated in a setup action
                 use canvas::{TexturePosition, TextureSize};
                 match render_texture {
-                    RenderTexture::Ready(render_texture)    => {
+                    RenderTexture::Ready(render_texture) => {
                         // Generate a copy of the texture and write to that instead ('Ready' textures are already rendered elsewhere)
                         let copy_texture_id = core.allocate_texture();
 
@@ -124,7 +124,7 @@ impl CanvasRenderer {
                         core.layer_textures.push((copy_texture_id, TextureRenderRequest::SetBytes(copy_texture_id, TexturePosition(x, y), TextureSize(width, height), bytes)));
                     }
 
-                    RenderTexture::Loading(render_texture)  => {
+                    RenderTexture::Loading(render_texture) => {
                         // Use the existing texture
                         core.layer_textures.push((render_texture, TextureRenderRequest::SetBytes(render_texture, TexturePosition(x, y), TextureSize(width, height), bytes)));
                     }
@@ -142,7 +142,7 @@ impl CanvasRenderer {
         self.core.sync(|core| {
             // Specify this as a texture that needs to be loaded by rendering from a layer
             if let (Some(render_texture), Some(sprite_layer_handle)) = (core.canvas_textures.get(&(namespace_id, texture_id)), core.sprites.get(&(namespace_id, sprite_id))) {
-                let mut render_texture  = *render_texture;
+                let mut render_texture = *render_texture;
                 let sprite_layer_handle = *sprite_layer_handle;
 
                 // If the texture has one used count and is in a 'ready' state, switch it back to 'loading' (nothing has rendered it)
@@ -155,7 +155,7 @@ impl CanvasRenderer {
 
                 // This texture needs to be marked to be rendered after the setup is completed
                 let texture_id = match render_texture {
-                    RenderTexture::Ready(render_texture)    => {
+                    RenderTexture::Ready(render_texture) => {
                         // Create a blank texture, and move back to the loading state
                         let new_texture_id = core.allocate_texture();
 
@@ -172,7 +172,7 @@ impl CanvasRenderer {
                         new_texture_id
                     }
 
-                    RenderTexture::Loading(render_texture)  => {
+                    RenderTexture::Loading(render_texture) => {
                         // Use the existing texture
                         core.canvas_textures.insert((namespace_id, texture_id), RenderTexture::Loading(render_texture));
                         render_texture
@@ -194,12 +194,12 @@ impl CanvasRenderer {
 
             if let Some(sprite_layer_handle) = core.sprites.get(&(namespace_id, sprite_id)) {
                 let sprite_layer_handle = *sprite_layer_handle;
-                let transform           = self.active_transform;
+                let transform = self.active_transform;
 
                 // If the texture ID was previously in use, reduce the usage count
                 let render_texture_id = if let Some(old_render_texture) = core.canvas_textures.get(&(namespace_id, texture_id)) {
-                    let old_render_texture  = old_render_texture.into();
-                    let usage_count         = core.used_textures.get_mut(&old_render_texture);
+                    let old_render_texture = old_render_texture.into();
+                    let usage_count = core.used_textures.get_mut(&old_render_texture);
 
                     if usage_count == Some(&mut 1) {
                         // Leave the usage count as is and reallocate the existing texture
@@ -207,7 +207,7 @@ impl CanvasRenderer {
                         old_render_texture
                     } else {
                         // Reduce the usage count
-                        usage_count.map(|usage_count| *usage_count -=1);
+                        usage_count.map(|usage_count| *usage_count -= 1);
 
                         // Allocate a new texture
                         core.allocate_texture()
@@ -236,10 +236,10 @@ impl CanvasRenderer {
     fn tes_texture_fill_transparency(&mut self, namespace_id: usize, texture_id: canvas::TextureId, alpha: f32) {
         self.core.sync(|core| {
             core.texture_alpha.insert((namespace_id, texture_id), alpha);
-            let layer                   = core.layer(self.current_layer);
+            let layer = core.layer(self.current_layer);
 
             if layer.state.fill_color.texture_id() == Some(texture_id) {
-                layer.state.fill_color  = layer.state.fill_color.with_texture_alpha(alpha);
+                layer.state.fill_color = layer.state.fill_color.with_texture_alpha(alpha);
             }
         });
     }
@@ -250,19 +250,19 @@ impl CanvasRenderer {
     fn tes_texture_copy(&mut self, source_namespace_id: usize, source_texture_id: canvas::TextureId, target_namespace_id: usize, target_texture_id: canvas::TextureId) {
         self.core.sync(|core| {
             // Get the source texture we're copying from
-            let source_render_texture   = if let Some(texture) = core.canvas_textures.get(&(source_namespace_id, source_texture_id)) { *texture } else { return; };
-            let source_texture_size     = *core.texture_size.get(&source_render_texture.into()).unwrap();
+            let source_render_texture = if let Some(texture) = core.canvas_textures.get(&(source_namespace_id, source_texture_id)) { *texture } else { return; };
+            let source_texture_size = *core.texture_size.get(&source_render_texture.into()).unwrap();
 
             // If the target is an existing texture, need to reduce the usage count
             if let Some(old_render_texture) = core.canvas_textures.get(&(target_namespace_id, target_texture_id)) {
                 let old_render_texture = old_render_texture.into();
                 core.used_textures.get_mut(&old_render_texture)
-                    .map(|usage_count| *usage_count -=1);
+                    .map(|usage_count| *usage_count -= 1);
             }
 
             // Allocate a new texture as the target (it's loading for the moment as nothing is actually using it)
-            let target_render_texture   = core.allocate_texture();
- 
+            let target_render_texture = core.allocate_texture();
+
             core.canvas_textures.insert((target_namespace_id, target_texture_id), RenderTexture::Loading(target_render_texture));
             core.used_textures.insert(target_render_texture, 1);
             core.texture_size.insert(target_render_texture, source_texture_size);
@@ -288,7 +288,7 @@ impl CanvasRenderer {
 
         // If the texture is in the 'ready' state, then copy it for modification
         let render_texture = match render_texture {
-            RenderTexture::Ready(render_texture)    => {
+            RenderTexture::Ready(render_texture) => {
                 self.core.sync(|core| {
                     // Create a blank texture, and move back to the loading state
                     let new_texture_id = core.allocate_texture();
@@ -307,7 +307,7 @@ impl CanvasRenderer {
                 })
             }
 
-            RenderTexture::Loading(render_texture)  => {
+            RenderTexture::Loading(render_texture) => {
                 // Use the existing texture
                 render_texture
             }
@@ -315,10 +315,10 @@ impl CanvasRenderer {
 
         // Dispatch the filter operation
         match filter {
-            GaussianBlur(radius)                            => self.tes_texture_filter_gaussian_blur(render_texture, radius),
-            AlphaBlend(alpha)                               => self.tes_texture_filter_alpha_blend(render_texture, alpha),
-            Mask(mask_texture)                              => self.tes_texture_filter_mask(render_texture, namespace_id, mask_texture),
-            DisplacementMap(displace_texture, x_r, y_r)     => self.tes_texture_filter_displacement_map(render_texture, namespace_id, displace_texture, x_r, y_r),
+            GaussianBlur(radius) => self.tes_texture_filter_gaussian_blur(render_texture, radius),
+            AlphaBlend(alpha) => self.tes_texture_filter_alpha_blend(render_texture, alpha),
+            Mask(mask_texture) => self.tes_texture_filter_mask(render_texture, namespace_id, mask_texture),
+            DisplacementMap(displace_texture, x_r, y_r) => self.tes_texture_filter_displacement_map(render_texture, namespace_id, displace_texture, x_r, y_r),
         }
     }
 

@@ -1,18 +1,17 @@
-use crate::events::*;
-use crate::window_properties::*;
-
-use flo_stream::*;
-use flo_render::*;
-
-use futures::future::{LocalBoxFuture};
-use futures::stream::{BoxStream};
-use futures::channel::oneshot;
-
-use wgpu;
-use winit::window::{WindowId};
-
 use std::fmt;
 use std::fmt::*;
+
+use flo_stream::*;
+use futures::channel::oneshot;
+use futures::future::LocalBoxFuture;
+use futures::stream::BoxStream;
+use wgpu;
+use winit::window::WindowId;
+
+use flo_render::*;
+
+use crate::events::*;
+use crate::window_properties::*;
 
 ///
 /// Event that can be sent to a winit thread
@@ -22,7 +21,7 @@ pub enum WinitThreadEvent {
     CreateRenderWindow(BoxStream<'static, Vec<RenderAction>>, Publisher<DrawEvent>, WindowProperties),
 
     /// Runs a future on the winit thread
-    RunProcess(Box<dyn Send+FnOnce() -> LocalBoxFuture<'static, ()>>),
+    RunProcess(Box<dyn Send + FnOnce() -> LocalBoxFuture<'static, ()>>),
 
     /// Polls the future with the specified ID
     WakeFuture(u64),
@@ -45,13 +44,13 @@ impl Debug for WinitThreadEvent {
         use self::WinitThreadEvent::*;
 
         match self {
-            CreateRenderWindow(_, _, _)     => write!(f, "CreateRenderWindow(...)"),
-            RunProcess(_)                   => write!(f, "RunProcess(...)"),
-            WakeFuture(id)                  => write!(f, "WakeFuture({})", id),
-            PresentSurface(id, _, _)        => write!(f, "PresentSurface({:?}, ...)", id),
-            Yield(_)                        => write!(f, "Yield(...)"),
-            StopSendingToWindow(id)         => write!(f, "StopSendingToWindow({:?})", id),
-            StopWhenAllWindowsClosed        => write!(f, "StopWhenAllWindowsClosed"),
+            CreateRenderWindow(_, _, _) => write!(f, "CreateRenderWindow(...)"),
+            RunProcess(_) => write!(f, "RunProcess(...)"),
+            WakeFuture(id) => write!(f, "WakeFuture({})", id),
+            PresentSurface(id, _, _) => write!(f, "PresentSurface({:?}, ...)", id),
+            Yield(_) => write!(f, "Yield(...)"),
+            StopSendingToWindow(id) => write!(f, "StopSendingToWindow({:?})", id),
+            StopWhenAllWindowsClosed => write!(f, "StopWhenAllWindowsClosed"),
         }
     }
 }

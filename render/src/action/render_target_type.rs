@@ -19,5 +19,5 @@ pub enum RenderTargetType {
     Monochrome,
 
     /// Multisampled monochrome off-screen render target (only writes the red channel)
-    MonochromeMultisampledTexture
+    MonochromeMultisampledTexture,
 }

@@ -14,7 +14,7 @@ impl CanvasRenderer {
     /// Clears the currently selected sprite
     ///
     #[inline]
-    pub (super) fn tes_clear_sprite(&mut self, path_state: &mut PathState) {
+    pub(super) fn tes_clear_sprite(&mut self, path_state: &mut PathState) {
         // Sprites are just layers that we don't render in the standard stack
         self.tes_clear_layer(path_state);
     }
@@ -22,7 +22,7 @@ impl CanvasRenderer {
     ///
     /// Selects a particular sprite for drawing
     ///
-    pub (super) fn tes_sprite(&mut self, namespace_id: usize, sprite_id: canvas::SpriteId) { 
+    pub(super) fn tes_sprite(&mut self, namespace_id: usize, sprite_id: canvas::SpriteId) {
         let core = Arc::clone(&self.core);
 
         core.sync(|core| {
@@ -37,37 +37,37 @@ impl CanvasRenderer {
 
             if let Some(sprite_handle) = core.sprites.get(&(namespace_id, sprite_id)) {
                 // Use the existing sprite layer if one exists
-                self.current_layer  = *sprite_handle;
+                self.current_layer = *sprite_handle;
                 self.current_sprite = Some(sprite_id);
             } else {
                 // Create a new sprite layer
-                let mut sprite_layer            = Self::create_default_layer();
-                sprite_layer.state.is_sprite    = true;
+                let mut sprite_layer = Self::create_default_layer();
+                sprite_layer.state.is_sprite = true;
 
                 // Associate it with the sprite ID
-                let sprite_layer                = core.allocate_layer_handle(sprite_layer);
+                let sprite_layer = core.allocate_layer_handle(sprite_layer);
                 core.sprites.insert((namespace_id, sprite_id), sprite_layer);
 
                 // Choose the layer as the current sprite layer
-                self.current_layer  = sprite_layer;
+                self.current_layer = sprite_layer;
                 self.current_sprite = Some(sprite_id);
             }
 
             // Set the sprite matrix to be 'unchanged' from the active transform
-            let layer                   = core.layer(self.current_layer);
+            let layer = core.layer(self.current_layer);
             layer.update_transform(&self.active_transform);
 
             // Set the scale factor in the sprite layer
-            layer.state.base_scale_factor   = previous_layer_scale_factor;
-            layer.state.scale_factor        = previous_layer_scale_factor;
+            layer.state.base_scale_factor = previous_layer_scale_factor;
+            layer.state.scale_factor = previous_layer_scale_factor;
         })
     }
 
     ///
     /// Adds a sprite transform to the current list of transformations to apply
     ///
-    pub (super) fn tes_sprite_transform(&mut self, transform: canvas::SpriteTransform) {
-        self. core.sync(|core| {
+    pub(super) fn tes_sprite_transform(&mut self, transform: canvas::SpriteTransform) {
+        self.core.sync(|core| {
             core.layer(self.current_layer).state.apply_sprite_transform(transform)
         })
     }
@@ -75,10 +75,10 @@ impl CanvasRenderer {
     ///
     /// Renders a sprite with a set of transformations
     ///
-    pub (super) fn tes_draw_sprite(&mut self, namespace_id: usize, sprite_id: canvas::SpriteId) { 
+    pub(super) fn tes_draw_sprite(&mut self, namespace_id: usize, sprite_id: canvas::SpriteId) {
         self.core.sync(|core| {
-            let layer           = core.layer(self.current_layer);
-            let sprite_matrix   = layer.state.sprite_matrix;
+            let layer = core.layer(self.current_layer);
+            let sprite_matrix = layer.state.sprite_matrix;
 
             // Update the transformation matrix for the layer
             layer.update_transform(&self.active_transform);
@@ -92,10 +92,10 @@ impl CanvasRenderer {
     ///
     /// Renders a sprite with a set of transformations and filters
     ///
-    pub (super) fn tes_draw_sprite_with_filters(&mut self, namespace_id: usize, sprite_id: canvas::SpriteId, filters: Vec<canvas::TextureFilter>) { 
+    pub(super) fn tes_draw_sprite_with_filters(&mut self, namespace_id: usize, sprite_id: canvas::SpriteId, filters: Vec<canvas::TextureFilter>) {
         self.core.sync(|core| {
-            let layer           = core.layer(self.current_layer);
-            let sprite_matrix   = layer.state.sprite_matrix;
+            let layer = core.layer(self.current_layer);
+            let sprite_matrix = layer.state.sprite_matrix;
 
             // Update the transformation matrix for the layer
             layer.update_transform(&self.active_transform);
@@ -105,10 +105,10 @@ impl CanvasRenderer {
                 use canvas::TextureFilter::*;
 
                 match filter {
-                    GaussianBlur(radius)                => Some(TextureFilterRequest::CanvasBlur(radius, self.active_transform)),
-                    AlphaBlend(alpha)                   => Some(TextureFilterRequest::AlphaBlend(alpha)),
-                    Mask(texture)                       => Some(TextureFilterRequest::Mask(core.texture_for_rendering(namespace_id, texture)?)),
-                    DisplacementMap(texture, xr, yr)    => Some(TextureFilterRequest::DisplacementMap(core.texture_for_rendering(namespace_id, texture)?, xr, yr, Some(self.active_transform))),
+                    GaussianBlur(radius) => Some(TextureFilterRequest::CanvasBlur(radius, self.active_transform)),
+                    AlphaBlend(alpha) => Some(TextureFilterRequest::AlphaBlend(alpha)),
+                    Mask(texture) => Some(TextureFilterRequest::Mask(core.texture_for_rendering(namespace_id, texture)?)),
+                    DisplacementMap(texture, xr, yr) => Some(TextureFilterRequest::DisplacementMap(core.texture_for_rendering(namespace_id, texture)?, xr, yr, Some(self.active_transform))),
                 }
             }).collect::<Vec<_>>();
 
@@ -127,7 +127,7 @@ impl CanvasRenderer {
     ///
     /// Moves a definition from a different sprite ID to this one
     ///
-    pub (super) fn tes_move_sprite_from(&mut self, namespace_id: usize, move_from_sprite_id: canvas::SpriteId, path_state: &mut PathState) {
+    pub(super) fn tes_move_sprite_from(&mut self, namespace_id: usize, move_from_sprite_id: canvas::SpriteId, path_state: &mut PathState) {
         // Fetch the current sprite, or do nothing if a sprite is not selected
         let current_sprite_id = if let Some(sprite_id) = self.current_sprite { sprite_id } else { return; };
 

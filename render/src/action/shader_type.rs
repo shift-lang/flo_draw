@@ -18,7 +18,7 @@ pub enum ShaderType {
     Texture { texture: TextureId, texture_transform: Matrix, repeat: bool, alpha: f32, clip_texture: Option<TextureId> },
 
     /// Colour derived from a 1D texture using a transform mapping (used for rendering linear gradients)
-    LinearGradient { texture: TextureId, texture_transform: Matrix, repeat: bool, alpha: f32, clip_texture: Option<TextureId> }
+    LinearGradient { texture: TextureId, texture_transform: Matrix, repeat: bool, alpha: f32, clip_texture: Option<TextureId> },
 }
 
 impl ShaderType {
@@ -29,10 +29,10 @@ impl ShaderType {
         use self::ShaderType::*;
 
         match self {
-            Simple { clip_texture: _ }                                                      => Simple           { clip_texture: new_clip_mask_texture },
-            DashedLine { dash_texture, clip_texture: _ }                                    => DashedLine       { dash_texture: dash_texture, clip_texture: new_clip_mask_texture },
-            Texture { texture, texture_transform, repeat, alpha, clip_texture: _ }          => Texture          { texture: texture, texture_transform: texture_transform, repeat, alpha, clip_texture: new_clip_mask_texture },
-            LinearGradient { texture, texture_transform, repeat, alpha, clip_texture: _ }   => LinearGradient   { texture: texture, texture_transform: texture_transform, repeat, alpha, clip_texture: new_clip_mask_texture }
+            Simple { clip_texture: _ } => Simple { clip_texture: new_clip_mask_texture },
+            DashedLine { dash_texture, clip_texture: _ } => DashedLine { dash_texture: dash_texture, clip_texture: new_clip_mask_texture },
+            Texture { texture, texture_transform, repeat, alpha, clip_texture: _ } => Texture { texture: texture, texture_transform: texture_transform, repeat, alpha, clip_texture: new_clip_mask_texture },
+            LinearGradient { texture, texture_transform, repeat, alpha, clip_texture: _ } => LinearGradient { texture: texture, texture_transform: texture_transform, repeat, alpha, clip_texture: new_clip_mask_texture }
         }
     }
 }

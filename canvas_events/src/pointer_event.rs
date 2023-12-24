@@ -16,7 +16,7 @@ pub enum Button {
     Left,
     Middle,
     Right,
-    Other(u64)
+    Other(u64),
 }
 
 ///
@@ -43,7 +43,7 @@ pub enum PointerAction {
     ButtonUp,
 
     /// A button has been released in a cancellation gesture (eg, due to palm rejection), invalidating a previous drag action
-    Cancel
+    Cancel,
 }
 
 ///
@@ -73,7 +73,7 @@ pub struct PointerState {
     pub rotation: Option<f64>,
 
     /// If the device has a 'flow rate' adjustment (emulating an airbrush, for example) this is the value of that (from 0.0 to 1.0).
-    pub flow_rate: Option<f64>
+    pub flow_rate: Option<f64>,
 }
 
 impl PointerState {
@@ -84,11 +84,11 @@ impl PointerState {
         PointerState {
             location_in_window: (0.0, 0.0),
             location_in_canvas: None,
-            buttons:            vec![],
-            pressure:           None,
-            tilt:               None,
-            rotation:           None,
-            flow_rate:          None
+            buttons: vec![],
+            pressure: None,
+            tilt: None,
+            rotation: None,
+            flow_rate: None,
         }
     }
 }

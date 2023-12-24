@@ -27,16 +27,14 @@ impl DrawingTarget {
     ///
     pub fn new() -> (DrawingTarget, DrawStream) {
         // Create the core
-        let core    = Arc::new(Desync::new(DrawStreamCore::new()));
+        let core = Arc::new(Desync::new(DrawStreamCore::new()));
         core.desync(|core| core.add_usage());
 
         // Create the stream
-        let stream  = DrawStream::with_core(&core);
+        let stream = DrawStream::with_core(&core);
 
         // Create the context
-        let context = DrawingTarget {
-            stream_core: core
-        };
+        let context = DrawingTarget { stream_core: core };
 
         (context, stream)
     }
@@ -44,7 +42,7 @@ impl DrawingTarget {
     ///
     /// Sends some drawing instructions to this target
     ///
-    pub fn write<Drawing: Send+IntoIterator<Item=Draw>>(&self, drawing: Drawing) {
+    pub fn write<Drawing: Send + IntoIterator<Item=Draw>>(&self, drawing: Drawing) {
         // Write the drawing instructions to the pending queue
         let waker = self.stream_core.sync(move |core| {
             core.write(drawing.into_iter());
@@ -59,7 +57,9 @@ impl DrawingTarget {
     /// Provides a way to draw on this target via a graphics context
     ///
     pub fn draw<FnAction>(&self, action: FnAction)
-    where FnAction: Send+FnOnce(&mut DrawGraphicsContext) -> () {
+        where
+            FnAction: Send + FnOnce(&mut DrawGraphicsContext) -> (),
+    {
         // Fill a buffer with the drawing actions
         let mut draw_actions = vec![];
         action(&mut draw_actions);
@@ -74,10 +74,13 @@ impl DrawingTarget {
     ///
     /// Sends the results of a future to this target
     ///
-    pub fn receive<DrawStream: Unpin+Stream<Item=Draw>>(self, actions: DrawStream) -> impl Future {
+    pub fn receive<DrawStream: Unpin + Stream<Item=Draw>>(
+        self,
+        actions: DrawStream,
+    ) -> impl Future {
         async move {
             let mut actions = actions.ready_chunks(1000);
-            let target      = self;
+            let target = self;
 
             while let Some(drawing) = actions.next().await {
                 target.write(drawing);
@@ -98,17 +101,17 @@ impl Clone for DrawingTarget {
         let new_core = Arc::clone(&self.stream_core);
         new_core.desync(|core| core.add_usage());
         DrawingTarget {
-            stream_core: new_core
+            stream_core: new_core,
         }
     }
 }
 
 impl Drop for DrawingTarget {
     fn drop(&mut self) {
-        let waker = self.stream_core.sync(|core| { 
+        let waker = self.stream_core.sync(|core| {
             if core.finish_usage() == 0 {
-                core.close(); 
-                core.take_waker() 
+                core.close();
+                core.take_waker()
             } else {
                 None
             }
@@ -120,18 +123,18 @@ impl Drop for DrawingTarget {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::path::*;
-    use crate::font::*;
     use crate::color::*;
-    use crate::sprite::*;
     use crate::context::*;
+    use crate::font::*;
     use crate::font_face::*;
+    use crate::path::*;
+    use crate::sprite::*;
 
     use futures::executor;
 
+    use std::mem;
     use std::thread::*;
     use std::time::*;
-    use std::mem;
 
     #[test]
     fn follow_drawing_context_stream() {
@@ -146,7 +149,7 @@ mod test {
                 Draw::Path(PathOp::Move(0.0, 0.0)),
                 Draw::Path(PathOp::Line(10.0, 0.0)),
                 Draw::Path(PathOp::Line(10.0, 10.0)),
-                Draw::Path(PathOp::Line(0.0, 10.0))
+                Draw::Path(PathOp::Line(0.0, 10.0)),
             ]);
         });
 
@@ -167,7 +170,7 @@ mod test {
 
     #[test]
     fn clear_layer_0_removes_commands() {
-        let (context, stream)   = DrawingTarget::new();
+        let (context, stream) = DrawingTarget::new();
 
         // Draw using a graphics context
         context.draw(|gc| {
@@ -186,7 +189,7 @@ mod test {
         });
 
         // Only the commands after clear_layer should be present
-        let mut stream          = stream;
+        let mut stream = stream;
 
         executor::block_on(async {
             assert!(stream.next().await == Some(Draw::StartFrame));
@@ -200,7 +203,7 @@ mod test {
 
     #[test]
     fn clear_layer_0_leaves_clear_canvas() {
-        let (context, stream)   = DrawingTarget::new();
+        let (context, stream) = DrawingTarget::new();
 
         // Draw using a graphics context
         context.draw(|gc| {
@@ -220,11 +223,13 @@ mod test {
         });
 
         // Only the commands after clear_layer should be present
-        let mut stream          = stream;
+        let mut stream = stream;
 
         executor::block_on(async {
             assert!(stream.next().await == Some(Draw::StartFrame));
-            assert!(stream.next().await == Some(Draw::ClearCanvas(Color::Rgba(0.0, 0.0, 0.0, 0.0))));
+            assert!(
+                stream.next().await == Some(Draw::ClearCanvas(Color::Rgba(0.0, 0.0, 0.0, 0.0)))
+            );
             assert!(stream.next().await == Some(Draw::Layer(LayerId(0))));
             assert!(stream.next().await == Some(Draw::ClearLayer));
             assert!(stream.next().await == Some(Draw::Path(PathOp::NewPath)));
@@ -235,7 +240,7 @@ mod test {
 
     #[test]
     fn clear_all_layers_leaves_state() {
-        let (context, stream)   = DrawingTarget::new();
+        let (context, stream) = DrawingTarget::new();
 
         // Draw using a graphics context
         context.draw(|gc| {
@@ -261,11 +266,13 @@ mod test {
         });
 
         // Only the commands after clear_layer should be present
-        let mut stream          = stream;
+        let mut stream = stream;
 
         executor::block_on(async {
             assert!(stream.next().await == Some(Draw::StartFrame));
-            assert!(stream.next().await == Some(Draw::ClearCanvas(Color::Rgba(0.0, 0.0, 0.0, 0.0))));
+            assert!(
+                stream.next().await == Some(Draw::ClearCanvas(Color::Rgba(0.0, 0.0, 0.0, 0.0)))
+            );
             assert!(stream.next().await == Some(Draw::FillColor(Color::Rgba(0.1, 0.2, 0.3, 0.4))));
             assert!(stream.next().await == Some(Draw::Layer(LayerId(2))));
             assert!(stream.next().await == Some(Draw::ClearAllLayers));
@@ -275,7 +282,7 @@ mod test {
 
     #[test]
     fn canvas_transforms_are_used_by_drawing_actions() {
-        let (context, stream)   = DrawingTarget::new();
+        let (context, stream) = DrawingTarget::new();
 
         // Draw using a graphics context
         context.draw(|gc| {
@@ -297,7 +304,7 @@ mod test {
         });
 
         // Only the commands after clear_layer should be present
-        let mut stream          = stream;
+        let mut stream = stream;
 
         executor::block_on(async {
             assert!(stream.next().await == Some(Draw::StartFrame));
@@ -314,7 +321,7 @@ mod test {
 
     #[test]
     fn clear_layer_only_removes_commands_for_the_current_layer() {
-        let (context, stream)   = DrawingTarget::new();
+        let (context, stream) = DrawingTarget::new();
 
         // Draw using a graphics context
         context.draw(|gc| {
@@ -338,7 +345,7 @@ mod test {
         });
 
         // Only the commands after clear_layer should be present
-        let mut stream          = stream;
+        let mut stream = stream;
 
         executor::block_on(async {
             assert!(stream.next().await == Some(Draw::StartFrame));
@@ -356,7 +363,7 @@ mod test {
 
     #[test]
     fn clear_layer_does_not_clear_sprites() {
-        let (context, stream)   = DrawingTarget::new();
+        let (context, stream) = DrawingTarget::new();
 
         // Draw using a graphics context
         context.draw(|gc| {
@@ -386,7 +393,7 @@ mod test {
         });
 
         // Only the commands after clear_layer should be present
-        let mut stream          = stream;
+        let mut stream = stream;
 
         executor::block_on(async {
             assert!(stream.next().await == Some(Draw::StartFrame));
@@ -408,8 +415,8 @@ mod test {
 
     #[test]
     fn only_one_font_definition_survives_clear_layer() {
-        let (context, stream)   = DrawingTarget::new();
-        let lato                = CanvasFontFace::from_slice(include_bytes!("../test_data/Lato-Regular.ttf"));
+        let (context, stream) = DrawingTarget::new();
+        let lato = CanvasFontFace::from_slice(include_bytes!("../test_data/Lato-Regular.ttf"));
 
         context.draw(|gc| {
             gc.layer(LayerId(1));
@@ -431,8 +438,14 @@ mod test {
         executor::block_on(async {
             assert!(stream.next().await == Some(Draw::StartFrame));
 
-            assert!(match stream.next().await { Some(Draw::Font(FontId(2), FontOp::UseFontDefinition(_))) => true, _ => false });
-            assert!(match stream.next().await { Some(Draw::Font(FontId(1), FontOp::UseFontDefinition(_))) => true, _ => false });
+            assert!(match stream.next().await {
+                Some(Draw::Font(FontId(2), FontOp::UseFontDefinition(_))) => true,
+                _ => false,
+            });
+            assert!(match stream.next().await {
+                Some(Draw::Font(FontId(1), FontOp::UseFontDefinition(_))) => true,
+                _ => false,
+            });
             assert!(stream.next().await == Some(Draw::Font(FontId(1), FontOp::FontSize(12.0))));
 
             assert!(stream.next().await == Some(Draw::Layer(LayerId(1))));
@@ -443,8 +456,8 @@ mod test {
 
     #[test]
     fn only_one_font_size_survives_clear_layer() {
-        let (context, stream)   = DrawingTarget::new();
-        let lato                = CanvasFontFace::from_slice(include_bytes!("../test_data/Lato-Regular.ttf"));
+        let (context, stream) = DrawingTarget::new();
+        let lato = CanvasFontFace::from_slice(include_bytes!("../test_data/Lato-Regular.ttf"));
 
         context.draw(|gc| {
             gc.layer(LayerId(1));
@@ -469,7 +482,10 @@ mod test {
 
             assert!(stream.next().await == Some(Draw::StartFrame));
 
-            assert!(match stream.next().await { Some(Draw::Font(FontId(1), FontOp::UseFontDefinition(_))) => true, _ => false });
+            assert!(match stream.next().await {
+                Some(Draw::Font(FontId(1), FontOp::UseFontDefinition(_))) => true,
+                _ => false,
+            });
             assert!(stream.next().await == Some(Draw::Font(FontId(2), FontOp::FontSize(18.0))));
             assert!(stream.next().await == Some(Draw::Font(FontId(1), FontOp::FontSize(12.0))));
 
@@ -481,7 +497,7 @@ mod test {
 
     #[test]
     fn sprite_definition_cleared_if_not_in_use() {
-        let (context, stream)   = DrawingTarget::new();
+        let (context, stream) = DrawingTarget::new();
 
         context.draw(|gc| {
             gc.sprite(SpriteId(0));
@@ -519,7 +535,7 @@ mod test {
 
     #[test]
     fn sprite_definition_survives_if_in_use() {
-        let (context, stream)   = DrawingTarget::new();
+        let (context, stream) = DrawingTarget::new();
 
         context.draw(|gc| {
             gc.sprite(SpriteId(0));

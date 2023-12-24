@@ -16,5 +16,5 @@ pub enum BlendMode {
     Multiply,
 
     AllChannelAlphaSourceOver,
-    AllChannelAlphaDestinationOver
+    AllChannelAlphaDestinationOver,
 }

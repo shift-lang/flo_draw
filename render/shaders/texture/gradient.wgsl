@@ -33,16 +33,16 @@ fn gradient_vertex_shader(
 ) -> RasterData {
     var result: RasterData;
 
-    var color = vec4<f32>(f32(color[0]), f32(color[1]), f32(color[2]), f32(color[3]));
-    color[0] /= 255.0;
-    color[1] /= 255.0;
-    color[2] /= 255.0;
-    color[3] /= 255.0;
+    var color_res = vec4<f32>(f32(color[0]), f32(color[1]), f32(color[2]), f32(color[3]));
+    color_res[0] /= 255.0;
+    color_res[1] /= 255.0;
+    color_res[2] /= 255.0;
+    color_res[3] /= 255.0;
 
-    let tex_coord       = texture_position(pos, tex_coord, texture_settings.transform);
+    let tex_coord_res       = texture_position(pos, tex_coord, texture_settings.transform);
 
-    result.color        = color;
-    result.tex_coord    = tex_coord;
+    result.color        = color_res;
+    result.tex_coord    = tex_coord_res;
     result.pos          = vec4<f32>(pos[0], pos[1], 0.0, 1.0) * transform;
 
     return result;

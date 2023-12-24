@@ -1,10 +1,10 @@
 [package]
-name        = "flo_render_gl_offscreen"
-version     = "0.4.0"
-authors     = ["Andrew Hunter"]
-license     = "Apache-2.0"
-edition     = "2018"
-repository  = "https://github.com/Logicalshift/flo_draw"
+name = "flo_render_gl_offscreen"
+version = "0.4.0"
+authors = ["Andrew Hunter"]
+license = "Apache-2.0"
+edition = "2018"
+repository = "https://github.com/Logicalshift/flo_draw"
 description = "Re-exports platform-appropriate libraries for initialising offscreen rendering"
 
 # Cargo can base dependencies on features or the current platform but not both (which is also why you have to specify
@@ -16,11 +16,11 @@ bindgen = "0.66"
 [dependencies]
 
 [target.'cfg(target_os = "linux")'.dependencies]
-egl             = "0.2"
+egl = "0.2"
 
 [target.'cfg(target_os = "macos")'.dependencies]
-cgl             = "0.3"
+cgl = "0.3"
 
 [target.'cfg(target_os = "windows")'.dependencies]
-glutin_wgl_sys  = "0.4"
-winapi 			= { version = "0.3", features = [ "winnt", "winuser", "wingdi", "libloaderapi" ] }
+glutin_wgl_sys = "0.4"
+winapi = { version = "0.3", features = ["winnt", "winuser", "wingdi", "libloaderapi"] }

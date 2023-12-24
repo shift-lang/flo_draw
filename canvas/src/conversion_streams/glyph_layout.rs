@@ -1,37 +1,39 @@
 use crate::draw::*;
 use crate::font::*;
-use crate::namespace::*;
 use crate::font_line_layout::*;
+use crate::namespace::*;
 
 use flo_stream::*;
 
 use futures::prelude::*;
 
-use std::mem;
+use std::collections::HashMap;
 use std::iter;
+use std::mem;
 use std::sync::*;
-use std::collections::{HashMap};
 
 ///
 /// Given a stream with font instructions, replaces any layout instruction (eg, `Draw::DrawText()`) with glyph
 /// rendering instructions
 ///
-pub fn drawing_with_laid_out_text<InStream>(draw_stream: InStream) -> impl Send+Unpin+Stream<Item=Draw> 
-where
-    InStream: 'static + Send + Unpin + Stream<Item=Draw>,
+pub fn drawing_with_laid_out_text<InStream>(
+    draw_stream: InStream,
+) -> impl Send + Unpin + Stream<Item=Draw>
+    where
+        InStream: 'static + Send + Unpin + Stream<Item=Draw>,
 {
     generator_stream(move |yield_value| async move {
-        let mut draw_stream         = draw_stream;
+        let mut draw_stream = draw_stream;
 
         // State of this stream
-        let mut namespace_id        = NamespaceId::default().local_id();
-        let mut namespace_stack     = vec![];
-        let mut font_map            = HashMap::new();
-        let mut font_size           = HashMap::new();
-        let mut current_line        = None;
-        let mut current_font        = None;
-        let (mut x_pos, mut y_pos)  = (0.0, 0.0);
-        let mut alignment           = TextAlignment::Left;
+        let mut namespace_id = NamespaceId::default().local_id();
+        let mut namespace_stack = vec![];
+        let mut font_map = HashMap::new();
+        let mut font_size = HashMap::new();
+        let mut current_line = None;
+        let mut current_font = None;
+        let (mut x_pos, mut y_pos) = (0.0, 0.0);
+        let mut alignment = TextAlignment::Left;
 
         // Read from the drawing stream
         while let Some(draw) = draw_stream.next().await {
@@ -69,11 +71,10 @@ where
                 Draw::Font(font_id, FontOp::FontSize(new_size)) => {
                     // If we're changing the size of the active font, restart the layout with the new size
                     if current_font == Some(font_id) {
-                        current_line = current_line
-                            .map(|line: CanvasFontLineLayout| {
-                                let font = line.font();
-                                line.continue_with_new_font(font_id, &font, new_size)
-                            });
+                        current_line = current_line.map(|line: CanvasFontLineLayout| {
+                            let font = line.font();
+                            line.continue_with_new_font(font_id, &font, new_size)
+                        });
                     }
 
                     // Set up the new size
@@ -82,31 +83,33 @@ where
                     yield_value(Draw::Font(font_id, FontOp::FontSize(new_size))).await;
                 }
 
-                Draw::BeginLineLayout(x, y, align)   => {
+                Draw::BeginLineLayout(x, y, align) => {
                     // If we're laying out text already, this discards that layout
-                    current_line    = None;
-                    current_font    = None;
+                    current_line = None;
+                    current_font = None;
 
                     // Set up the layout for the next set of text
-                    x_pos           = x;
-                    y_pos           = y;
-                    alignment       = align;
+                    x_pos = x;
+                    y_pos = y;
+                    alignment = align;
                 }
 
                 Draw::Font(font_id, FontOp::LayoutText(text)) => {
                     // Update the current font
                     if current_font != Some(font_id) {
-                        if let (Some(new_font), Some(font_size)) = (font_map.get(&(namespace_id, font_id)), font_size.get(&font_id)) {
-                            let last_font   = current_font.unwrap_or(FontId(0));
-                            let new_font    = Arc::clone(new_font);
-                            let font_size   = *font_size;
+                        if let (Some(new_font), Some(font_size)) = (
+                            font_map.get(&(namespace_id, font_id)),
+                            font_size.get(&font_id),
+                        ) {
+                            let last_font = current_font.unwrap_or(FontId(0));
+                            let new_font = Arc::clone(new_font);
+                            let font_size = *font_size;
 
                             current_line = current_line
                                 .map(|line: CanvasFontLineLayout| {
                                     line.continue_with_new_font(last_font, &new_font, font_size)
-                                }).or_else(|| {
-                                    Some(CanvasFontLineLayout::new(&new_font, font_size))
-                                });
+                                })
+                                .or_else(|| Some(CanvasFontLineLayout::new(&new_font, font_size)));
                             current_font = Some(font_id);
                         }
                     }
@@ -130,7 +133,7 @@ where
                             }
                         }
                     }
-                },
+                }
 
                 Draw::FillColor(fill_color) => {
                     // This is added as a drawing instruction to the current layout
@@ -139,10 +142,13 @@ where
                     }
 
                     yield_value(Draw::FillColor(fill_color)).await;
-                },
+                }
 
                 Draw::DrawText(font_id, text, x, y) => {
-                    if let (Some(font), Some(font_size)) = (font_map.get(&(namespace_id, font_id)), font_size.get(&font_id)) {
+                    if let (Some(font), Some(font_size)) = (
+                        font_map.get(&(namespace_id, font_id)),
+                        font_size.get(&font_id),
+                    ) {
                         // This is just a straightforward immediate layout of the text as glyphs
                         let mut layout = CanvasFontLineLayout::new(font, *font_size);
 
@@ -186,10 +192,10 @@ where
 
                 Draw::ClearCanvas(_) => {
                     // Clear state
-                    font_map        = HashMap::new();
-                    current_line    = None;
-                    current_font    = None;
-                    namespace_id    = NamespaceId::default().local_id();
+                    font_map = HashMap::new();
+                    current_line = None;
+                    current_font = None;
+                    namespace_id = NamespaceId::default().local_id();
 
                     yield_value(draw).await;
                 }
@@ -207,26 +213,27 @@ where
 mod test {
     use super::*;
     use crate::font_face::*;
-    use futures::stream;
     use futures::executor;
+    use futures::stream;
 
     #[test]
     fn layout_hello_world() {
         executor::block_on(async {
             // Set up loading a font from a byte stream
-            let lato            = CanvasFontFace::from_slice(include_bytes!("../../test_data/Lato-Regular.ttf"));
+            let lato =
+                CanvasFontFace::from_slice(include_bytes!("../../test_data/Lato-Regular.ttf"));
 
-            let instructions    = vec![
+            let instructions = vec![
                 Draw::Font(FontId(1), FontOp::UseFontDefinition(lato)),
                 Draw::Font(FontId(1), FontOp::FontSize(100.0)),
                 Draw::BeginLineLayout(500.0, 500.0, TextAlignment::Left),
                 Draw::Font(FontId(1), FontOp::LayoutText("Hello, world".to_string())),
-                Draw::DrawLaidOutText
+                Draw::DrawLaidOutText,
             ];
-            let instructions    = stream::iter(instructions);
-            let instructions    = drawing_with_laid_out_text(instructions);
+            let instructions = stream::iter(instructions);
+            let instructions = drawing_with_laid_out_text(instructions);
 
-            let instructions    = instructions.collect::<Vec<_>>().await;
+            let instructions = instructions.collect::<Vec<_>>().await;
 
             // Should get the font definition, font size and glyph layouts
             assert!(instructions.len() == 3);
@@ -239,7 +246,10 @@ mod test {
                 assert!(glyphs.len() == "Hello, world".len());
 
                 // Glyph values and positions should be approximately these values
-                fn dist((x1, y1): (f32, f32), (x2, y2): (f32, f32)) -> f32 { let (x, y) = (x1-x2, y1-y2); (x*x + y*y).sqrt() }
+                fn dist((x1, y1): (f32, f32), (x2, y2): (f32, f32)) -> f32 {
+                    let (x, y) = (x1 - x2, y1 - y2);
+                    (x * x + y * y).sqrt()
+                }
 
                 assert!(glyphs[0].id == GlyphId(15));
                 assert!(glyphs[0].em_size == 100.0);
@@ -280,9 +290,10 @@ mod test {
     fn layout_hello_world_with_continue() {
         executor::block_on(async {
             // Set up loading a font from a byte stream
-            let lato            = CanvasFontFace::from_slice(include_bytes!("../../test_data/Lato-Regular.ttf"));
+            let lato =
+                CanvasFontFace::from_slice(include_bytes!("../../test_data/Lato-Regular.ttf"));
 
-            let instructions    = vec![
+            let instructions = vec![
                 Draw::Font(FontId(1), FontOp::UseFontDefinition(lato.clone())),
                 Draw::Font(FontId(2), FontOp::UseFontDefinition(lato)),
                 Draw::Font(FontId(1), FontOp::FontSize(100.0)),
@@ -290,17 +301,20 @@ mod test {
                 Draw::BeginLineLayout(500.0, 500.0, TextAlignment::Left),
                 Draw::Font(FontId(1), FontOp::LayoutText("Hello, ".to_string())),
                 Draw::Font(FontId(2), FontOp::LayoutText("world".to_string())),
-                Draw::DrawLaidOutText
+                Draw::DrawLaidOutText,
             ];
-            let instructions    = stream::iter(instructions);
-            let instructions    = drawing_with_laid_out_text(instructions);
+            let instructions = stream::iter(instructions);
+            let instructions = drawing_with_laid_out_text(instructions);
 
-            let instructions    = instructions.collect::<Vec<_>>().await;
+            let instructions = instructions.collect::<Vec<_>>().await;
 
             // Should get the font definition, font size and glyph layouts
             assert!(instructions.len() == 6);
 
-            fn dist((x1, y1): (f32, f32), (x2, y2): (f32, f32)) -> f32 { let (x, y) = (x1-x2, y1-y2); (x*x + y*y).sqrt() }
+            fn dist((x1, y1): (f32, f32), (x2, y2): (f32, f32)) -> f32 {
+                let (x, y) = (x1 - x2, y1 - y2);
+                (x * x + y * y).sqrt()
+            }
 
             if let Draw::Font(FontId(1), FontOp::DrawGlyphs(glyphs)) = &instructions[4] {
                 // Final instruction should be to draw the glyphs we just laid out

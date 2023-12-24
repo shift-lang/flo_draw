@@ -16,27 +16,27 @@ pub trait WgpuShaderLoader {
 /// Caches the WGPU shaders so that they only need to be loaded once
 ///
 pub struct ShaderCache<TShader>
-where
-    TShader: WgpuShaderLoader + Hash + Eq,
+    where
+        TShader: WgpuShaderLoader + Hash + Eq,
 {
     /// The device that the shaders will be loaded on
     device: Arc<wgpu::Device>,
 
     /// The shaders stored in this cache
-    shaders: HashMap<TShader, (Arc<wgpu::ShaderModule>, String, String)>
+    shaders: HashMap<TShader, (Arc<wgpu::ShaderModule>, String, String)>,
 }
 
 impl<TShader> ShaderCache<TShader>
-where
-    TShader: WgpuShaderLoader + Hash + Eq + Clone,
+    where
+        TShader: WgpuShaderLoader + Hash + Eq + Clone,
 {
     ///
     /// Creates an empty shader cache
     ///
     pub fn empty(device: Arc<wgpu::Device>) -> ShaderCache<TShader> {
         ShaderCache {
-            device:     device,
-            shaders:    HashMap::new(),
+            device: device,
+            shaders: HashMap::new(),
         }
     }
 

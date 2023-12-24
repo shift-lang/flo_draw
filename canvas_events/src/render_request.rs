@@ -5,5 +5,5 @@ use flo_render::*;
 ///
 pub enum RenderRequest {
     /// Performs the specified set of render actions immediately
-    Render(Vec<RenderAction>)
+    Render(Vec<RenderAction>),
 }

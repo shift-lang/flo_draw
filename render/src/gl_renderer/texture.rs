@@ -22,14 +22,14 @@ struct TextureRef {
 ///
 #[derive(Clone)]
 pub struct Texture {
-    texture:                    Rc<TextureRef>,
+    texture: Rc<TextureRef>,
 
-    pub (super) premultiplied:  bool,
-    pub (super) texture_target: gl::types::GLuint,
-    pub (super) texture_format: gl::types::GLuint,
-    num_samples:                usize, 
-    pub (super) width:          gl::types::GLsizei,
-    pub (super) height:         gl::types::GLsizei,
+    pub(super) premultiplied: bool,
+    pub(super) texture_target: gl::types::GLuint,
+    pub(super) texture_format: gl::types::GLuint,
+    num_samples: usize,
+    pub(super) width: gl::types::GLsizei,
+    pub(super) height: gl::types::GLsizei,
 }
 
 impl Texture {
@@ -42,13 +42,13 @@ impl Texture {
             gl::GenTextures(1, &mut new_texture);
 
             Texture {
-                texture:        Rc::new(TextureRef { texture_id: new_texture }),
-                premultiplied:  false,
+                texture: Rc::new(TextureRef { texture_id: new_texture }),
+                premultiplied: false,
                 texture_target: gl::TEXTURE_2D,
                 texture_format: gl::RGBA,
-                num_samples:    0,
-                width:          0,
-                height:         0
+                num_samples: 0,
+                width: 0,
+                height: 0,
             }
         }
     }
@@ -61,15 +61,15 @@ impl Texture {
         let mut new_texture = Self::new();
 
         match (properties_from.texture_target, properties_from.texture_format) {
-            (gl::TEXTURE_2D, gl::RGBA)              => new_texture.create_empty(properties_from.width as _, properties_from.height as _),
-            (gl::TEXTURE_2D, gl::RED)               => new_texture.create_monochrome(properties_from.width as _, properties_from.height as _),
-            (gl::TEXTURE_2D_MULTISAMPLE, gl::RGBA)  => new_texture.create_empty_multisampled(properties_from.width as _, properties_from.height as _, properties_from.num_samples as _),
-            (gl::TEXTURE_2D_MULTISAMPLE, gl::RED)   => new_texture.create_monochrome_multisampled(properties_from.width as _, properties_from.height as _, properties_from.num_samples as _),
+            (gl::TEXTURE_2D, gl::RGBA) => new_texture.create_empty(properties_from.width as _, properties_from.height as _),
+            (gl::TEXTURE_2D, gl::RED) => new_texture.create_monochrome(properties_from.width as _, properties_from.height as _),
+            (gl::TEXTURE_2D_MULTISAMPLE, gl::RGBA) => new_texture.create_empty_multisampled(properties_from.width as _, properties_from.height as _, properties_from.num_samples as _),
+            (gl::TEXTURE_2D_MULTISAMPLE, gl::RED) => new_texture.create_monochrome_multisampled(properties_from.width as _, properties_from.height as _, properties_from.num_samples as _),
 
-            (gl::TEXTURE_1D, gl::RGBA)              => new_texture.create_empty_1d(properties_from.width as _),
-            (gl::TEXTURE_1D, gl::RED)               => new_texture.create_monochrome_1d(properties_from.width as _),
+            (gl::TEXTURE_1D, gl::RGBA) => new_texture.create_empty_1d(properties_from.width as _),
+            (gl::TEXTURE_1D, gl::RED) => new_texture.create_monochrome_1d(properties_from.width as _),
 
-            _                                       => { return None; }
+            _ => { return None; }
         };
 
         // Copy over other properties
@@ -83,11 +83,11 @@ impl Texture {
     ///
     pub fn create_empty(&mut self, width: u16, height: u16) {
         unsafe {
-            let texture_id      = self.texture.texture_id;
+            let texture_id = self.texture.texture_id;
             self.texture_target = gl::TEXTURE_2D;
             self.texture_format = gl::RGBA;
-            self.width          = width as _;
-            self.height         = height as _;
+            self.width = width as _;
+            self.height = height as _;
 
             gl::BindTexture(gl::TEXTURE_2D, texture_id);
 
@@ -105,18 +105,18 @@ impl Texture {
     ///
     pub fn create_empty_multisampled(&mut self, width: u16, height: u16, samples: usize) {
         unsafe {
-            let texture_id      = self.texture.texture_id;
+            let texture_id = self.texture.texture_id;
             self.texture_target = gl::TEXTURE_2D_MULTISAMPLE;
             self.texture_format = gl::RGBA;
-            self.width          = width as _;
-            self.height         = height as _;
+            self.width = width as _;
+            self.height = height as _;
 
             // Clamp the number of samples to the maximum supported by the driver
             let mut max_samples = 1;
             gl::GetIntegerv(gl::MAX_COLOR_TEXTURE_SAMPLES, &mut max_samples);
             let samples = max_samples.min(samples as i32);
 
-            self.num_samples    = samples as _;
+            self.num_samples = samples as _;
 
             // Set up a MSAA texture
             gl::BindTexture(gl::TEXTURE_2D_MULTISAMPLE, texture_id);
@@ -132,11 +132,11 @@ impl Texture {
     ///
     pub fn create_monochrome(&mut self, width: u16, height: u16) {
         unsafe {
-            let texture_id      = self.texture.texture_id;
+            let texture_id = self.texture.texture_id;
             self.texture_target = gl::TEXTURE_2D;
             self.texture_format = gl::RED;
-            self.width          = width as _;
-            self.height         = height as _;
+            self.width = width as _;
+            self.height = height as _;
 
             gl::BindTexture(gl::TEXTURE_2D, texture_id);
 
@@ -154,18 +154,18 @@ impl Texture {
     ///
     pub fn create_monochrome_multisampled(&mut self, width: u16, height: u16, samples: usize) {
         unsafe {
-            let texture_id      = self.texture.texture_id;
+            let texture_id = self.texture.texture_id;
             self.texture_target = gl::TEXTURE_2D_MULTISAMPLE;
             self.texture_format = gl::RED;
-            self.width          = width as _;
-            self.height         = height as _;
+            self.width = width as _;
+            self.height = height as _;
 
             // Clamp the number of samples to the maximum supported by the driver
             let mut max_samples = 1;
             gl::GetIntegerv(gl::MAX_COLOR_TEXTURE_SAMPLES, &mut max_samples);
             let samples = max_samples.min(samples as i32);
 
-            self.num_samples    = samples as _;
+            self.num_samples = samples as _;
 
             // Set up a MSAA texture
             gl::BindTexture(gl::TEXTURE_2D_MULTISAMPLE, texture_id);
@@ -181,11 +181,11 @@ impl Texture {
     ///
     pub fn create_empty_1d(&mut self, width: u16) {
         unsafe {
-            let texture_id      = self.texture.texture_id;
+            let texture_id = self.texture.texture_id;
             self.texture_target = gl::TEXTURE_1D;
             self.texture_format = gl::RGBA;
-            self.width          = width as _;
-            self.height         = 1;
+            self.width = width as _;
+            self.height = 1;
 
             gl::BindTexture(gl::TEXTURE_1D, texture_id);
 
@@ -203,11 +203,11 @@ impl Texture {
     ///
     pub fn create_monochrome_1d(&mut self, width: u16) {
         unsafe {
-            let texture_id      = self.texture.texture_id;
+            let texture_id = self.texture.texture_id;
             self.texture_target = gl::TEXTURE_1D;
             self.texture_format = gl::RED;
-            self.width          = width as _;
-            self.height         = 1;
+            self.width = width as _;
+            self.height = 1;
 
             gl::BindTexture(gl::TEXTURE_1D, texture_id);
 
@@ -225,11 +225,11 @@ impl Texture {
     ///
     pub fn create_monochrome_1d_float(&mut self, width: u16) {
         unsafe {
-            let texture_id      = self.texture.texture_id;
+            let texture_id = self.texture.texture_id;
             self.texture_target = gl::TEXTURE_1D;
             self.texture_format = gl::R16F;
-            self.width          = width as _;
-            self.height         = 1;
+            self.width = width as _;
+            self.height = 1;
 
             gl::BindTexture(gl::TEXTURE_1D, texture_id);
 
@@ -340,22 +340,22 @@ impl Texture {
     pub fn make_copy(&self) -> Option<Texture> {
         unsafe {
             // Allocate a new texture for the copy
-            let mut copy            = Texture::new();
-            let texture_id          = copy.texture.texture_id;
+            let mut copy = Texture::new();
+            let texture_id = copy.texture.texture_id;
 
             // Fetch information on the existing texture
-            let format              = self.texture_format;
-            let width               = self.width;
-            let height              = self.height;
+            let format = self.texture_format;
+            let width = self.width;
+            let height = self.height;
 
             // Give the copy the same texture properties as the original
-            copy.texture_format     = format;
-            copy.width              = width;
-            copy.height             = height;
-            copy.premultiplied      = self.premultiplied;
+            copy.texture_format = format;
+            copy.width = width;
+            copy.height = height;
+            copy.premultiplied = self.premultiplied;
 
             // Attach the existing texture to the read buffer
-            let existing_texture    = RenderTarget::from_texture(self)?;
+            let existing_texture = RenderTarget::from_texture(self)?;
 
             // Generate the main texture image
             match self.texture_target {
@@ -382,7 +382,7 @@ impl Texture {
                 gl::TEXTURE_2D_MULTISAMPLE => {
                     // Clamp the number of samples to the maximum supported by the driver
                     let mut max_samples = 1;
-                    let samples         = self.num_samples;
+                    let samples = self.num_samples;
                     gl::GetIntegerv(gl::MAX_COLOR_TEXTURE_SAMPLES, &mut max_samples);
                     let samples = max_samples.min(samples as i32);
 
@@ -393,7 +393,7 @@ impl Texture {
                     panic_on_gl_error("Create multisampled copy target");
                 }
 
-                _ => { 
+                _ => {
                     // Don't know how to copy this target type
                     return None;
                 }
@@ -473,8 +473,8 @@ impl Texture {
                 });
 
             // Create a render target for the new texture
-            let original_render_target  = RenderTarget::reference_to_current(0, 0);
-            let filter_render_target    = RenderTarget::from_texture(&new_texture)?;
+            let original_render_target = RenderTarget::reference_to_current(0, 0);
+            let filter_render_target = RenderTarget::from_texture(&new_texture)?;
 
             let mut original_viewport: [gl::types::GLint; 4] = [0, 0, 0, 0];
             gl::GetIntegerv(gl::VIEWPORT, &mut original_viewport[0]);
@@ -486,12 +486,12 @@ impl Texture {
             gl::Viewport(0, 0, new_texture.width as _, new_texture.height as _);
 
             // Create some vertices representing the triangles the fill the render target
-            let vertices        = vec![
+            let vertices = vec![
                 Vertex2D::with_pos(-1.0, -1.0), Vertex2D::with_pos(1.0, -1.0), Vertex2D::with_pos(-1.0, 1.0),
                 Vertex2D::with_pos(1.0, -1.0), Vertex2D::with_pos(-1.0, 1.0), Vertex2D::with_pos(1.0, 1.0),
             ];
-            let mut buffer      = Buffer::new();
-            let vertex_array    = VertexArray::new();
+            let mut buffer = Buffer::new();
+            let vertex_array = VertexArray::new();
             buffer.static_draw(&vertices);
 
             // Bind a vertex array object to it

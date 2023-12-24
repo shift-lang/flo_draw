@@ -1,13 +1,13 @@
-use flo_draw::*;
-use flo_draw::canvas::*;
-use flo_curves::bezier::path::*;
+use std::thread;
+use std::time::Duration;
 
-use futures::prelude::*;
+use flo_curves::bezier::path::*;
 use futures::executor;
+use futures::prelude::*;
 use futures::stream;
 
-use std::thread;
-use std::time::{Duration};
+use flo_draw::*;
+use flo_draw::canvas::*;
 
 ///
 /// Draws FlowBetween's mascot with extra processing to add shading effects and a drop shadow
@@ -22,8 +22,8 @@ use std::time::{Duration};
 ///
 /// We start with a pre-rendered image (encoded at the end of this program). This is the same image
 /// displayed by the `mascot` demo and has no shading. The `drawing_to_paths()` function is used to
-/// extract all of the paths from this rendering - this is possible because everything in the 
-/// rendering pipeline is a stream and can be intercepted. See `wibble` and `wibble_mascot` for some 
+/// extract all of the paths from this rendering - this is possible because everything in the
+/// rendering pipeline is a stream and can be intercepted. See `wibble` and `wibble_mascot` for some
 /// more things to do with this function.
 ///
 /// The `flo_curves` crate has path arithmetic operations that can be used to manipulate vector paths
@@ -31,22 +31,25 @@ use std::time::{Duration};
 /// turning them into a single silhouette path.
 ///
 /// Then, all we need to do is render this over the top of the existing image to add a shading effect.
-/// (It could also be used as a clip path for more complicated effects). It's then rendered again on 
+/// (It could also be used as a clip path for more complicated effects). It's then rendered again on
 /// a separate layer to add a drop shadow (layers make it easy to render on top of or underneath an
 /// existing drawing)
 ///
 pub fn main() {
     with_2d_graphics(|| {
         // Decode
-        let mascot = decode_drawing(MASCOT.chars()).collect::<Result<Vec<Draw>, _>>().unwrap();
+        let mascot = decode_drawing(MASCOT.chars())
+            .collect::<Result<Vec<Draw>, _>>()
+            .unwrap();
 
         // Convert the mascot to a set of paths (note we skip the setup steps here so the paths are not affected by the initial transformation matrix)
-        let render_mascot   = stream::iter(mascot.clone().into_iter()).skip(4);
-        let mascot_paths    = drawing_to_paths::<SimpleBezierPath, _>(render_mascot);
-        let mascot_paths    = executor::block_on(async move { mascot_paths.collect::<Vec<_>>().await });
+        let render_mascot = stream::iter(mascot.clone().into_iter()).skip(4);
+        let mascot_paths = drawing_to_paths::<SimpleBezierPath, _>(render_mascot);
+        let mascot_paths =
+            executor::block_on(async move { mascot_paths.collect::<Vec<_>>().await });
 
         // Add the paths together to create a silhouette
-        let mut silhouette   = mascot_paths[0].clone();
+        let mut silhouette = mascot_paths[0].clone();
         for path in mascot_paths.iter().skip(1) {
             silhouette = path_add(&silhouette, path, 0.1);
         }
@@ -64,10 +67,14 @@ pub fn main() {
 
                 // Draw the silhouette over the top with a gradient
                 match shading_mode % 4 {
-                    1 => { 
+                    1 => {
                         // With the multiply blend mode we can use no transparency as the colours are multiplied
                         gc.create_gradient(GradientId(1), Color::Rgba(1.0, 1.0, 1.0, 1.0));
-                        gc.gradient_stop(GradientId(1), 1.0, Color::Rgba(0.0, 0.1*0.6, 0.2*0.6, 1.0));
+                        gc.gradient_stop(
+                            GradientId(1),
+                            1.0,
+                            Color::Rgba(0.0, 0.1 * 0.6, 0.2 * 0.6, 1.0),
+                        );
                     }
 
                     _ => {
@@ -113,7 +120,11 @@ pub fn main() {
                 gc.gradient_stop(GradientId(1), 1.0, Color::Rgba(0.0, 0.1, 0.2, 0.6));
 
                 gc.push_state();
-                gc.transform(Transform2D([[1.0, 0.0, 10.0], [0.0, 1.0, 10.0], [0.0, 0.0, 1.0]]));
+                gc.transform(Transform2D([
+                    [1.0, 0.0, 10.0],
+                    [0.0, 1.0, 10.0],
+                    [0.0, 0.0, 1.0],
+                ]));
                 gc.fill_gradient(GradientId(1), 200.0, 200.0, 800.0, 600.0);
 
                 gc.new_path();

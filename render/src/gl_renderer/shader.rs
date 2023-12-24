@@ -8,7 +8,7 @@ use std::ffi::{CString};
 ///
 pub enum GlShaderType {
     Vertex,
-    Fragment
+    Fragment,
 }
 
 ///
@@ -17,7 +17,7 @@ pub enum GlShaderType {
 pub struct Shader {
     shader: gl::types::GLuint,
 
-    attributes: Vec<CString>
+    attributes: Vec<CString>,
 }
 
 impl Shader {
@@ -25,10 +25,10 @@ impl Shader {
     /// Compiles a shader program with a set of defines
     ///
     pub fn compile_with_defines(program: &str, attributes: &Vec<&str>, shader_type: GlShaderType, defines: &Vec<&str>) -> Shader {
-        let program = format!("{}\n\n{}\n{}\n", 
-            "#version 330 core",
-            defines.iter().map(|defn| format!("#define {}\n", defn)).collect::<Vec<_>>().join(""),
-            program);
+        let program = format!("{}\n\n{}\n{}\n",
+                              "#version 330 core",
+                              defines.iter().map(|defn| format!("#define {}\n", defn)).collect::<Vec<_>>().join(""),
+                              program);
 
         Self::compile(&program, shader_type, attributes.iter().map(|s| *s))
     }
@@ -40,16 +40,16 @@ impl Shader {
         unsafe {
             // Create the shader
             let shader_type = match shader_type {
-                GlShaderType::Vertex    => gl::VERTEX_SHADER,
-                GlShaderType::Fragment  => gl::FRAGMENT_SHADER
+                GlShaderType::Vertex => gl::VERTEX_SHADER,
+                GlShaderType::Fragment => gl::FRAGMENT_SHADER
             };
 
             let shader = gl::CreateShader(shader_type);
 
             // Load the source and compile the shader
-            let mut length   = [ program.len() as i32 ];
-            let program     = program.as_bytes().as_ptr() as *const gl::types::GLchar;
-            let program     = [ program ];
+            let mut length = [program.len() as i32];
+            let program = program.as_bytes().as_ptr() as *const gl::types::GLchar;
+            let program = [program];
 
             gl::ShaderSource(shader, 1, &program[0], &mut length[0]);
             gl::CompileShader(shader);
@@ -60,14 +60,14 @@ impl Shader {
 
             if is_compiled == gl::FALSE.into() {
                 // Fetch the logs for this shader
-                let mut logs: Vec<gl::types::GLchar>    = vec![0; 8192];
-                let mut len                             = 0;
+                let mut logs: Vec<gl::types::GLchar> = vec![0; 8192];
+                let mut len = 0;
                 gl::GetShaderInfoLog(shader, 8192, &mut len, logs.as_mut_ptr());
 
                 // Convert to a string (despite gl using i8s we can just read them as u8s...)
-                let len         = len as usize;
-                let logs        = logs[0..len].into_iter().map(|c| *c as u8).collect::<Vec<_>>();
-                let logs        = String::from_utf8_lossy(&logs);
+                let len = len as usize;
+                let logs = logs[0..len].into_iter().map(|c| *c as u8).collect::<Vec<_>>();
+                let logs = String::from_utf8_lossy(&logs);
 
                 println!("=== Shader errors\n {}\n===", logs);
                 panic!("Could not compile shader");
@@ -79,8 +79,8 @@ impl Shader {
                 .collect();
 
             Shader {
-                shader:     shader,
-                attributes: attributes
+                shader: shader,
+                attributes: attributes,
             }
         }
     }
@@ -88,7 +88,7 @@ impl Shader {
     ///
     /// Retrieves the attributes for this shader
     ///
-    pub (super) fn attributes(&self) -> &Vec<CString> {
+    pub(super) fn attributes(&self) -> &Vec<CString> {
         &self.attributes
     }
 }

@@ -7,5 +7,5 @@ use flo_canvas as canvas;
 #[derive(Clone)]
 pub enum RenderGradient {
     Defined(Vec<canvas::GradientOp>),
-    Ready(render::TextureId, Vec<canvas::GradientOp>)
+    Ready(render::TextureId, Vec<canvas::GradientOp>),
 }

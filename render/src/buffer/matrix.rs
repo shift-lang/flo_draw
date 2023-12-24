@@ -21,10 +21,10 @@ impl Matrix {
     /// Multiplies this matrix with another one
     ///
     pub fn multiply(self, b: Matrix) -> Matrix {
-        let Matrix(a)   = self;
-        let Matrix(b)   = b;
+        let Matrix(a) = self;
+        let Matrix(b) = b;
 
-        let mut res     = [[0.0; 4]; 4];
+        let mut res = [[0.0; 4]; 4];
 
         for row in 0..4 {
             for col in 0..4 {

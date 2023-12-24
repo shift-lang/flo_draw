@@ -1,8 +1,8 @@
-use super::render_request::*;
 use super::draw_event_request::*;
+use super::render_request::*;
 
-use flo_scene::*;
 use flo_canvas::scenery::*;
+use flo_scene::*;
 
 ///
 /// The types of mouse pointer that can be displayed in a window
@@ -13,7 +13,7 @@ pub enum MousePointer {
     None,
 
     /// The default pointer for the operating system
-    SystemDefault
+    SystemDefault,
 }
 
 ///
@@ -39,7 +39,6 @@ pub enum EventWindowRequest {
     /// Sets the mouse pointer to display for the window
     SetMousePointer(MousePointer),
 }
-
 
 ///
 /// Messages that can be sent to a flo_draw window that processes 2D graphics instructions
@@ -109,12 +108,18 @@ impl From<DrawingRequest> for DrawingWindowRequest {
 impl From<EventWindowRequest> for RenderWindowRequest {
     fn from(req: EventWindowRequest) -> RenderWindowRequest {
         match req {
-            EventWindowRequest::SendEvents(events)              => RenderWindowRequest::SendEvents(events),
-            EventWindowRequest::CloseWindow                     => RenderWindowRequest::CloseWindow,
-            EventWindowRequest::SetTitle(title)                 => RenderWindowRequest::SetTitle(title),
-            EventWindowRequest::SetFullScreen(fullscreen)       => RenderWindowRequest::SetFullScreen(fullscreen),
-            EventWindowRequest::SetHasDecorations(decorations)  => RenderWindowRequest::SetHasDecorations(decorations),
-            EventWindowRequest::SetMousePointer(mouse_pointer)  => RenderWindowRequest::SetMousePointer(mouse_pointer),
+            EventWindowRequest::SendEvents(events) => RenderWindowRequest::SendEvents(events),
+            EventWindowRequest::CloseWindow => RenderWindowRequest::CloseWindow,
+            EventWindowRequest::SetTitle(title) => RenderWindowRequest::SetTitle(title),
+            EventWindowRequest::SetFullScreen(fullscreen) => {
+                RenderWindowRequest::SetFullScreen(fullscreen)
+            }
+            EventWindowRequest::SetHasDecorations(decorations) => {
+                RenderWindowRequest::SetHasDecorations(decorations)
+            }
+            EventWindowRequest::SetMousePointer(mouse_pointer) => {
+                RenderWindowRequest::SetMousePointer(mouse_pointer)
+            }
         }
     }
 }
@@ -122,12 +127,18 @@ impl From<EventWindowRequest> for RenderWindowRequest {
 impl From<EventWindowRequest> for DrawingWindowRequest {
     fn from(req: EventWindowRequest) -> DrawingWindowRequest {
         match req {
-            EventWindowRequest::SendEvents(events)              => DrawingWindowRequest::SendEvents(events),
-            EventWindowRequest::CloseWindow                     => DrawingWindowRequest::CloseWindow,
-            EventWindowRequest::SetTitle(title)                 => DrawingWindowRequest::SetTitle(title),
-            EventWindowRequest::SetFullScreen(fullscreen)       => DrawingWindowRequest::SetFullScreen(fullscreen),
-            EventWindowRequest::SetHasDecorations(decorations)  => DrawingWindowRequest::SetHasDecorations(decorations),
-            EventWindowRequest::SetMousePointer(mouse_pointer)  => DrawingWindowRequest::SetMousePointer(mouse_pointer),
+            EventWindowRequest::SendEvents(events) => DrawingWindowRequest::SendEvents(events),
+            EventWindowRequest::CloseWindow => DrawingWindowRequest::CloseWindow,
+            EventWindowRequest::SetTitle(title) => DrawingWindowRequest::SetTitle(title),
+            EventWindowRequest::SetFullScreen(fullscreen) => {
+                DrawingWindowRequest::SetFullScreen(fullscreen)
+            }
+            EventWindowRequest::SetHasDecorations(decorations) => {
+                DrawingWindowRequest::SetHasDecorations(decorations)
+            }
+            EventWindowRequest::SetMousePointer(mouse_pointer) => {
+                DrawingWindowRequest::SetMousePointer(mouse_pointer)
+            }
         }
     }
 }

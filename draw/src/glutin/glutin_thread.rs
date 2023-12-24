@@ -1,25 +1,23 @@
-use super::glutin_runtime::*;
-use super::glutin_thread_event::*;
-
-use ::desync::*;
-
-use winit::event_loop::{EventLoopBuilder, EventLoopProxy};
-
+use std::collections::HashMap;
 use std::mem;
 use std::sync::*;
 use std::sync::mpsc;
 use std::thread;
-use std::collections::{HashMap};
 
-lazy_static! {
-    static ref GLUTIN_THREAD: Desync<Option<Arc<GlutinThread>>> = Desync::new(None);
-}
+use ::desync::*;
+use once_cell::sync::Lazy;
+use winit::event_loop::{EventLoopBuilder, EventLoopProxy};
+
+use super::glutin_runtime::*;
+use super::glutin_thread_event::*;
+
+static GLUTIN_THREAD: Lazy<Desync<Option<Arc<GlutinThread>>>> = Lazy::new(|| Desync::new(None));
 
 ///
 /// Represents the thread running the glutin event loop
 ///
 pub struct GlutinThread {
-    event_proxy: Desync<EventLoopProxy<GlutinThreadEvent>>
+    event_proxy: Desync<EventLoopProxy<GlutinThreadEvent>>,
 }
 
 impl GlutinThread {
@@ -27,7 +25,9 @@ impl GlutinThread {
     /// Sends an event to the Glutin thread
     ///
     pub fn send_event(&self, event: GlutinThreadEvent) {
-        self.event_proxy.desync(move |proxy| { proxy.send_event(event).ok(); });
+        self.event_proxy.desync(move |proxy| {
+            proxy.send_event(event).ok();
+        });
     }
 }
 
@@ -41,8 +41,8 @@ pub fn glutin_thread() -> Arc<GlutinThread> {
             Arc::clone(thread)
         } else {
             // Need to start a new thread
-            let new_thread  = create_glutin_thread();
-            *thread         = Some(Arc::clone(&new_thread));
+            let new_thread = create_glutin_thread();
+            *thread = Some(Arc::clone(&new_thread));
 
             new_thread
         }
@@ -50,6 +50,7 @@ pub fn glutin_thread() -> Arc<GlutinThread> {
 }
 
 struct StopGlutinWhenDropped;
+
 impl Drop for StopGlutinWhenDropped {
     fn drop(&mut self) {
         glutin_thread().send_event(GlutinThreadEvent::StopWhenAllWindowsClosed);
@@ -68,7 +69,7 @@ impl Drop for StopGlutinWhenDropped {
 /// which may be useful behaviour even on operating systems where the thread takeover is
 /// not required.
 ///
-pub fn with_2d_graphics<TAppFn: 'static+Send+FnOnce() -> ()>(app_fn: TAppFn) {
+pub fn with_2d_graphics<TAppFn: 'static + Send + FnOnce() -> ()>(app_fn: TAppFn) {
     // The event loop thread will send us a proxy once it's initialized
     let (send_proxy, recv_proxy) = mpsc::channel();
 
@@ -78,11 +79,13 @@ pub fn with_2d_graphics<TAppFn: 'static+Send+FnOnce() -> ()>(app_fn: TAppFn) {
         .spawn(move || {
             GLUTIN_THREAD.sync(move |thread| {
                 // Wait for the proxy to be created
-                let proxy = recv_proxy.recv().expect("Glutin thread will send us a proxy after initialising");
+                let proxy = recv_proxy
+                    .recv()
+                    .expect("Glutin thread will send us a proxy after initialising");
 
                 // Create the main thread object
                 *thread = Some(Arc::new(GlutinThread {
-                    event_proxy: Desync::new(proxy)
+                    event_proxy: Desync::new(proxy),
                 }));
             });
 
@@ -109,17 +112,17 @@ fn create_glutin_thread() -> Arc<GlutinThread> {
     // Run the event loop on its own thread
     thread::Builder::new()
         .name("Glutin event thread".into())
-        .spawn(move || {
-            run_glutin_thread(send_proxy)
-        })
+        .spawn(move || run_glutin_thread(send_proxy))
         .expect("Glutin thread is running");
 
     // Wait for the proxy to be created
-    let proxy = recv_proxy.recv().expect("Glutin thread will send us a proxy after initialising");
+    let proxy = recv_proxy
+        .recv()
+        .expect("Glutin thread will send us a proxy after initialising");
 
     // Create a GlutinThread object to communicate with this thread
     Arc::new(GlutinThread {
-        event_proxy: Desync::new(proxy)
+        event_proxy: Desync::new(proxy),
     })
 }
 
@@ -128,27 +131,29 @@ fn create_glutin_thread() -> Arc<GlutinThread> {
 ///
 fn run_glutin_thread(send_proxy: mpsc::Sender<EventLoopProxy<GlutinThreadEvent>>) {
     // Create the event loop
-    let event_loop  = EventLoopBuilder::with_user_event().build();
+    let event_loop = EventLoopBuilder::with_user_event().build();
 
     // We communicate with the event loop via the proxy
-    let proxy       = event_loop.create_proxy();
+    let proxy = event_loop.create_proxy();
 
     // Send the proxy back to the creating thread
-    send_proxy.send(proxy).expect("Main thread is waiting to receive its proxy");
+    send_proxy
+        .send(proxy)
+        .expect("Main thread is waiting to receive its proxy");
 
     // The runtime struct is used to maintain state when the event loop is running
-    let mut runtime = GlutinRuntime { 
-        window_events:              HashMap::new(),
-        futures:                    HashMap::new(),
-        will_stop_when_no_windows:  false,
-        will_exit:                  false,
-        pointer_id:                 HashMap::new(),
-        pointer_state:              HashMap::new(),
-        suspended:                  true,
+    let mut runtime = GlutinRuntime {
+        window_events: HashMap::new(),
+        futures: HashMap::new(),
+        will_stop_when_no_windows: false,
+        will_exit: false,
+        pointer_id: HashMap::new(),
+        pointer_state: HashMap::new(),
+        suspended: true,
     };
 
     // Run the glutin event loop
-    event_loop.run(move |event, window_target, control_flow| { 
+    event_loop.run(move |event, window_target, control_flow| {
         runtime.handle_event(event, window_target, control_flow);
     });
 }

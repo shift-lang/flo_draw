@@ -13,35 +13,35 @@ use std::mem;
 /// Description of a WGPU pipeline configuration (used to create the configuration and as a hash key)
 ///
 #[derive(Clone, PartialEq, Eq, Hash)]
-pub (crate) struct PipelineConfiguration {
+pub(crate) struct PipelineConfiguration {
     /// Format of the texture that this will render against
-    pub (crate) texture_format:             wgpu::TextureFormat,
+    pub(crate) texture_format: wgpu::TextureFormat,
 
     /// The identifier of the shader module to use (this defines both the vertex and the fragment shader, as well as the pipeline layout to use)
-    pub (crate) shader_module:              WgpuShader,
+    pub(crate) shader_module: WgpuShader,
 
     /// The blending mode for this pipeline configuration
-    pub (crate) blending_mode:              Option<BlendMode>,
+    pub(crate) blending_mode: Option<BlendMode>,
 
     /// True if the source image (or shader) produces pre-multiplied colour values
-    pub (crate) source_is_premultiplied:    bool,
+    pub(crate) source_is_premultiplied: bool,
 
     /// True if the coordinate scheme should be flipped vertically
-    pub (crate) flip_vertical: bool,
+    pub(crate) flip_vertical: bool,
 
     /// The number of samples the target texture uses (or None for no multisampling)
-    pub (crate) multisampling_count:        Option<u32>,
+    pub(crate) multisampling_count: Option<u32>,
 }
 
 impl Default for PipelineConfiguration {
     fn default() -> PipelineConfiguration {
         PipelineConfiguration {
-            texture_format:             wgpu::TextureFormat::Bgra8Unorm,
-            shader_module:              WgpuShader::default(),
-            blending_mode:              Some(BlendMode::SourceOver),
-            source_is_premultiplied:    false,
-            flip_vertical:              false,
-            multisampling_count:        None
+            texture_format: wgpu::TextureFormat::Bgra8Unorm,
+            shader_module: WgpuShader::default(),
+            blending_mode: Some(BlendMode::SourceOver),
+            source_is_premultiplied: false,
+            flip_vertical: false,
+            multisampling_count: None,
         }
     }
 }
@@ -52,14 +52,14 @@ fn create_add_blend_state(rgb_src_factor: wgpu::BlendFactor, rgb_dst_factor: wgp
         color: wgpu::BlendComponent {
             src_factor: rgb_src_factor,
             dst_factor: rgb_dst_factor,
-            operation:  wgpu::BlendOperation::Add,
+            operation: wgpu::BlendOperation::Add,
         },
 
         alpha: wgpu::BlendComponent {
             src_factor: alpha_src_factor,
             dst_factor: alpha_dst_factor,
-            operation:  wgpu::BlendOperation::Add,
-        }
+            operation: wgpu::BlendOperation::Add,
+        },
     }
 }
 
@@ -69,14 +69,14 @@ fn create_op_blend_state(rgb_src_factor: wgpu::BlendFactor, rgb_dst_factor: wgpu
         color: wgpu::BlendComponent {
             src_factor: rgb_src_factor,
             dst_factor: rgb_dst_factor,
-            operation:  color_op,
+            operation: color_op,
         },
 
         alpha: wgpu::BlendComponent {
             src_factor: alpha_src_factor,
             dst_factor: alpha_dst_factor,
-            operation:  alpha_op,
-        }
+            operation: alpha_op,
+        },
     }
 }
 
@@ -86,7 +86,7 @@ fn create_op_blend_state(rgb_src_factor: wgpu::BlendFactor, rgb_dst_factor: wgpu
 /// aspect design of wgpu)
 ///
 pub struct PipelineDescriptorTempStorage {
-    color_targets:      Vec<Option<wgpu::ColorTargetState>>,
+    color_targets: Vec<Option<wgpu::ColorTargetState>>,
 }
 
 impl Default for PipelineDescriptorTempStorage {
@@ -102,8 +102,8 @@ impl PipelineConfiguration {
     /// Creates a pipeline configuration targeting the specified texture
     ///
     pub fn for_texture(texture: &WgpuTexture) -> PipelineConfiguration {
-        let mut config          = Self::default();
-        config.texture_format   = texture.descriptor.format;
+        let mut config = Self::default();
+        config.texture_format = texture.descriptor.format;
 
         config
     }
@@ -120,56 +120,55 @@ impl PipelineConfiguration {
         if !self.source_is_premultiplied {
             // Shader output is not pre-multipled (texture output will be, though)
             match self.blending_mode {
-                None                    => None,
+                None => None,
 
-                Some(SourceOver)        => Some(create_add_blend_state(SrcAlpha, OneMinusSrcAlpha, One, OneMinusSrcAlpha)),
-                Some(DestinationOver)   => Some(create_add_blend_state(OneMinusDstAlpha, DstAlpha, OneMinusDstAlpha, One)),
-                Some(SourceIn)          => Some(create_add_blend_state(DstAlpha, Zero, DstAlpha, Zero)),
-                Some(DestinationIn)     => Some(create_add_blend_state(Zero, SrcAlpha, Zero, SrcAlpha)),
-                Some(SourceOut)         => Some(create_add_blend_state(Zero, OneMinusDstAlpha, Zero, OneMinusDstAlpha)),
-                Some(DestinationOut)    => Some(create_add_blend_state(Zero, OneMinusSrcAlpha, Zero, OneMinusSrcAlpha)),
-                Some(SourceATop)        => Some(create_add_blend_state(OneMinusDstAlpha, SrcAlpha, OneMinusDstAlpha, SrcAlpha)),
-                Some(DestinationATop)   => Some(create_add_blend_state(OneMinusDstAlpha, OneMinusSrcAlpha, OneMinusDstAlpha, OneMinusSrcAlpha)),
+                Some(SourceOver) => Some(create_add_blend_state(SrcAlpha, OneMinusSrcAlpha, One, OneMinusSrcAlpha)),
+                Some(DestinationOver) => Some(create_add_blend_state(OneMinusDstAlpha, DstAlpha, OneMinusDstAlpha, One)),
+                Some(SourceIn) => Some(create_add_blend_state(DstAlpha, Zero, DstAlpha, Zero)),
+                Some(DestinationIn) => Some(create_add_blend_state(Zero, SrcAlpha, Zero, SrcAlpha)),
+                Some(SourceOut) => Some(create_add_blend_state(Zero, OneMinusDstAlpha, Zero, OneMinusDstAlpha)),
+                Some(DestinationOut) => Some(create_add_blend_state(Zero, OneMinusSrcAlpha, Zero, OneMinusSrcAlpha)),
+                Some(SourceATop) => Some(create_add_blend_state(OneMinusDstAlpha, SrcAlpha, OneMinusDstAlpha, SrcAlpha)),
+                Some(DestinationATop) => Some(create_add_blend_state(OneMinusDstAlpha, OneMinusSrcAlpha, OneMinusDstAlpha, OneMinusSrcAlpha)),
 
                 // Multiply is a*b. Here we multiply the source colour by the destination colour, then blend the destination back in again to take account of
                 // alpha in the source layer (this version of multiply has no effect on the target alpha value: a more strict version might multiply those too)
                 //
                 // The source side is precalculated so that an alpha of 0 produces a colour of 1,1,1 to take account of transparency in the source.
-                Some(Multiply)          => Some(create_add_blend_state(Dst, Zero, Zero, One)),
+                Some(Multiply) => Some(create_add_blend_state(Dst, Zero, Zero, One)),
 
                 // TODO: screen is 1-(1-a)*(1-b) which I think is harder to fake. If we precalculate (1-a) as the src in the shader
                 // then can multiply by OneMinusDstColor to get (1-a)*(1-b). Can use One as our target colour, and then a 
                 // reverse subtraction to get 1-(1-a)*(1-b)
                 // (This implementation doesn't work: the One is 1*DstColor and not 1 so this is currently 1*b-(1-a)*(1-b)
                 // with shader support)
-                Some(Screen)            => Some(create_op_blend_state(OneMinusDst, One, Zero, One, ReverseSubtract, Add)),
+                Some(Screen) => Some(create_op_blend_state(OneMinusDst, One, Zero, One, ReverseSubtract, Add)),
 
-                Some(AllChannelAlphaSourceOver)         => Some(create_add_blend_state(One, OneMinusDst, One, OneMinusSrcAlpha)),
-                Some(AllChannelAlphaDestinationOver)    => Some(create_add_blend_state(OneMinusDst, One, OneMinusDstAlpha, One)),
+                Some(AllChannelAlphaSourceOver) => Some(create_add_blend_state(One, OneMinusDst, One, OneMinusSrcAlpha)),
+                Some(AllChannelAlphaDestinationOver) => Some(create_add_blend_state(OneMinusDst, One, OneMinusDstAlpha, One)),
             }
         } else {
             // Shader output is pre-multiplied
             match self.blending_mode {
-                None                    => None,
+                None => None,
 
-                Some(SourceOver)        => Some(create_add_blend_state(One, OneMinusSrcAlpha, One, OneMinusSrcAlpha)),
-                Some(DestinationOver)   => Some(create_add_blend_state(OneMinusDstAlpha, DstAlpha, OneMinusDstAlpha, One)),
-                Some(SourceIn)          => Some(create_add_blend_state(DstAlpha, Zero, DstAlpha, Zero)),
-                Some(DestinationIn)     => Some(create_add_blend_state(Zero, One, Zero, SrcAlpha)),
-                Some(SourceOut)         => Some(create_add_blend_state(Zero, OneMinusDstAlpha, Zero, OneMinusDstAlpha)),
-                Some(DestinationOut)    => Some(create_add_blend_state(Zero, OneMinusSrcAlpha, Zero, OneMinusSrcAlpha)),
-                Some(SourceATop)        => Some(create_add_blend_state(OneMinusDstAlpha, SrcAlpha, OneMinusDstAlpha, SrcAlpha)),
-                Some(DestinationATop)   => Some(create_add_blend_state(OneMinusDstAlpha, OneMinusSrcAlpha, OneMinusDstAlpha, OneMinusSrcAlpha)),
+                Some(SourceOver) => Some(create_add_blend_state(One, OneMinusSrcAlpha, One, OneMinusSrcAlpha)),
+                Some(DestinationOver) => Some(create_add_blend_state(OneMinusDstAlpha, DstAlpha, OneMinusDstAlpha, One)),
+                Some(SourceIn) => Some(create_add_blend_state(DstAlpha, Zero, DstAlpha, Zero)),
+                Some(DestinationIn) => Some(create_add_blend_state(Zero, One, Zero, SrcAlpha)),
+                Some(SourceOut) => Some(create_add_blend_state(Zero, OneMinusDstAlpha, Zero, OneMinusDstAlpha)),
+                Some(DestinationOut) => Some(create_add_blend_state(Zero, OneMinusSrcAlpha, Zero, OneMinusSrcAlpha)),
+                Some(SourceATop) => Some(create_add_blend_state(OneMinusDstAlpha, SrcAlpha, OneMinusDstAlpha, SrcAlpha)),
+                Some(DestinationATop) => Some(create_add_blend_state(OneMinusDstAlpha, OneMinusSrcAlpha, OneMinusDstAlpha, OneMinusSrcAlpha)),
 
-                Some(Multiply)          => Some(create_add_blend_state(Dst, Zero, Zero, One)),
+                Some(Multiply) => Some(create_add_blend_state(Dst, Zero, Zero, One)),
 
                 // TODO: see above
-                Some(Screen)            => Some(create_op_blend_state(OneMinusDst, One, Zero, One, ReverseSubtract, Add)),
+                Some(Screen) => Some(create_op_blend_state(OneMinusDst, One, Zero, One, ReverseSubtract, Add)),
 
-                Some(AllChannelAlphaSourceOver)         => Some(create_add_blend_state(One, OneMinusSrc, One, OneMinusSrcAlpha)),
-                Some(AllChannelAlphaDestinationOver)    => Some(create_add_blend_state(OneMinusDst, One, OneMinusDstAlpha, One)),
+                Some(AllChannelAlphaSourceOver) => Some(create_add_blend_state(One, OneMinusSrc, One, OneMinusSrcAlpha)),
+                Some(AllChannelAlphaDestinationOver) => Some(create_add_blend_state(OneMinusDst, One, OneMinusDstAlpha, One)),
             }
-
         }
     }
 
@@ -182,9 +181,9 @@ impl PipelineConfiguration {
 
         vec![
             Some(wgpu::ColorTargetState {
-                format:     self.texture_format,
-                blend:      blend_state,
-                write_mask: wgpu::ColorWrites::ALL, 
+                format: self.texture_format,
+                blend: blend_state,
+                write_mask: wgpu::ColorWrites::ALL,
             })
         ]
     }
@@ -194,30 +193,28 @@ impl PipelineConfiguration {
     ///
     fn vertex_buffer_layout(&self) -> &[wgpu::VertexBufferLayout] {
         let layout: &'static [wgpu::VertexBufferLayout] = &[wgpu::VertexBufferLayout {
-            array_stride:   mem::size_of::<Vertex2D>() as _,
-            step_mode:      wgpu::VertexStepMode::Vertex,
-            attributes:     &[
+            array_stride: mem::size_of::<Vertex2D>() as _,
+            step_mode: wgpu::VertexStepMode::Vertex,
+            attributes: &[
                 wgpu::VertexAttribute {
                     // pos
-                    format:             wgpu::VertexFormat::Float32x2,
-                    offset:             0, 
-                    shader_location:    0,
+                    format: wgpu::VertexFormat::Float32x2,
+                    offset: 0,
+                    shader_location: 0,
                 },
-
                 wgpu::VertexAttribute {
                     // tex_coord
-                    format:             wgpu::VertexFormat::Float32x2,
-                    offset:             (mem::size_of::<f32>()*2) as _,
-                    shader_location:    1,
+                    format: wgpu::VertexFormat::Float32x2,
+                    offset: (mem::size_of::<f32>() * 2) as _,
+                    shader_location: 1,
                 },
-
                 wgpu::VertexAttribute {
                     // color
-                    format:             wgpu::VertexFormat::Uint8x4,
-                    offset:             (mem::size_of::<f32>()*2 + mem::size_of::<f32>()*2) as _,
-                    shader_location:    2,
+                    format: wgpu::VertexFormat::Uint8x4,
+                    offset: (mem::size_of::<f32>() * 2 + mem::size_of::<f32>() * 2) as _,
+                    shader_location: 2,
                 },
-            ]
+            ],
         }];
 
         layout
@@ -232,9 +229,9 @@ impl PipelineConfiguration {
         let (shader_module, vertex_fn, _) = shader_cache.get_shader(&self.shader_module).unwrap();
 
         wgpu::VertexState {
-            module:         shader_module,
-            entry_point:    vertex_fn,
-            buffers:        self.vertex_buffer_layout(),
+            module: shader_module,
+            entry_point: vertex_fn,
+            buffers: self.vertex_buffer_layout(),
         }
     }
 
@@ -247,9 +244,9 @@ impl PipelineConfiguration {
         let (shader_module, _, fragment_fn) = shader_cache.get_shader(&self.shader_module).unwrap();
 
         Some(wgpu::FragmentState {
-            module:         shader_module,
-            entry_point:    fragment_fn,
-            targets:        &temp_storage.color_targets,
+            module: shader_module,
+            entry_point: fragment_fn,
+            targets: &temp_storage.color_targets,
         })
     }
 
@@ -264,20 +261,20 @@ impl PipelineConfiguration {
         static JUST_MATRIX: [wgpu::BindGroupLayoutEntry; 1] = [
             // Matrix
             wgpu::BindGroupLayoutEntry {
-                binding:            0,
-                visibility:         wgpu::ShaderStages::VERTEX,
-                count:              None,
-                ty:                 wgpu::BindingType::Buffer {
-                    ty:                 wgpu::BufferBindingType::Uniform,
+                binding: 0,
+                visibility: wgpu::ShaderStages::VERTEX,
+                count: None,
+                ty: wgpu::BindingType::Buffer {
+                    ty: wgpu::BufferBindingType::Uniform,
                     has_dynamic_offset: false,
-                    min_binding_size:   wgpu::BufferSize::new(64),
-                }
+                    min_binding_size: wgpu::BufferSize::new(64),
+                },
             },
         ];
 
         wgpu::BindGroupLayoutDescriptor {
-            label:      Some("matrix_bind_group_layout"),
-            entries:    &JUST_MATRIX,
+            label: Some("matrix_bind_group_layout"),
+            entries: &JUST_MATRIX,
         }
     }
 
@@ -287,38 +284,38 @@ impl PipelineConfiguration {
     #[inline]
     pub fn clip_mask_bind_group_layout<'a>(&'a self) -> wgpu::BindGroupLayoutDescriptor<'a> {
         // There are two types of binding layout: with and without the clip mask texture
-        static NO_CLIP_MASK:    [wgpu::BindGroupLayoutEntry; 0] = [];
-        static WITH_CLIP_MASK:  [wgpu::BindGroupLayoutEntry; 1] = [
+        static NO_CLIP_MASK: [wgpu::BindGroupLayoutEntry; 0] = [];
+        static WITH_CLIP_MASK: [wgpu::BindGroupLayoutEntry; 1] = [
             wgpu::BindGroupLayoutEntry {
-                binding:            0,
-                visibility:         wgpu::ShaderStages::FRAGMENT,
-                count:              None,
-                ty:                 wgpu::BindingType::Texture {
-                    sample_type:    wgpu::TextureSampleType::Float { filterable: false },
+                binding: 0,
+                visibility: wgpu::ShaderStages::FRAGMENT,
+                count: None,
+                ty: wgpu::BindingType::Texture {
+                    sample_type: wgpu::TextureSampleType::Float { filterable: false },
                     view_dimension: wgpu::TextureViewDimension::D2,
-                    multisampled:   true,
-                }
+                    multisampled: true,
+                },
             },
         ];
 
         // The type of binding that's in use depends on if the shader module has a clipping mask or not
         match self.shader_module {
-            WgpuShader::LinearGradient(StandardShaderVariant::ClippingMask, _, _, _)    |
-            WgpuShader::Texture(StandardShaderVariant::ClippingMask, _, _, _, _)        |
-            WgpuShader::Simple(StandardShaderVariant::ClippingMask, _)                  => {
+            WgpuShader::LinearGradient(StandardShaderVariant::ClippingMask, _, _, _) |
+            WgpuShader::Texture(StandardShaderVariant::ClippingMask, _, _, _, _) |
+            WgpuShader::Simple(StandardShaderVariant::ClippingMask, _) => {
                 wgpu::BindGroupLayoutDescriptor {
-                    label:      Some("clip_mask_bind_group_layout_with_clip_mask"),
-                    entries:    &WITH_CLIP_MASK,
+                    label: Some("clip_mask_bind_group_layout_with_clip_mask"),
+                    entries: &WITH_CLIP_MASK,
                 }
             }
 
-            WgpuShader::Filter(_)                                                   |
-            WgpuShader::LinearGradient(StandardShaderVariant::NoClipping, _, _, _)  |
-            WgpuShader::Texture(StandardShaderVariant::NoClipping, _, _, _, _)      |
-            WgpuShader::Simple(StandardShaderVariant::NoClipping, _)                => {
+            WgpuShader::Filter(_) |
+            WgpuShader::LinearGradient(StandardShaderVariant::NoClipping, _, _, _) |
+            WgpuShader::Texture(StandardShaderVariant::NoClipping, _, _, _, _) |
+            WgpuShader::Simple(StandardShaderVariant::NoClipping, _) => {
                 wgpu::BindGroupLayoutDescriptor {
-                    label:      Some("clip_mask_bind_group_layout_no_clip_mask"),
-                    entries:    &NO_CLIP_MASK,
+                    label: Some("clip_mask_bind_group_layout_no_clip_mask"),
+                    entries: &NO_CLIP_MASK,
                 }
             }
         }
@@ -329,87 +326,87 @@ impl PipelineConfiguration {
     ///
     #[inline]
     pub fn texture_bind_group_layout<'a>(&'a self) -> wgpu::BindGroupLayoutDescriptor<'a> {
-        static NOT_TEXTURE_SHADER: [wgpu::BindGroupLayoutEntry; 0]  = [];
-        static WITH_SAMPLER: [wgpu::BindGroupLayoutEntry; 3]        = [
+        static NOT_TEXTURE_SHADER: [wgpu::BindGroupLayoutEntry; 0] = [];
+        static WITH_SAMPLER: [wgpu::BindGroupLayoutEntry; 3] = [
             // Texture settings
             wgpu::BindGroupLayoutEntry {
-                binding:            0,
-                visibility:         wgpu::ShaderStages::VERTEX_FRAGMENT,
-                count:              None,
-                ty:                 wgpu::BindingType::Buffer {
-                    ty:                 wgpu::BufferBindingType::Uniform,
+                binding: 0,
+                visibility: wgpu::ShaderStages::VERTEX_FRAGMENT,
+                count: None,
+                ty: wgpu::BindingType::Buffer {
+                    ty: wgpu::BufferBindingType::Uniform,
                     has_dynamic_offset: false,
-                    min_binding_size:   wgpu::BufferSize::new(mem::size_of::<TextureSettings>() as _),
-                }
+                    min_binding_size: wgpu::BufferSize::new(mem::size_of::<TextureSettings>() as _),
+                },
             },
 
             // Texture
             wgpu::BindGroupLayoutEntry {
-                binding:            1,
-                visibility:         wgpu::ShaderStages::FRAGMENT,
-                count:              None,
-                ty:                 wgpu::BindingType::Texture {
-                    sample_type:    wgpu::TextureSampleType::Float { filterable: true },
+                binding: 1,
+                visibility: wgpu::ShaderStages::FRAGMENT,
+                count: None,
+                ty: wgpu::BindingType::Texture {
+                    sample_type: wgpu::TextureSampleType::Float { filterable: true },
                     view_dimension: wgpu::TextureViewDimension::D2,
-                    multisampled:   false,
-                }
+                    multisampled: false,
+                },
             },
 
             // Sampler
             wgpu::BindGroupLayoutEntry {
-                binding:            2,
-                visibility:         wgpu::ShaderStages::FRAGMENT,
-                count:              None,
-                ty:                 wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
+                binding: 2,
+                visibility: wgpu::ShaderStages::FRAGMENT,
+                count: None,
+                ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
             },
         ];
-        static WITH_MULTISAMPLE: [wgpu::BindGroupLayoutEntry; 2]    = [
+        static WITH_MULTISAMPLE: [wgpu::BindGroupLayoutEntry; 2] = [
             // Texture settings
             wgpu::BindGroupLayoutEntry {
-                binding:            0,
-                visibility:         wgpu::ShaderStages::VERTEX_FRAGMENT,
-                count:              None,
-                ty:                 wgpu::BindingType::Buffer {
-                    ty:                 wgpu::BufferBindingType::Uniform,
+                binding: 0,
+                visibility: wgpu::ShaderStages::VERTEX_FRAGMENT,
+                count: None,
+                ty: wgpu::BindingType::Buffer {
+                    ty: wgpu::BufferBindingType::Uniform,
                     has_dynamic_offset: false,
-                    min_binding_size:   wgpu::BufferSize::new(mem::size_of::<TextureSettings>() as _),
-                }
+                    min_binding_size: wgpu::BufferSize::new(mem::size_of::<TextureSettings>() as _),
+                },
             },
 
             // Texture
             wgpu::BindGroupLayoutEntry {
-                binding:            1,
-                visibility:         wgpu::ShaderStages::FRAGMENT,
-                count:              None,
-                ty:                 wgpu::BindingType::Texture {
-                    sample_type:    wgpu::TextureSampleType::Float { filterable: false },
+                binding: 1,
+                visibility: wgpu::ShaderStages::FRAGMENT,
+                count: None,
+                ty: wgpu::BindingType::Texture {
+                    sample_type: wgpu::TextureSampleType::Float { filterable: false },
                     view_dimension: wgpu::TextureViewDimension::D2,
-                    multisampled:   true,
-                }
+                    multisampled: true,
+                },
             },
         ];
 
         match self.shader_module {
             WgpuShader::Texture(_, InputTextureType::Sampler, _, _, _) => {
                 wgpu::BindGroupLayoutDescriptor {
-                    label:      Some("texture_bind_group_layout_sampler"),
-                    entries:    &WITH_SAMPLER,
+                    label: Some("texture_bind_group_layout_sampler"),
+                    entries: &WITH_SAMPLER,
                 }
-            },
+            }
 
             WgpuShader::Texture(_, InputTextureType::Multisampled, _, _, _) => {
                 wgpu::BindGroupLayoutDescriptor {
-                    label:      Some("texture_bind_group_layout_multisampled"),
-                    entries:    &WITH_MULTISAMPLE,
+                    label: Some("texture_bind_group_layout_multisampled"),
+                    entries: &WITH_MULTISAMPLE,
                 }
-            },
+            }
 
-            WgpuShader::Filter(_)                   |
-            WgpuShader::LinearGradient(_, _, _, _)  |
-            WgpuShader::Simple(_, _)                => {
+            WgpuShader::Filter(_) |
+            WgpuShader::LinearGradient(_, _, _, _) |
+            WgpuShader::Simple(_, _) => {
                 wgpu::BindGroupLayoutDescriptor {
-                    label:      Some("texture_bind_group_layout_not_texture_shader"),
-                    entries:    &NOT_TEXTURE_SHADER,
+                    label: Some("texture_bind_group_layout_not_texture_shader"),
+                    entries: &NOT_TEXTURE_SHADER,
                 }
             }
         }
@@ -420,55 +417,55 @@ impl PipelineConfiguration {
     ///
     #[inline]
     pub fn linear_gradient_bind_group_layout<'a>(&'a self) -> wgpu::BindGroupLayoutDescriptor<'a> {
-        static NOT_TEXTURE_SHADER: [wgpu::BindGroupLayoutEntry; 0]  = [];
-        static WITH_SAMPLER: [wgpu::BindGroupLayoutEntry; 3]        = [
+        static NOT_TEXTURE_SHADER: [wgpu::BindGroupLayoutEntry; 0] = [];
+        static WITH_SAMPLER: [wgpu::BindGroupLayoutEntry; 3] = [
             // Texture settings
             wgpu::BindGroupLayoutEntry {
-                binding:            0,
-                visibility:         wgpu::ShaderStages::VERTEX_FRAGMENT,
-                count:              None,
-                ty:                 wgpu::BindingType::Buffer {
-                    ty:                 wgpu::BufferBindingType::Uniform,
+                binding: 0,
+                visibility: wgpu::ShaderStages::VERTEX_FRAGMENT,
+                count: None,
+                ty: wgpu::BindingType::Buffer {
+                    ty: wgpu::BufferBindingType::Uniform,
                     has_dynamic_offset: false,
-                    min_binding_size:   wgpu::BufferSize::new(mem::size_of::<TextureSettings>() as _),
-                }
+                    min_binding_size: wgpu::BufferSize::new(mem::size_of::<TextureSettings>() as _),
+                },
             },
 
             // Texture
             wgpu::BindGroupLayoutEntry {
-                binding:            1,
-                visibility:         wgpu::ShaderStages::FRAGMENT,
-                count:              None,
-                ty:                 wgpu::BindingType::Texture {
-                    sample_type:    wgpu::TextureSampleType::Float { filterable: true },
+                binding: 1,
+                visibility: wgpu::ShaderStages::FRAGMENT,
+                count: None,
+                ty: wgpu::BindingType::Texture {
+                    sample_type: wgpu::TextureSampleType::Float { filterable: true },
                     view_dimension: wgpu::TextureViewDimension::D1,
-                    multisampled:   false,
-                }
+                    multisampled: false,
+                },
             },
 
             // Sampler
             wgpu::BindGroupLayoutEntry {
-                binding:            2,
-                visibility:         wgpu::ShaderStages::FRAGMENT,
-                count:              None,
-                ty:                 wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
+                binding: 2,
+                visibility: wgpu::ShaderStages::FRAGMENT,
+                count: None,
+                ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
             },
         ];
 
         match self.shader_module {
             WgpuShader::LinearGradient(_, _, _, _) => {
                 wgpu::BindGroupLayoutDescriptor {
-                    label:      Some("texture_bind_group_layout_sampler"),
-                    entries:    &WITH_SAMPLER,
+                    label: Some("texture_bind_group_layout_sampler"),
+                    entries: &WITH_SAMPLER,
                 }
-            },
+            }
 
-            WgpuShader::Filter(_)               |
-            WgpuShader::Texture(_, _, _, _, _)  |
-            WgpuShader::Simple(_, _)            => {
+            WgpuShader::Filter(_) |
+            WgpuShader::Texture(_, _, _, _, _) |
+            WgpuShader::Simple(_, _) => {
                 wgpu::BindGroupLayoutDescriptor {
-                    label:      Some("texture_bind_group_layout_not_texture_shader"),
-                    entries:    &NOT_TEXTURE_SHADER,
+                    label: Some("texture_bind_group_layout_not_texture_shader"),
+                    entries: &NOT_TEXTURE_SHADER,
                 }
             }
         }
@@ -479,35 +476,35 @@ impl PipelineConfiguration {
     ///
     #[inline]
     pub fn filter_alpha_blend_bind_group_layout<'a>(&'a self) -> wgpu::BindGroupLayoutDescriptor<'a> {
-        static ALPHA_BLEND_LAYOUT: [wgpu::BindGroupLayoutEntry; 2]  = [
+        static ALPHA_BLEND_LAYOUT: [wgpu::BindGroupLayoutEntry; 2] = [
             // Texture
             wgpu::BindGroupLayoutEntry {
-                binding:            0,
-                visibility:         wgpu::ShaderStages::VERTEX_FRAGMENT,
-                count:              None,
-                ty:                 wgpu::BindingType::Texture {
-                    sample_type:    wgpu::TextureSampleType::Float { filterable: false },
+                binding: 0,
+                visibility: wgpu::ShaderStages::VERTEX_FRAGMENT,
+                count: None,
+                ty: wgpu::BindingType::Texture {
+                    sample_type: wgpu::TextureSampleType::Float { filterable: false },
                     view_dimension: wgpu::TextureViewDimension::D2,
-                    multisampled:   false,
-                }
+                    multisampled: false,
+                },
             },
 
             // Alpha value (single f32 value)
             wgpu::BindGroupLayoutEntry {
-                binding:            1,
-                visibility:         wgpu::ShaderStages::FRAGMENT,
-                count:              None,
-                ty:                 wgpu::BindingType::Buffer {
-                    ty:                 wgpu::BufferBindingType::Uniform,
+                binding: 1,
+                visibility: wgpu::ShaderStages::FRAGMENT,
+                count: None,
+                ty: wgpu::BindingType::Buffer {
+                    ty: wgpu::BufferBindingType::Uniform,
                     has_dynamic_offset: false,
-                    min_binding_size:   wgpu::BufferSize::new(4),
-                }
+                    min_binding_size: wgpu::BufferSize::new(4),
+                },
             },
         ];
 
         wgpu::BindGroupLayoutDescriptor {
-            label:      Some("filter_alpha_blend_bind_group_layout"),
-            entries:    &ALPHA_BLEND_LAYOUT,
+            label: Some("filter_alpha_blend_bind_group_layout"),
+            entries: &ALPHA_BLEND_LAYOUT,
         }
     }
 
@@ -516,43 +513,43 @@ impl PipelineConfiguration {
     ///
     #[inline]
     pub fn filter_fixed_blur_bind_group_layout<'a>(&'a self) -> wgpu::BindGroupLayoutDescriptor<'a> {
-        static FIXED_BLUR_LAYOUT: [wgpu::BindGroupLayoutEntry; 3]  = [
+        static FIXED_BLUR_LAYOUT: [wgpu::BindGroupLayoutEntry; 3] = [
             // Texture
             wgpu::BindGroupLayoutEntry {
-                binding:            0,
-                visibility:         wgpu::ShaderStages::VERTEX_FRAGMENT,
-                count:              None,
-                ty:                 wgpu::BindingType::Texture {
-                    sample_type:    wgpu::TextureSampleType::Float { filterable: true },
+                binding: 0,
+                visibility: wgpu::ShaderStages::VERTEX_FRAGMENT,
+                count: None,
+                ty: wgpu::BindingType::Texture {
+                    sample_type: wgpu::TextureSampleType::Float { filterable: true },
                     view_dimension: wgpu::TextureViewDimension::D2,
-                    multisampled:   false,
-                }
+                    multisampled: false,
+                },
             },
 
             // The sampler
             wgpu::BindGroupLayoutEntry {
-                binding:            1,
-                visibility:         wgpu::ShaderStages::FRAGMENT,
-                count:              None,
-                ty:                 wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering)
+                binding: 1,
+                visibility: wgpu::ShaderStages::FRAGMENT,
+                count: None,
+                ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
             },
 
             // Weights & offsets
             wgpu::BindGroupLayoutEntry {
-                binding:            2,
-                visibility:         wgpu::ShaderStages::FRAGMENT,
-                count:              None,
-                ty:                 wgpu::BindingType::Buffer {
-                    ty:                 wgpu::BufferBindingType::Uniform,
+                binding: 2,
+                visibility: wgpu::ShaderStages::FRAGMENT,
+                count: None,
+                ty: wgpu::BindingType::Buffer {
+                    ty: wgpu::BufferBindingType::Uniform,
                     has_dynamic_offset: false,
-                    min_binding_size:   wgpu::BufferSize::new(16 * 30),
-                }
+                    min_binding_size: wgpu::BufferSize::new(16 * 30),
+                },
             },
         ];
 
         wgpu::BindGroupLayoutDescriptor {
-            label:      Some("filter_fixed_blur_bind_group_layout"),
-            entries:    &FIXED_BLUR_LAYOUT,
+            label: Some("filter_fixed_blur_bind_group_layout"),
+            entries: &FIXED_BLUR_LAYOUT,
         }
     }
 
@@ -561,55 +558,55 @@ impl PipelineConfiguration {
     ///
     #[inline]
     pub fn filter_texture_blur_bind_group_layout<'a>(&'a self) -> wgpu::BindGroupLayoutDescriptor<'a> {
-        static TEXTURE_BLUR_LAYOUT: [wgpu::BindGroupLayoutEntry; 4]  = [
+        static TEXTURE_BLUR_LAYOUT: [wgpu::BindGroupLayoutEntry; 4] = [
             // Texture
             wgpu::BindGroupLayoutEntry {
-                binding:            0,
-                visibility:         wgpu::ShaderStages::VERTEX_FRAGMENT,
-                count:              None,
-                ty:                 wgpu::BindingType::Texture {
-                    sample_type:    wgpu::TextureSampleType::Float { filterable: true },
+                binding: 0,
+                visibility: wgpu::ShaderStages::VERTEX_FRAGMENT,
+                count: None,
+                ty: wgpu::BindingType::Texture {
+                    sample_type: wgpu::TextureSampleType::Float { filterable: true },
                     view_dimension: wgpu::TextureViewDimension::D2,
-                    multisampled:   false,
-                }
+                    multisampled: false,
+                },
             },
 
             // The sampler
             wgpu::BindGroupLayoutEntry {
-                binding:            1,
-                visibility:         wgpu::ShaderStages::FRAGMENT,
-                count:              None,
-                ty:                 wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering)
+                binding: 1,
+                visibility: wgpu::ShaderStages::FRAGMENT,
+                count: None,
+                ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
             },
 
             // Offsets
             wgpu::BindGroupLayoutEntry {
-                binding:            2,
-                visibility:         wgpu::ShaderStages::FRAGMENT,
-                count:              None,
-                ty:                 wgpu::BindingType::Texture {
-                    sample_type:    wgpu::TextureSampleType::Float { filterable: false },
+                binding: 2,
+                visibility: wgpu::ShaderStages::FRAGMENT,
+                count: None,
+                ty: wgpu::BindingType::Texture {
+                    sample_type: wgpu::TextureSampleType::Float { filterable: false },
                     view_dimension: wgpu::TextureViewDimension::D1,
-                    multisampled:   false,
-                }
+                    multisampled: false,
+                },
             },
 
             // Weights
             wgpu::BindGroupLayoutEntry {
-                binding:            3,
-                visibility:         wgpu::ShaderStages::FRAGMENT,
-                count:              None,
-                ty:                 wgpu::BindingType::Texture {
-                    sample_type:    wgpu::TextureSampleType::Float { filterable: false },
+                binding: 3,
+                visibility: wgpu::ShaderStages::FRAGMENT,
+                count: None,
+                ty: wgpu::BindingType::Texture {
+                    sample_type: wgpu::TextureSampleType::Float { filterable: false },
                     view_dimension: wgpu::TextureViewDimension::D1,
-                    multisampled:   false,
-                }
+                    multisampled: false,
+                },
             },
         ];
 
         wgpu::BindGroupLayoutDescriptor {
-            label:      Some("filter_texture_blur_bind_group_layout"),
-            entries:    &TEXTURE_BLUR_LAYOUT,
+            label: Some("filter_texture_blur_bind_group_layout"),
+            entries: &TEXTURE_BLUR_LAYOUT,
         }
     }
 
@@ -618,43 +615,43 @@ impl PipelineConfiguration {
     ///
     #[inline]
     pub fn filter_mask_bind_group_layout<'a>(&'a self) -> wgpu::BindGroupLayoutDescriptor<'a> {
-        static MASK_LAYOUT: [wgpu::BindGroupLayoutEntry; 3]  = [
+        static MASK_LAYOUT: [wgpu::BindGroupLayoutEntry; 3] = [
             // Input texture
             wgpu::BindGroupLayoutEntry {
-                binding:            0,
-                visibility:         wgpu::ShaderStages::VERTEX_FRAGMENT,
-                count:              None,
-                ty:                 wgpu::BindingType::Texture {
-                    sample_type:    wgpu::TextureSampleType::Float { filterable: false },
+                binding: 0,
+                visibility: wgpu::ShaderStages::VERTEX_FRAGMENT,
+                count: None,
+                ty: wgpu::BindingType::Texture {
+                    sample_type: wgpu::TextureSampleType::Float { filterable: false },
                     view_dimension: wgpu::TextureViewDimension::D2,
-                    multisampled:   false,
-                }
+                    multisampled: false,
+                },
             },
 
             // Mask texture
             wgpu::BindGroupLayoutEntry {
-                binding:            1,
-                visibility:         wgpu::ShaderStages::FRAGMENT,
-                count:              None,
-                ty:                 wgpu::BindingType::Texture {
-                    sample_type:    wgpu::TextureSampleType::Float { filterable: true },
+                binding: 1,
+                visibility: wgpu::ShaderStages::FRAGMENT,
+                count: None,
+                ty: wgpu::BindingType::Texture {
+                    sample_type: wgpu::TextureSampleType::Float { filterable: true },
                     view_dimension: wgpu::TextureViewDimension::D2,
-                    multisampled:   false,
-                }
+                    multisampled: false,
+                },
             },
 
             // The sampler
             wgpu::BindGroupLayoutEntry {
-                binding:            2,
-                visibility:         wgpu::ShaderStages::FRAGMENT,
-                count:              None,
-                ty:                 wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering)
+                binding: 2,
+                visibility: wgpu::ShaderStages::FRAGMENT,
+                count: None,
+                ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
             },
         ];
 
         wgpu::BindGroupLayoutDescriptor {
-            label:      Some("filter_mask_bind_group_layout"),
-            entries:    &MASK_LAYOUT,
+            label: Some("filter_mask_bind_group_layout"),
+            entries: &MASK_LAYOUT,
         }
     }
 
@@ -663,55 +660,55 @@ impl PipelineConfiguration {
     ///
     #[inline]
     pub fn filter_displacement_map_bind_group_layout<'a>(&'a self) -> wgpu::BindGroupLayoutDescriptor<'a> {
-        static DISPLACEMENT_MAP_LAYOUT: [wgpu::BindGroupLayoutEntry; 4]  = [
+        static DISPLACEMENT_MAP_LAYOUT: [wgpu::BindGroupLayoutEntry; 4] = [
             // Input texture
             wgpu::BindGroupLayoutEntry {
-                binding:            0,
-                visibility:         wgpu::ShaderStages::VERTEX_FRAGMENT,
-                count:              None,
-                ty:                 wgpu::BindingType::Texture {
-                    sample_type:    wgpu::TextureSampleType::Float { filterable: true },
+                binding: 0,
+                visibility: wgpu::ShaderStages::VERTEX_FRAGMENT,
+                count: None,
+                ty: wgpu::BindingType::Texture {
+                    sample_type: wgpu::TextureSampleType::Float { filterable: true },
                     view_dimension: wgpu::TextureViewDimension::D2,
-                    multisampled:   false,
-                }
+                    multisampled: false,
+                },
             },
 
             // Displacement texture
             wgpu::BindGroupLayoutEntry {
-                binding:            1,
-                visibility:         wgpu::ShaderStages::FRAGMENT,
-                count:              None,
-                ty:                 wgpu::BindingType::Texture {
-                    sample_type:    wgpu::TextureSampleType::Float { filterable: true },
+                binding: 1,
+                visibility: wgpu::ShaderStages::FRAGMENT,
+                count: None,
+                ty: wgpu::BindingType::Texture {
+                    sample_type: wgpu::TextureSampleType::Float { filterable: true },
                     view_dimension: wgpu::TextureViewDimension::D2,
-                    multisampled:   false,
-                }
+                    multisampled: false,
+                },
             },
 
             // The sampler
             wgpu::BindGroupLayoutEntry {
-                binding:            2,
-                visibility:         wgpu::ShaderStages::FRAGMENT,
-                count:              None,
-                ty:                 wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering)
+                binding: 2,
+                visibility: wgpu::ShaderStages::FRAGMENT,
+                count: None,
+                ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
             },
-            
+
             // Scale factor
             wgpu::BindGroupLayoutEntry {
-                binding:            3,
-                visibility:         wgpu::ShaderStages::FRAGMENT,
-                count:              None,
-                ty:                 wgpu::BindingType::Buffer {
-                    ty:                 wgpu::BufferBindingType::Uniform,
+                binding: 3,
+                visibility: wgpu::ShaderStages::FRAGMENT,
+                count: None,
+                ty: wgpu::BindingType::Buffer {
+                    ty: wgpu::BufferBindingType::Uniform,
                     has_dynamic_offset: false,
-                    min_binding_size:   wgpu::BufferSize::new(8),
-                }
+                    min_binding_size: wgpu::BufferSize::new(8),
+                },
             },
         ];
 
         wgpu::BindGroupLayoutDescriptor {
-            label:      Some("filter_displacement_map_bind_group_layout"),
-            entries:    &DISPLACEMENT_MAP_LAYOUT,
+            label: Some("filter_displacement_map_bind_group_layout"),
+            entries: &DISPLACEMENT_MAP_LAYOUT,
         }
     }
 
@@ -720,31 +717,31 @@ impl PipelineConfiguration {
     ///
     #[inline]
     pub fn filter_reduce_bind_group_layout<'a>(&'a self) -> wgpu::BindGroupLayoutDescriptor<'a> {
-        static REDUCE_LAYOUT: [wgpu::BindGroupLayoutEntry; 2]  = [
+        static REDUCE_LAYOUT: [wgpu::BindGroupLayoutEntry; 2] = [
             // Input texture
             wgpu::BindGroupLayoutEntry {
-                binding:            0,
-                visibility:         wgpu::ShaderStages::VERTEX_FRAGMENT,
-                count:              None,
-                ty:                 wgpu::BindingType::Texture {
-                    sample_type:    wgpu::TextureSampleType::Float { filterable: true },
+                binding: 0,
+                visibility: wgpu::ShaderStages::VERTEX_FRAGMENT,
+                count: None,
+                ty: wgpu::BindingType::Texture {
+                    sample_type: wgpu::TextureSampleType::Float { filterable: true },
                     view_dimension: wgpu::TextureViewDimension::D2,
-                    multisampled:   false,
-                }
+                    multisampled: false,
+                },
             },
 
             // The sampler
             wgpu::BindGroupLayoutEntry {
-                binding:            1,
-                visibility:         wgpu::ShaderStages::FRAGMENT,
-                count:              None,
-                ty:                 wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering)
+                binding: 1,
+                visibility: wgpu::ShaderStages::FRAGMENT,
+                count: None,
+                ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
             },
         ];
 
         wgpu::BindGroupLayoutDescriptor {
-            label:      Some("filter_reduce_bind_group_layout"),
-            entries:    &REDUCE_LAYOUT,
+            label: Some("filter_reduce_bind_group_layout"),
+            entries: &REDUCE_LAYOUT,
         }
     }
 
@@ -762,23 +759,23 @@ impl PipelineConfiguration {
         // Decide on the multisampling state
         let multisampling = if let Some(sample_count) = self.multisampling_count {
             wgpu::MultisampleState {
-                count:                      sample_count,
-                mask:                       !0,
-                alpha_to_coverage_enabled:  false,
+                count: sample_count,
+                mask: !0,
+                alpha_to_coverage_enabled: false,
             }
         } else {
             wgpu::MultisampleState::default()
         };
 
         wgpu::RenderPipelineDescriptor {
-            label:          Some("render_pipeline_descriptor"),
-            layout:         Some(pipeline_layout),
-            vertex:         self.vertex_state(shader_cache),
-            fragment:       self.fragment_state(shader_cache, temp_storage),
-            primitive:      wgpu::PrimitiveState::default(),
-            depth_stencil:  None,
-            multisample:    multisampling,
-            multiview:      None,
+            label: Some("render_pipeline_descriptor"),
+            layout: Some(pipeline_layout),
+            vertex: self.vertex_state(shader_cache),
+            fragment: self.fragment_state(shader_cache, temp_storage),
+            primitive: wgpu::PrimitiveState::default(),
+            depth_stencil: None,
+            multisample: multisampling,
+            multiview: None,
         }
     }
 }

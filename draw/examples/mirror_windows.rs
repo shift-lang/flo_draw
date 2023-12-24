@@ -1,10 +1,10 @@
-use flo_draw::*;
-use flo_draw::canvas::*;
+use std::thread;
+use std::time::Duration;
 
 use futures::prelude::*;
 
-use std::thread;
-use std::time::{Duration};
+use flo_draw::*;
+use flo_draw::canvas::*;
 
 ///
 /// Draws to two windows simultaneously
@@ -15,7 +15,10 @@ pub fn main() {
         let canvas = create_canvas_window("Mirror windows");
 
         // Create a duplicate window from the same canvas (gluting creates windows on top of each other, annoyingly)
-        let _ = create_drawing_window_from_stream(canvas.stream().ready_chunks(10000), "Second window (might need to drag to see the other window)");
+        let _ = create_drawing_window_from_stream(
+            canvas.stream().ready_chunks(10000),
+            "Second window (might need to drag to see the other window)",
+        );
 
         // Draw to both windows at once
         let mut p = 0.0f32;
@@ -28,7 +31,7 @@ pub fn main() {
                 gc.canvas_height(1000.0);
 
                 let x = p.sin() * 500.0;
-                let y = (p*3.0).cos() * 200.0;
+                let y = (p * 3.0).cos() * 200.0;
 
                 gc.new_path();
                 gc.circle(x, y, 50.0);

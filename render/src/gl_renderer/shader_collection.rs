@@ -13,28 +13,28 @@ use std::collections::{HashMap};
 /// #defines: this way only a single shader program can be used to produce all 4 variants.
 ///
 pub struct ShaderCollection<ShaderType, UniformAttribute>
-where 
-UniformAttribute:   Hash+Eq,
-ShaderType:         Hash+Eq {
+    where
+        UniformAttribute: Hash + Eq,
+        ShaderType: Hash + Eq {
     /// The cached shaders for this collection
     shaders: HashMap<ShaderType, ShaderProgram<UniformAttribute>>,
 
     /// Loads the shader with the specified type
-    load_shader: Box<dyn Send+Fn(ShaderType) -> ShaderProgram<UniformAttribute>>
+    load_shader: Box<dyn Send + Fn(ShaderType) -> ShaderProgram<UniformAttribute>>,
 }
 
 impl<ShaderType, UniformAttribute> ShaderCollection<ShaderType, UniformAttribute>
-where 
-UniformAttribute:   Hash+Eq,
-ShaderType:         Hash+Eq+Clone {
+    where
+        UniformAttribute: Hash + Eq,
+        ShaderType: Hash + Eq + Clone {
     ///
     /// Creates a new shader collection from the specified vertex and fragment programs
     ///
-    pub fn new<ShaderLoader>(loader: ShaderLoader) -> ShaderCollection<ShaderType, UniformAttribute> 
-    where ShaderLoader: 'static+Send+Fn(ShaderType) -> ShaderProgram<UniformAttribute> {
+    pub fn new<ShaderLoader>(loader: ShaderLoader) -> ShaderCollection<ShaderType, UniformAttribute>
+        where ShaderLoader: 'static + Send + Fn(ShaderType) -> ShaderProgram<UniformAttribute> {
         ShaderCollection {
-            shaders:        HashMap::new(),
-            load_shader:    Box::new(loader)
+            shaders: HashMap::new(),
+            load_shader: Box::new(loader),
         }
     }
 
@@ -43,10 +43,10 @@ ShaderType:         Hash+Eq+Clone {
     ///
     pub fn program<'a>(&'a mut self, shader_type: ShaderType) -> &'a mut ShaderProgram<UniformAttribute> {
         // Use the existing shader program, or compile a new one if this shader hasn't been used before
-        let shaders     = &mut self.shaders;
+        let shaders = &mut self.shaders;
         let load_shader = &self.load_shader;
 
-        let program     = shaders.entry(shader_type.clone())
+        let program = shaders.entry(shader_type.clone())
             .or_insert_with(move || (load_shader)(shader_type));
         program
     }

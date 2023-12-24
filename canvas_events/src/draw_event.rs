@@ -33,5 +33,5 @@ pub enum DrawEvent {
     KeyUp(u64, Option<Key>),
 
     /// Window has been closed
-    Closed
+    Closed,
 }

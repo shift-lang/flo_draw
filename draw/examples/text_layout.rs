@@ -1,7 +1,7 @@
+use std::sync::*;
+
 use flo_draw::*;
 use flo_draw::canvas::*;
-
-use std::sync::*;
 
 ///
 /// Example that displays various effects that can be achieved via 
@@ -9,11 +9,11 @@ use std::sync::*;
 ///
 pub fn main() {
     with_2d_graphics(|| {
-        let lato        = CanvasFontFace::from_slice(include_bytes!("Lato-Regular.ttf"));
-        let lato_bold   = CanvasFontFace::from_slice(include_bytes!("Lato-Bold.ttf"));
+        let lato = CanvasFontFace::from_slice(include_bytes!("Lato-Regular.ttf"));
+        let lato_bold = CanvasFontFace::from_slice(include_bytes!("Lato-Bold.ttf"));
 
         // Create a window
-        let canvas      = create_drawing_window("Text layout example");
+        let canvas = create_drawing_window("Text layout example");
 
         // Various text layout demonstrations
         canvas.draw(|gc| {
@@ -83,7 +83,7 @@ pub fn main() {
             gc.layout_text(FontId(1), " and center alignment ".to_string());
             gc.draw_text_layout();
 
-            gc.begin_line_layout(1000.0-18.0, 80.0, TextAlignment::Right);
+            gc.begin_line_layout(1000.0 - 18.0, 80.0, TextAlignment::Right);
             gc.layout_text(FontId(1), "Right alignment is supported too".to_string());
             gc.draw_text_layout();
         });
@@ -101,15 +101,15 @@ pub fn main() {
         canvas.draw(|gc| {
             // We can use the measure() and draw() functions to add annotations to the text as we generate the layout
             // font_metrics(em_size) gives some information about a particular font
-            let lato_metrics        = lato.font_metrics(18.0).unwrap();
-            let mut text_layout     = CanvasFontLineLayout::new(&lato, 18.0);
-            
+            let lato_metrics = lato.font_metrics(18.0).unwrap();
+            let mut text_layout = CanvasFontLineLayout::new(&lato, 18.0);
+
             text_layout.add_text("Manual layout allows ");
 
             // 'measure()' interrupts the layout, so measuring half-way between 'f' and 'i' will force the layout to produce no ligature
-            let start_pos   = text_layout.measure();
+            let start_pos = text_layout.measure();
             text_layout.add_text("custom");
-            let end_pos     = text_layout.measure();
+            let end_pos = text_layout.measure();
 
             // start_pos and end_pos show where the word 'custom' began and ended (as well as giving the overall bounding box)
             // CanvasFontLineLayout implements GraphicsContext, so we draw straight to the layout as we're constructing it
@@ -136,7 +136,7 @@ pub fn main() {
             text_layout.stroke();
 
             // Even possible to lay out text in text ('layout_text' is from the graphics context, so we wind up performing recursive layout here)
-            text_layout.begin_line_layout(mid_point.x() as _, mid_point.y() as f32-lato_metrics.underline_position.unwrap().offset - 30.0, TextAlignment::Center);
+            text_layout.begin_line_layout(mid_point.x() as _, mid_point.y() as f32 - lato_metrics.underline_position.unwrap().offset - 30.0, TextAlignment::Center);
             text_layout.layout_text(FontId(1), "here".to_string());
             text_layout.draw_text_layout();
 

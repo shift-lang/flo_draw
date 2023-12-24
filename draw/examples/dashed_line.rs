@@ -1,8 +1,8 @@
+use std::thread;
+use std::time::Duration;
+
 use flo_draw::*;
 use flo_draw::canvas::*;
-
-use std::thread;
-use std::time::{Duration};
 
 ///
 /// Draws a dashed line
@@ -10,7 +10,7 @@ use std::time::{Duration};
 pub fn main() {
     with_2d_graphics(|| {
         // Create a window
-        let canvas      = create_drawing_window("Dashed line");
+        let canvas = create_drawing_window("Dashed line");
 
         let mut offset = 0.0;
         loop {

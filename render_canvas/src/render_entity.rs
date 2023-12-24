@@ -13,7 +13,7 @@ pub enum VertexBufferIntent {
     Draw,
 
     /// Will be rendered to the clipping area using EnableClipping
-    Clip
+    Clip,
 }
 
 ///
@@ -60,5 +60,5 @@ pub enum RenderEntity {
     EnableClipping(render::VertexBufferId, render::IndexBufferId, usize),
 
     /// Stop clipping
-    DisableClipping
+    DisableClipping,
 }

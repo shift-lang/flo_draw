@@ -1,16 +1,16 @@
-use flo_draw::*;
-use flo_draw::canvas::*;
-use flo_draw::binding::*;
+use std::sync::*;
+use std::thread;
+use std::time::{Duration, Instant};
 
-use futures::prelude::*;
 use futures::executor;
+use futures::prelude::*;
 use futures::stream;
 use num_complex::*;
 use rayon::iter::*;
 
-use std::thread;
-use std::sync::*;
-use std::time::{Instant, Duration};
+use flo_draw::*;
+use flo_draw::binding::*;
+use flo_draw::canvas::*;
 
 ///
 /// Renders the mandelbrot set, demonstrates how to render from multiple threads and communicate with bindings
@@ -19,12 +19,12 @@ use std::time::{Instant, Duration};
 ///
 pub fn main() {
     with_2d_graphics(|| {
-        let mut window_properties       = WindowProperties::from(&"Mandelbrot set");
+        let mut window_properties = WindowProperties::from(&"Mandelbrot set");
         window_properties.mouse_pointer = BindRef::from(bind(MousePointer::None));
-        let (canvas, events)            = create_drawing_window_with_events(window_properties);
+        let (canvas, events) = create_drawing_window_with_events(window_properties);
 
-        let lato                        = CanvasFontFace::from_slice(include_bytes!("Lato-Regular.ttf"));
-        let lato_bold                   = CanvasFontFace::from_slice(include_bytes!("Lato-Bold.ttf"));
+        let lato = CanvasFontFace::from_slice(include_bytes!("Lato-Regular.ttf"));
+        let lato_bold = CanvasFontFace::from_slice(include_bytes!("Lato-Bold.ttf"));
 
         // Initialise the canvas
         canvas.draw(|gc| {
@@ -34,22 +34,36 @@ pub fn main() {
         });
 
         // Create some bindings that represent our state
-        let width       = bind(1024u32);
-        let height      = bind(768u32);
-        let crossfade   = bind(0.0);
-        let bounds      = bind((Complex::new(-2.5, -1.0), Complex::new(1.0, 1.0)));
+        let width = bind(1024u32);
+        let height = bind(768u32);
+        let crossfade = bind(0.0);
+        let bounds = bind((Complex::new(-2.5, -1.0), Complex::new(1.0, 1.0)));
 
         // The update number is used to synchronise other updates and interrupt drawing the mandelbrot
-        let update_num  = bind(0u64);
+        let update_num = bind(0u64);
 
         // Run some threads to display some different layers. We can write to layers independently on different threads
         show_title(&canvas, LayerId(100), crossfade.clone());
-        show_stats(&canvas, LayerId(99), BindRef::from(&bounds), BindRef::from(&crossfade));
-        show_mandelbrot(&canvas, LayerId(0), TextureId(100), BindRef::from(&width), BindRef::from(&height), BindRef::from(&bounds), BindRef::from(&crossfade), BindRef::from(&update_num));
+        show_stats(
+            &canvas,
+            LayerId(99),
+            BindRef::from(&bounds),
+            BindRef::from(&crossfade),
+        );
+        show_mandelbrot(
+            &canvas,
+            LayerId(0),
+            TextureId(100),
+            BindRef::from(&width),
+            BindRef::from(&height),
+            BindRef::from(&bounds),
+            BindRef::from(&crossfade),
+            BindRef::from(&update_num),
+        );
 
         // Loop while there are events
         executor::block_on(async move {
-            let mut events  = events;
+            let mut events = events;
             while let Some(evt) = events.next().await {
                 match evt {
                     DrawEvent::Resize(new_width, new_height) => {
@@ -69,19 +83,24 @@ pub fn main() {
                             gc.canvas_height(height.get() as _);
                             gc.center_region(0.0, 0.0, width.get() as _, height.get() as _);
 
-                            let (x, y)  = state.location_in_window;
-                            let (x, y)  = (x as f32, y as f32);
-                            let (w, h)  = (width.get() as f32, height.get() as f32);
-                            let y       = h-y;
+                            let (x, y) = state.location_in_window;
+                            let (x, y) = (x as f32, y as f32);
+                            let (w, h) = (width.get() as f32, height.get() as f32);
+                            let y = h - y;
 
                             gc.new_path();
-                            gc.rect(x - (w/4.0) + 2.0, y - (h/4.0) - 2.0, x + (w/4.0) + 2.0, y + h/4.0 - 2.0);
+                            gc.rect(
+                                x - (w / 4.0) + 2.0,
+                                y - (h / 4.0) - 2.0,
+                                x + (w / 4.0) + 2.0,
+                                y + h / 4.0 - 2.0,
+                            );
                             gc.stroke_color(Color::Rgba(0.0, 0.0, 0.0, 0.6));
                             gc.line_width(4.0);
                             gc.stroke();
 
                             gc.new_path();
-                            gc.rect(x - (w/4.0), y - (h/4.0), x + (w/4.0), y + h/4.0);
+                            gc.rect(x - (w / 4.0), y - (h / 4.0), x + (w / 4.0), y + h / 4.0);
                             gc.stroke_color(Color::Rgba(0.0, 0.6, 0.0, 0.9));
                             gc.line_width(4.0);
                             gc.stroke();
@@ -98,27 +117,30 @@ pub fn main() {
 
                     DrawEvent::Pointer(PointerAction::ButtonDown, _, state) => {
                         // Zoom in at the point the user clicked
-                        let (x, y)      = state.location_in_window;
-                        let (x, y)      = (x as f64, y as f64);
-                        let (w, h)      = (width.get() as f64, height.get() as f64);
-                        let y           = h-y;
+                        let (x, y) = state.location_in_window;
+                        let (x, y) = (x as f64, y as f64);
+                        let (w, h) = (width.get() as f64, height.get() as f64);
+                        let y = h - y;
 
                         // x and y as proportions within the min/max bounds
-                        let (x, y)      = (x / w, y/h);
+                        let (x, y) = (x / w, y / h);
 
                         // x and y as coordinates within the space of the mandelbrot
-                        let (min, max)  = bounds.get();
-                        let x           = (max.re-min.re) * x + min.re;
-                        let y           = (max.im-min.im) * y + min.im;
-                        let off_x       = (max.re-min.re) / 4.0;
-                        let off_y       = (max.im-min.im) / 4.0;
+                        let (min, max) = bounds.get();
+                        let x = (max.re - min.re) * x + min.re;
+                        let y = (max.im - min.im) * y + min.im;
+                        let off_x = (max.re - min.re) / 4.0;
+                        let off_y = (max.im - min.im) / 4.0;
 
                         // Update the bounds
-                        bounds.set((Complex::new(x-off_x, y-off_y), Complex::new(x+off_x, y+off_y)));
+                        bounds.set((
+                            Complex::new(x - off_x, y - off_y),
+                            Complex::new(x + off_x, y + off_y),
+                        ));
                         update_num.set(update_num.get() + 1);
                     }
 
-                    _ => { }
+                    _ => {}
                 }
             }
         })
@@ -126,7 +148,7 @@ pub fn main() {
 }
 
 ///
-/// Runs a thread that shows the title 
+/// Runs a thread that shows the title
 ///
 fn show_title(canvas: &DrawingTarget, layer: LayerId, crossfade: Binding<f32>) {
     let canvas = canvas.clone();
@@ -148,18 +170,18 @@ fn show_title(canvas: &DrawingTarget, layer: LayerId, crossfade: Binding<f32>) {
                     gc.canvas_height(1000.0);
                     gc.center_region(0.0, 0.0, 1000.0, 1000.0);
 
-                    let title_fade = (2.0-fade) - 0.5;
+                    let title_fade = (2.0 - fade) - 0.5;
                     let title_fade = f32::min(f32::max(title_fade, 0.0), 1.0);
 
                     // Title card
                     gc.fill_color(Color::Rgba(0.0, 0.0, 0.6, title_fade));
                     gc.set_font_size(FontId(2), 36.0);
-                    gc.begin_line_layout(500.0, 482.0 + (title_fade*4.0), TextAlignment::Center);
+                    gc.begin_line_layout(500.0, 482.0 + (title_fade * 4.0), TextAlignment::Center);
                     gc.layout_text(FontId(2), "Mandelbrot set".into());
                     gc.draw_text_layout();
 
                     gc.set_font_size(FontId(1), 16.0);
-                    gc.begin_line_layout(500.0, 430.0 - (title_fade*4.0), TextAlignment::Center);
+                    gc.begin_line_layout(500.0, 430.0 - (title_fade * 4.0), TextAlignment::Center);
                     gc.layout_text(FontId(1), "A flo_draw demonstration".into());
                     gc.draw_text_layout();
 
@@ -184,7 +206,12 @@ fn show_title(canvas: &DrawingTarget, layer: LayerId, crossfade: Binding<f32>) {
 ///
 /// Runs a thread that displays some statistics for the current rendering
 ///
-fn show_stats(canvas: &DrawingTarget, layer: LayerId, bounds: BindRef<(Complex<f64>, Complex<f64>)>, crossfade: BindRef<f32>) {
+fn show_stats(
+    canvas: &DrawingTarget,
+    layer: LayerId,
+    bounds: BindRef<(Complex<f64>, Complex<f64>)>,
+    crossfade: BindRef<f32>,
+) {
     let canvas = canvas.clone();
 
     thread::Builder::new()
@@ -192,11 +219,11 @@ fn show_stats(canvas: &DrawingTarget, layer: LayerId, bounds: BindRef<(Complex<f
         .spawn(move || {
             // Compute the value to display on the LHS of the display
             let left_stats = computed(move || {
-                let bounds          = bounds.get();
-                let scale_factor_x  = 3.5/(bounds.1.re - bounds.0.re).abs();
-                let scale_factor_y  = 2.0/(bounds.1.im - bounds.0.im).abs();
-                let scale_factor    = f64::max(scale_factor_x, scale_factor_y);
-                let scale_factor    = scale_factor.round();
+                let bounds = bounds.get();
+                let scale_factor_x = 3.5 / (bounds.1.re - bounds.0.re).abs();
+                let scale_factor_y = 2.0 / (bounds.1.im - bounds.0.im).abs();
+                let scale_factor = f64::max(scale_factor_x, scale_factor_y);
+                let scale_factor = scale_factor.round();
 
                 format!("Zoom: {}x", scale_factor)
             });
@@ -204,8 +231,8 @@ fn show_stats(canvas: &DrawingTarget, layer: LayerId, bounds: BindRef<(Complex<f
             // Run a loop to update and diplay the statistics for the mandelbrot set
             executor::block_on(async move {
                 // Follow the stats as they change
-                let alpha       = computed(move || f32::max(f32::min(crossfade.get(), 1.0), 0.0));
-                let mut stats   = follow(computed(move || (left_stats.get(), alpha.get())));
+                let alpha = computed(move || f32::max(f32::min(crossfade.get(), 1.0), 0.0));
+                let mut stats = follow(computed(move || (left_stats.get(), alpha.get())));
 
                 while let Some((left_stats, alpha)) = stats.next().await {
                     // Redraw the stats on the layer
@@ -236,11 +263,19 @@ fn show_stats(canvas: &DrawingTarget, layer: LayerId, bounds: BindRef<(Complex<f
         .unwrap();
 }
 
-
 ///
-/// Runs a thread that renders the mandelbrot set whenever the bindings change 
+/// Runs a thread that renders the mandelbrot set whenever the bindings change
 ///
-fn show_mandelbrot(canvas: &DrawingTarget, layer: LayerId, texture: TextureId, width: BindRef<u32>, height: BindRef<u32>, bounds: BindRef<(Complex<f64>, Complex<f64>)>, crossfade: BindRef<f32>, update_num: BindRef<u64>) {
+fn show_mandelbrot(
+    canvas: &DrawingTarget,
+    layer: LayerId,
+    texture: TextureId,
+    width: BindRef<u32>,
+    height: BindRef<u32>,
+    bounds: BindRef<(Complex<f64>, Complex<f64>)>,
+    crossfade: BindRef<f32>,
+    update_num: BindRef<u64>,
+) {
     let canvas = canvas.clone();
 
     thread::Builder::new()
@@ -248,22 +283,26 @@ fn show_mandelbrot(canvas: &DrawingTarget, layer: LayerId, texture: TextureId, w
         .spawn(move || {
             enum Event {
                 RenderBounds((u32, u32, (Complex<f64>, Complex<f64>))),
-                CrossFade(f32)
+                CrossFade(f32),
             }
 
-            let alpha           = computed(move || f32::min(f32::max(crossfade.get()-1.0, 0.0),1.0));
-            let alpha           = BindRef::from(alpha);
-            let mut texture_w   = width.get();
-            let mut texture_h   = height.get();
+            let alpha = computed(move || f32::min(f32::max(crossfade.get() - 1.0, 0.0), 1.0));
+            let alpha = BindRef::from(alpha);
+            let mut texture_w = width.get();
+            let mut texture_h = height.get();
 
             // The render bounds are used to determine when we start to re-render the mandelbrot set
-            let render_bounds   = computed(move || (width.get(), height.get(), bounds.get()));
+            let render_bounds = computed(move || (width.get(), height.get(), bounds.get()));
 
             // Events either start rendering a new frame or changing the crossfade
-            let render_bounds   = follow(render_bounds).map(|bounds| Event::RenderBounds(bounds)).boxed();
-            let crossfade       = follow(alpha.clone()).map(|xfade| Event::CrossFade(xfade)).boxed();
+            let render_bounds = follow(render_bounds)
+                .map(|bounds| Event::RenderBounds(bounds))
+                .boxed();
+            let crossfade = follow(alpha.clone())
+                .map(|xfade| Event::CrossFade(xfade))
+                .boxed();
 
-            let events          = stream::select_all(vec![render_bounds, crossfade]);
+            let events = stream::select_all(vec![render_bounds, crossfade]);
 
             // Wait for events and render the mandelbrot set as they arrive
             executor::block_on(async move {
@@ -278,12 +317,26 @@ fn show_mandelbrot(canvas: &DrawingTarget, layer: LayerId, texture: TextureId, w
                             // Create the texture for this width and height
                             canvas.draw(|gc| {
                                 gc.layer(layer);
-                                gc.create_texture(texture, texture_w, texture_h, TextureFormat::Rgba);
+                                gc.create_texture(
+                                    texture,
+                                    texture_w,
+                                    texture_h,
+                                    TextureFormat::Rgba,
+                                );
                                 gc.set_texture_fill_alpha(texture, alpha.get());
                             });
 
                             // Fill it in with the current bounds
-                            draw_mandelbrot(&canvas, layer, texture, new_bounds, texture_w, texture_h, &alpha, &update_num);
+                            draw_mandelbrot(
+                                &canvas,
+                                layer,
+                                texture,
+                                new_bounds,
+                                texture_w,
+                                texture_h,
+                                &alpha,
+                                &update_num,
+                            );
                         }
 
                         Event::CrossFade(new_alpha) => {
@@ -312,19 +365,28 @@ fn show_mandelbrot(canvas: &DrawingTarget, layer: LayerId, texture: TextureId, w
 ///
 /// Draws the mandelbrot set within a specified set of bounds
 ///
-fn draw_mandelbrot(canvas: &DrawingTarget, layer: LayerId, texture: TextureId, (min, max): (Complex<f64>, Complex<f64>), width: u32, height: u32, alpha: &BindRef<f32>, update_num: &BindRef<u64>) {
+fn draw_mandelbrot(
+    canvas: &DrawingTarget,
+    layer: LayerId,
+    texture: TextureId,
+    (min, max): (Complex<f64>, Complex<f64>),
+    width: u32,
+    height: u32,
+    alpha: &BindRef<f32>,
+    update_num: &BindRef<u64>,
+) {
     // Create a vector for the pixels in the mandelbrot set
-    let mut pixels  = vec![0u8; (width*height*4) as usize];
-    let mut pos     = 0;
-    let update      = update_num.get();
+    let mut pixels = vec![0u8; (width * height * 4) as usize];
+    let mut pos = 0;
+    let update = update_num.get();
 
     let mut start_time = Instant::now();
 
     // Work out how many iterations to perform
-    let scale_factor_x  = 3.5/(max.re - min.re).abs();
-    let scale_factor_y  = 2.0/(max.im - min.im).abs();
-    let scale_factor    = f64::max(scale_factor_x, scale_factor_y);
-    let scale_factor    = scale_factor.round();
+    let scale_factor_x = 3.5 / (max.re - min.re).abs();
+    let scale_factor_y = 2.0 / (max.im - min.im).abs();
+    let scale_factor = f64::max(scale_factor_x, scale_factor_y);
+    let scale_factor = scale_factor.round();
 
     let num_cycles = if scale_factor < 64.0 {
         256
@@ -349,21 +411,21 @@ fn draw_mandelbrot(canvas: &DrawingTarget, layer: LayerId, texture: TextureId, (
                 let x = x / (width as f64);
                 let x = (max.re - min.re) * x + min.re;
 
-                let c               = Complex::new(x, y);
-                let cycles          = count_cycles(c, num_cycles);
-                let (r, g, b, a)    = color_for_cycles(cycles);
+                let c = Complex::new(x, y);
+                let cycles = count_cycles(c, num_cycles);
+                let (r, g, b, a) = color_for_cycles(cycles);
 
                 (r, g, b, a)
             })
             .collect::<Vec<_>>();
 
         for (r, g, b, a) in line {
-            pixels[pos+0]       = r;
-            pixels[pos+1]       = g;
-            pixels[pos+2]       = b;
-            pixels[pos+3]       = a;
+            pixels[pos + 0] = r;
+            pixels[pos + 1] = g;
+            pixels[pos + 2] = b;
+            pixels[pos + 3] = a;
 
-            pos                 += 4;
+            pos += 4;
         }
 
         // Stop if there's an update to the state we're rendering
@@ -418,15 +480,19 @@ fn draw_mandelbrot(canvas: &DrawingTarget, layer: LayerId, texture: TextureId, (
 ///
 #[inline]
 fn count_cycles(c: Complex<f64>, max_count: usize) -> usize {
-    let mut z       = Complex::new(0.0, 0.0);
-    let mut count   = 0;
+    let mut z = Complex::new(0.0, 0.0);
+    let mut count = 0;
 
-    while count < max_count && (z.re*z.re + z.im*z.im) < 2.0*2.0 {
-        z       = z*z + c;
-        count   = count + 1;
+    while count < max_count && (z.re * z.re + z.im * z.im) < 2.0 * 2.0 {
+        z = z * z + c;
+        count = count + 1;
     }
 
-    if count < max_count { count } else { 0 }
+    if count < max_count {
+        count
+    } else {
+        0
+    }
 }
 
 ///
@@ -434,13 +500,13 @@ fn count_cycles(c: Complex<f64>, max_count: usize) -> usize {
 ///
 #[inline]
 fn color_for_cycles(num_cycles: usize) -> (u8, u8, u8, u8) {
-    let col_val = num_cycles%64;
-    let hue     = (num_cycles/64) % 8;
+    let col_val = num_cycles % 64;
+    let hue = (num_cycles / 64) % 8;
 
     let col_val = if col_val > 32 { 64 - col_val } else { col_val };
     let col_val = col_val * 8;
 
-    let hue     = [
+    let hue = [
         (255, 255, 255),
         (196, 0, 0),
         (128, 96, 0),
@@ -448,11 +514,15 @@ fn color_for_cycles(num_cycles: usize) -> (u8, u8, u8, u8) {
         (0, 196, 255),
         (0, 0, 255),
         (128, 0, 196),
-        (0, 196, 120)
+        (0, 196, 120),
     ][hue];
 
-    let (hue_r, hue_g, hue_b)   = hue;
-    let (r, g, b)               = ((col_val*hue_r) >> 8, (col_val*hue_g)>>8, (col_val*hue_b)>>8);
+    let (hue_r, hue_g, hue_b) = hue;
+    let (r, g, b) = (
+        (col_val * hue_r) >> 8,
+        (col_val * hue_g) >> 8,
+        (col_val * hue_b) >> 8,
+    );
 
     (r as u8, g as u8, b as u8, 255)
 }

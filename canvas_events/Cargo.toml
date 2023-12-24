@@ -1,14 +1,14 @@
 [package]
-name                = "flo_canvas_events"
-version             = "0.4.0"
-authors             = ["Andrew Hunter"]
-license             = "Apache-2.0"
-edition             = "2018"
-repository          = "https://github.com/Logicalshift/flo_draw"
-description         = "User input events for a flo_draw canvas"
-categories          = [ "graphics", "rendering", "gui" ]
+name = "flo_canvas_events"
+version = "0.4.0"
+authors = ["Andrew Hunter"]
+license = "Apache-2.0"
+edition = "2018"
+repository = "https://github.com/Logicalshift/flo_draw"
+description = "User input events for a flo_draw canvas"
+categories = ["graphics", "rendering", "gui"]
 
 [dependencies]
-flo_canvas          = { version = "0.4", features = [ "scenery" ] }
-flo_render          = "0.4"
-flo_scene           = "0.1"
+flo_canvas.workspace = true
+flo_render.workspace = true
+flo_scene.workspace = true

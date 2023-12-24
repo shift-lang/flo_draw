@@ -1,25 +1,23 @@
-use super::winit_runtime::*;
-use super::winit_thread_event::*;
-
-use ::desync::*;
-
-use winit::event_loop::{EventLoop, EventLoopProxy};
-
+use std::collections::HashMap;
 use std::mem;
 use std::sync::*;
 use std::sync::mpsc;
 use std::thread;
-use std::collections::{HashMap};
 
-lazy_static! {
-    static ref WINIT_THREAD: Desync<Option<Arc<WinitThread>>> = Desync::new(None);
-}
+use ::desync::*;
+use once_cell::sync::Lazy;
+use winit::event_loop::{EventLoop, EventLoopProxy};
+
+use super::winit_runtime::*;
+use super::winit_thread_event::*;
+
+static WINIT_THREAD: Lazy<Desync<Option<Arc<WinitThread>>>> = Lazy::new(|| Desync::new(None));
 
 ///
 /// Represents the thread running the winit event loop
 ///
 pub struct WinitThread {
-    event_proxy: Desync<EventLoopProxy<WinitThreadEvent>>
+    event_proxy: Desync<EventLoopProxy<WinitThreadEvent>>,
 }
 
 impl WinitThread {
@@ -41,8 +39,8 @@ pub fn winit_thread() -> Arc<WinitThread> {
             Arc::clone(thread)
         } else {
             // Need to start a new thread
-            let new_thread  = create_winit_thread();
-            *thread         = Some(Arc::clone(&new_thread));
+            let new_thread = create_winit_thread();
+            *thread = Some(Arc::clone(&new_thread));
 
             new_thread
         }
@@ -50,6 +48,7 @@ pub fn winit_thread() -> Arc<WinitThread> {
 }
 
 struct StopWinitWhenDropped;
+
 impl Drop for StopWinitWhenDropped {
     fn drop(&mut self) {
         winit_thread().send_event(WinitThreadEvent::StopWhenAllWindowsClosed);
@@ -68,7 +67,7 @@ impl Drop for StopWinitWhenDropped {
 /// which may be useful behaviour even on operating systems where the thread takeover is
 /// not required.
 ///
-pub fn with_2d_graphics<TAppFn: 'static+Send+FnOnce() -> ()>(app_fn: TAppFn) {
+pub fn with_2d_graphics<TAppFn: 'static + Send + FnOnce() -> ()>(app_fn: TAppFn) {
     // The event loop thread will send us a proxy once it's initialized
     let (send_proxy, recv_proxy) = mpsc::channel();
 
@@ -128,28 +127,28 @@ fn create_winit_thread() -> Arc<WinitThread> {
 ///
 fn run_winit_thread(send_proxy: mpsc::Sender<EventLoopProxy<WinitThreadEvent>>) {
     // Create the event loop
-    let event_loop  = EventLoop::with_user_event();
+    let event_loop = EventLoop::with_user_event();
 
     // We communicate with the event loop via the proxy
-    let proxy       = event_loop.create_proxy();
+    let proxy = event_loop.create_proxy();
 
     // Send the proxy back to the creating thread
     send_proxy.send(proxy).expect("Main thread is waiting to receive its proxy");
 
     // The runtime struct is used to maintain state when the event loop is running
-    let mut runtime = WinitRuntime { 
-        window_events:              HashMap::new(),
-        pending_redraws:            HashMap::new(),
-        futures:                    HashMap::new(),
-        pending_yields:             vec![],
-        will_stop_when_no_windows:  false,
-        will_exit:                  false,
-        pointer_id:                 HashMap::new(),
-        pointer_state:              HashMap::new(),
+    let mut runtime = WinitRuntime {
+        window_events: HashMap::new(),
+        pending_redraws: HashMap::new(),
+        futures: HashMap::new(),
+        pending_yields: vec![],
+        will_stop_when_no_windows: false,
+        will_exit: false,
+        pointer_id: HashMap::new(),
+        pointer_state: HashMap::new(),
     };
 
     // Run the winit event loop
-    event_loop.run(move |event, window_target, control_flow| { 
+    event_loop.run(move |event, window_target, control_flow| {
         runtime.handle_event(event, window_target, control_flow);
     });
 }

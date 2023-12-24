@@ -28,7 +28,7 @@ pub struct TextureSize(pub u32, pub u32);
 #[derive(Clone, Copy, PartialEq, Debug, Serialize, Deserialize)]
 pub enum TextureFormat {
     /// Every pixel is 4 bytes specifying the red, green, blue and alpha values for the pixel
-    Rgba
+    Rgba,
 }
 
 ///
@@ -67,7 +67,7 @@ pub enum TextureFilter {
 /// Operations that can be performed on a texture
 ///
 #[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]
-pub enum TextureOp { 
+pub enum TextureOp {
     /// Creates a new texture of the specified size and format (texture colour is set to clear)
     Create(TextureSize, TextureFormat),
 

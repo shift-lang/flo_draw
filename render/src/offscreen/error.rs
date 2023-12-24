@@ -1,5 +1,4 @@
 #[allow(dead_code)]
-
 ///
 /// Errors that can happen when trying to initialise the renderer
 ///
@@ -33,5 +32,5 @@ pub enum RenderInitError {
     CouldNotCreateSurface,
 
     /// Could not set the active context
-    ContextDidNotStart
+    ContextDidNotStart,
 }

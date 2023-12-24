@@ -4,8 +4,8 @@
 #[derive(PartialEq)]
 pub struct DynamicTextureState {
     /// The viewport size for the texture
-    pub (super) viewport: (f32, f32),
+    pub(super) viewport: (f32, f32),
 
     /// The number of times the sprite was modified
-    pub (super) sprite_modification_count: usize
+    pub(super) sprite_modification_count: usize,
 }

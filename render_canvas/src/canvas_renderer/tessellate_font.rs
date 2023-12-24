@@ -10,23 +10,23 @@ impl CanvasRenderer {
     /// Performs an operation on a font
     ///
     #[inline]
-    pub (super) fn tes_font(&mut self, _font_id: canvas::FontId, _font_op: canvas::FontOp) { }
+    pub(super) fn tes_font(&mut self, _font_id: canvas::FontId, _font_op: canvas::FontOp) {}
 
     ///
     /// Begins laying out text on a line: the coordinates specify the baseline position
     ///
     #[inline]
-    pub (super) fn tes_begin_line_layout(&mut self, _x: f32, _y: f32, _aligment: canvas::TextAlignment) { }
+    pub(super) fn tes_begin_line_layout(&mut self, _x: f32, _y: f32, _aligment: canvas::TextAlignment) {}
 
     ///
     /// Renders the text in the current layout
     ///
     #[inline]
-    pub (super) fn tes_draw_laid_out_text(&mut self) { }
+    pub(super) fn tes_draw_laid_out_text(&mut self) {}
 
     ///
     /// Draws a string using a font with a baseline starting at the specified position
     ///
     #[inline]
-    pub (super) fn tes_draw_text(&mut self, _font_id: canvas::FontId, _text: String, _x: f32, _y: f32) { }
+    pub(super) fn tes_draw_text(&mut self, _font_id: canvas::FontId, _text: String, _x: f32, _y: f32) {}
 }

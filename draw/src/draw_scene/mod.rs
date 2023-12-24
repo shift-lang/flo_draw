@@ -1,6 +1,6 @@
 //!
 //! The draw_scene module provides an interface to flo_draw using the flo_scene library.
-//! 
+//!
 //! `flo_scene` is a message and property passing framework. It's good for developing more complex applications
 //! with flo_draw, such as those with a user interface.
 //!
@@ -12,20 +12,21 @@
 //! to obtain the events and rendering event channels for a particular window.
 //!
 
-mod render_window_entity;
+pub use self::drawing_window_entity::*;
+pub use self::render_window_entity::*;
+pub use self::scene::*;
+
 mod drawing_window_entity;
+mod render_window_entity;
 mod scene;
 
-#[cfg(feature="render-opengl")]
+#[cfg(feature = "render-opengl")]
 mod glutin_render_window_entity;
-#[cfg(feature="render-opengl")]
+#[cfg(feature = "render-opengl")]
 mod glutin_scene;
 
-#[cfg(feature="render-wgpu")]
+#[cfg(feature = "render-wgpu")]
 mod wgpu_render_window_entity;
-#[cfg(feature="render-wgpu")]
+#[cfg(feature = "render-wgpu")]
 mod wgpu_scene;
 
-pub use self::render_window_entity::*;
-pub use self::drawing_window_entity::*;
-pub use self::scene::*;

@@ -1,26 +1,30 @@
 [workspace]
-resolver    = "2"
-members     = [
-    "canvas", 
+resolver = "2"
+members = [
+    "binding",
+    "canvas",
     "canvas_events",
-    "render", 
-    "render_canvas",
-    "render_gl_offscreen",
+    "curves",
     "draw",
+    "render",
+    "render_canvas",
+    "render_software",
+    "render_gl_offscreen",
+    "scene",
 ]
 
-[patch.crates-io]
-flo_canvas              = { path = "./canvas" }
-flo_canvas_events       = { path = "./canvas_events" }
-flo_render              = { path = "./render" }
-flo_render_canvas       = { path = "./render_canvas" }
-flo_render_gl_offscreen = { path = "./render_gl_offscreen" }
-flo_draw                = { path = "./draw" }
 
-flo_curves              = { git = "https://github.com/Logicalshift/flo_curves", branch = "v0.8" }
-flo_binding             = { git = "https://github.com/Logicalshift/flo_binding", branch = "v3.0" }
-flo_scene               = { git = "https://github.com/Logicalshift/flo_scene", branch = "v0.1" }
-desync                  = { git = "https://github.com/Logicalshift/desync", branch = "v0.9" }
+[workspace.dependencies]
+flo_canvas = { path = "./canvas" }
+flo_canvas_events = { path = "./canvas_events" }
+flo_render = { path = "./render" }
+flo_render_canvas = { path = "./render_canvas" }
+flo_render_gl_offscreen = { path = "./render_gl_offscreen" }
+flo_draw = { path = "./draw" }
+flo_curves = { path = "./curves" }
+flo_binding = { path = "./binding" }
+flo_scene = { path = "./scene" }
+desync = { path = "./desync" }
 
 # allsorts is very slow when built for debug, so packages using flo_draw should consider optimising it even in debug builds
 [profile.dev.package.allsorts]

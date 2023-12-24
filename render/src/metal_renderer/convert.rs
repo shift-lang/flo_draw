@@ -8,9 +8,9 @@ impl From<Vertex2D> for MetalVertex2D {
         unsafe {
             // The SIMD types do not come out in a very convenient form, so we use mem::transmute here
             MetalVertex2D {
-                pos:        mem::transmute(src.pos),
-                tex_coord:  mem::transmute(src.tex_coord),
-                color:      mem::transmute(src.color)
+                pos: mem::transmute(src.pos),
+                tex_coord: mem::transmute(src.tex_coord),
+                color: mem::transmute(src.color),
             }
         }
     }
@@ -18,7 +18,7 @@ impl From<Vertex2D> for MetalVertex2D {
 
 impl From<Matrix> for matrix_float4x4 {
     fn from(Matrix(src): Matrix) -> matrix_float4x4 {
-        unsafe { 
+        unsafe {
             matrix_float4x4 {
                 columns: [
                     mem::transmute(src[0]),

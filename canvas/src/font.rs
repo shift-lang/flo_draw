@@ -11,7 +11,7 @@ use std::sync::*;
 pub enum FontStyle {
     Normal,
     Italic,
-    Oblique
+    Oblique,
 }
 
 ///
@@ -20,15 +20,22 @@ pub enum FontStyle {
 #[derive(Clone, Copy, PartialEq, Debug, Serialize, Deserialize)]
 pub struct FontProperties {
     pub style: FontStyle,
-    pub weight: u32
+    pub weight: u32,
 }
 
 impl Default for FontStyle {
-    fn default() -> FontStyle { FontStyle::Normal }
+    fn default() -> FontStyle {
+        FontStyle::Normal
+    }
 }
 
 impl Default for FontProperties {
-    fn default() -> FontProperties { FontProperties { style: FontStyle::default(), weight: 400 } }
+    fn default() -> FontProperties {
+        FontProperties {
+            style: FontStyle::default(),
+            weight: 400,
+        }
+    }
 }
 
 impl FontProperties {
@@ -56,14 +63,14 @@ impl FontProperties {
 pub enum TextAlignment {
     Left,
     Right,
-    Center
+    Center,
 }
 
 ///
 /// Operations that can be performed on a font
 ///
 #[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]
-pub enum FontOp { 
+pub enum FontOp {
     /// Loads a font from a font data file
     UseFontDefinition(Arc<CanvasFontFace>),
 
@@ -74,7 +81,7 @@ pub enum FontOp {
     LayoutText(String),
 
     /// Draws a series of glyphs using the current fill style
-    DrawGlyphs(Vec<GlyphPosition>)
+    DrawGlyphs(Vec<GlyphPosition>),
 }
 
 ///
@@ -82,8 +89,8 @@ pub enum FontOp {
 ///
 #[derive(Copy, Clone, PartialEq)]
 pub struct FontLinePosition {
-    pub offset:     f32,
-    pub thickness:  f32
+    pub offset: f32,
+    pub thickness: f32,
 }
 
 ///
@@ -92,22 +99,22 @@ pub struct FontLinePosition {
 #[derive(Copy, Clone, PartialEq)]
 pub struct FontMetrics {
     /// Size of an em relative to these metrics
-    pub em_size:            f32,
+    pub em_size: f32,
 
     /// The ascender size for the font
-    pub ascender:           f32,
+    pub ascender: f32,
 
     /// The descender size for the font
-    pub descender:          f32,
+    pub descender: f32,
 
     /// The height for the font
-    pub height:             f32,
+    pub height: f32,
 
     /// The line gap for the font
-    pub line_gap:           f32,
+    pub line_gap: f32,
 
     /// The capital height for the font, if specified
-    pub capital_height:     Option<f32>,
+    pub capital_height: Option<f32>,
 
     /// Offset from the baseline and suggested thickness for an underline (can be None if the font does not specify)
     pub underline_position: Option<FontLinePosition>,
@@ -124,14 +131,22 @@ impl FontMetrics {
         let scale_factor = em_size / self.em_size;
 
         FontMetrics {
-            em_size:            self.em_size * scale_factor,
-            ascender:           self.ascender * scale_factor,
-            descender:          self.descender * scale_factor,
-            height:             self.height * scale_factor,
-            line_gap:           self.line_gap * scale_factor,
-            capital_height:     self.capital_height.map(|height| height*scale_factor),
-            underline_position: self.underline_position.map(|mut pos| { pos.offset *= scale_factor; pos.thickness *= scale_factor; pos }),
-            strikeout_position: self.strikeout_position.map(|mut pos| { pos.offset *= scale_factor; pos.thickness *= scale_factor; pos }),
+            em_size: self.em_size * scale_factor,
+            ascender: self.ascender * scale_factor,
+            descender: self.descender * scale_factor,
+            height: self.height * scale_factor,
+            line_gap: self.line_gap * scale_factor,
+            capital_height: self.capital_height.map(|height| height * scale_factor),
+            underline_position: self.underline_position.map(|mut pos| {
+                pos.offset *= scale_factor;
+                pos.thickness *= scale_factor;
+                pos
+            }),
+            strikeout_position: self.strikeout_position.map(|mut pos| {
+                pos.offset *= scale_factor;
+                pos.thickness *= scale_factor;
+                pos
+            }),
         }
     }
 }
@@ -145,7 +160,7 @@ pub struct TextLayoutMetrics {
     pub inner_bounds: (Coord2, Coord2),
 
     /// The point where the next glyph will be positioned
-    pub pos: Coord2
+    pub pos: Coord2,
 }
 
 ///
@@ -166,5 +181,5 @@ pub struct GlyphPosition {
     pub location: (f32, f32),
 
     /// The number of canvas units that map to one em in font units
-    pub em_size: f32
+    pub em_size: f32,
 }

@@ -1,5 +1,4 @@
-
-#[cfg(not(feature="render-wgpu"))]
+#[cfg(not(feature = "render-wgpu"))]
 fn main() {
     panic!("This example requires the render-wgpu feature to be set");
 }
@@ -12,7 +11,7 @@ fn main() {
 /// amount of boilerplate code. Manual initialisation like this is useful when integrating with other UI libraries,
 /// however.
 ///
-#[cfg(feature="render-wgpu")]
+#[cfg(feature = "render-wgpu")]
 fn main() {
     use flo_canvas::*;
     use flo_render::*;
@@ -41,36 +40,36 @@ fn main() {
     });
 
     // Set up an event loop and a window that reports to it
-    let event_loop  = EventLoop::new();
-    let window      = window::Window::new(&event_loop).unwrap();
+    let event_loop = EventLoop::new();
+    let window = window::Window::new(&event_loop).unwrap();
 
     // Bits of wgpu are async so we need an async blocker here
     executor::block_on(async move {
         // Create a new WGPU instance, surface and adapter
-        let instance    = wgpu::Instance::new(wgpu::Backends::all());
-        let surface     = unsafe { instance.create_surface(&window) };
-        let adapter     = instance.request_adapter(&wgpu::RequestAdapterOptions {
-            power_preference:       wgpu::PowerPreference::default(),
+        let instance = wgpu::Instance::new(wgpu::Backends::all());
+        let surface = unsafe { instance.create_surface(&window) };
+        let adapter = instance.request_adapter(&wgpu::RequestAdapterOptions {
+            power_preference: wgpu::PowerPreference::default(),
             force_fallback_adapter: false,
-            compatible_surface:     Some(&surface),
+            compatible_surface: Some(&surface),
         }).await.unwrap();
 
         // Fetch the device and the queue
         let (device, queue) = adapter.request_device(&wgpu::DeviceDescriptor {
-            label:      None,
-            features:   wgpu::Features::empty(),
-            limits:     wgpu::Limits::downlevel_webgl2_defaults().using_resolution(adapter.limits())
+            label: None,
+            features: wgpu::Features::empty(),
+            limits: wgpu::Limits::downlevel_webgl2_defaults().using_resolution(adapter.limits()),
         }, None).await.unwrap();
 
         // Create the WGPU renderer
-        let device          = Arc::new(device);
-        let queue           = Arc::new(queue);
-        let surface         = Arc::new(surface);
-        let adapter         = Arc::new(adapter);
-        let mut renderer    = WgpuRenderer::from_surface(Arc::clone(&device), Arc::clone(&queue), Arc::clone(&surface), Arc::clone(&adapter));
+        let device = Arc::new(device);
+        let queue = Arc::new(queue);
+        let surface = Arc::new(surface);
+        let adapter = Arc::new(adapter);
+        let mut renderer = WgpuRenderer::from_surface(Arc::clone(&device), Arc::clone(&queue), Arc::clone(&surface), Arc::clone(&adapter));
 
         // Surface configuration
-        let size                = window.inner_size();
+        let size = window.inner_size();
 
         renderer.prepare_to_render(size.width, size.height);
 
@@ -79,7 +78,7 @@ fn main() {
             *control_flow = ControlFlow::Wait;
 
             match event {
-                Event::WindowEvent { event: WindowEvent::CloseRequested, .. } => { 
+                Event::WindowEvent { event: WindowEvent::CloseRequested, .. } => {
                     *control_flow = ControlFlow::Exit;
                 }
 
@@ -89,7 +88,7 @@ fn main() {
                     renderer.render_to_surface(rendering.clone());
                 }
 
-                Event::RedrawRequested(_)   => {
+                Event::RedrawRequested(_) => {
                     renderer.render_to_surface(rendering.clone());
                 }
 
@@ -100,7 +99,7 @@ fn main() {
 }
 
 /// Mascot in canvas encoding form
-#[cfg(feature="render-wgpu")]
+#[cfg(feature = "render-wgpu")]
 const MASCOT: &'static str = "
     NARdyJn+A+2bP/AHaoB/AAAAg/A
     ThAAAQEB

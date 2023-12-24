@@ -8,21 +8,21 @@ use futures::prelude::*;
 ///
 /// Renders a canvas in an offscreen context, returning the resulting bitmap
 ///
-pub fn render_canvas_offscreen<'a, DrawStream, RenderContext>(context: &'a mut RenderContext, width: usize, height: usize, scale: f32, actions: DrawStream) -> impl 'a+Future<Output=Vec<u8>>
-where
-    DrawStream:    'a+Stream<Item=Draw>,
-    RenderContext: 'a+OffscreenRenderContext 
+pub fn render_canvas_offscreen<'a, DrawStream, RenderContext>(context: &'a mut RenderContext, width: usize, height: usize, scale: f32, actions: DrawStream) -> impl 'a + Future<Output=Vec<u8>>
+    where
+        DrawStream: 'a + Stream<Item=Draw>,
+        RenderContext: 'a + OffscreenRenderContext
 {
     async move {
         // Perform as many drawing actions simultaneously as we can
-        let actions             = Box::pin(actions);
-        let mut actions         = actions.ready_chunks(10000);
+        let actions = Box::pin(actions);
+        let mut actions = actions.ready_chunks(10000);
 
         // Create the offscreen render target
-        let mut render_target   = context.create_render_target(width, height);
+        let mut render_target = context.create_render_target(width, height);
 
         // Create the canvas renderer
-        let mut renderer        = CanvasRenderer::new();
+        let mut renderer = CanvasRenderer::new();
 
         // Prepare to render
         renderer.set_viewport(0.0..(width as f32), 0.0..(height as f32), width as f32, height as f32, scale);

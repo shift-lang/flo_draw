@@ -1,10 +1,10 @@
-use flo_draw::*;
-use flo_canvas::*;
+use std::thread;
+use std::time::Duration;
 
 use rand::*;
 
-use std::thread;
-use std::time::{Duration};
+use flo_canvas::*;
+use flo_draw::*;
 
 struct Ball {
     col: Color,
@@ -13,7 +13,7 @@ struct Ball {
     y: f64,
 
     dx: f64,
-    dy: f64
+    dy: f64,
 }
 
 impl Ball {
@@ -22,12 +22,17 @@ impl Ball {
     ///
     pub fn random() -> Ball {
         Ball {
-            col:    Color::Hsluv(random::<f32>()*360.0, random::<f32>()*100.0, random::<f32>()*75.0 + 25.0, 1.0),
+            col: Color::Hsluv(
+                random::<f32>() * 360.0,
+                random::<f32>() * 100.0,
+                random::<f32>() * 75.0 + 25.0,
+                1.0,
+            ),
             radius: random::<f64>() * 16.0 + 16.0,
-            x:      random::<f64>() * 1000.0,
-            y:      random::<f64>() * 1000.0 + 64.0,
-            dx:     random::<f64>() * 8.0 - 4.0,
-            dy:     random::<f64>() * 8.0 - 4.0
+            x: random::<f64>() * 1000.0,
+            y: random::<f64>() * 1000.0 + 64.0,
+            dx: random::<f64>() * 8.0 - 4.0,
+            dy: random::<f64>() * 8.0 - 4.0,
         }
     }
 
@@ -36,10 +41,18 @@ impl Ball {
     ///
     pub fn update(&mut self) {
         // Collide with the edges of the screen
-        if self.x+self.dx+self.radius > 1000.0 && self.dx > 0.0     { self.dx = -self.dx; }
-        if self.y+self.dy+self.radius > 1000.0 && self.dy > 0.0     { self.dy = -self.dy; }
-        if self.x+self.dx-self.radius < 0.0 && self.dx < 0.0        { self.dx = -self.dx; }
-        if self.y+self.dy-self.radius < 0.0 && self.dy < 0.0        { self.dy = -self.dy; }
+        if self.x + self.dx + self.radius > 1000.0 && self.dx > 0.0 {
+            self.dx = -self.dx;
+        }
+        if self.y + self.dy + self.radius > 1000.0 && self.dy > 0.0 {
+            self.dy = -self.dy;
+        }
+        if self.x + self.dx - self.radius < 0.0 && self.dx < 0.0 {
+            self.dx = -self.dx;
+        }
+        if self.y + self.dy - self.radius < 0.0 && self.dy < 0.0 {
+            self.dy = -self.dy;
+        }
 
         // Gravity
         if self.y >= self.radius {
@@ -62,7 +75,10 @@ pub fn main() {
         let canvas = create_drawing_window("Bouncing balls");
 
         // Generate some random balls
-        let mut balls = (0..256).into_iter().map(|_| Ball::random()).collect::<Vec<_>>();
+        let mut balls = (0..256)
+            .into_iter()
+            .map(|_| Ball::random())
+            .collect::<Vec<_>>();
 
         // Animate them
         loop {

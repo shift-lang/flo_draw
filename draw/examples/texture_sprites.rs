@@ -1,20 +1,20 @@
-use flo_draw::*;
-use flo_draw::canvas::*;
+use std::io;
+use std::thread;
+use std::time::Duration;
 
 use rand::*;
 
-use std::io;
-use std::thread;
-use std::time::{Duration};
+use flo_draw::*;
+use flo_draw::canvas::*;
 
 struct Ball {
     sprite_id: SpriteId,
-    radius:     f64,
-    x:          f64,
-    y:          f64,
+    radius: f64,
+    x: f64,
+    y: f64,
 
-    dx:         f64,
-    dy:         f64
+    dx: f64,
+    dy: f64,
 }
 
 impl Ball {
@@ -23,15 +23,15 @@ impl Ball {
     ///
     pub fn random(sprite_id: SpriteId) -> Ball {
         // Decide on how the ball is rendered
-        let radius  = 64.0;
+        let radius = 64.0;
 
         Ball {
-            sprite_id:  sprite_id,
-            radius:     radius,
-            x:          random::<f64>() * 1000.0,
-            y:          random::<f64>() * 1000.0 + 64.0,
-            dx:         random::<f64>() * 8.0 - 4.0,
-            dy:         random::<f64>() * 8.0 - 4.0
+            sprite_id: sprite_id,
+            radius: radius,
+            x: random::<f64>() * 1000.0,
+            y: random::<f64>() * 1000.0 + 64.0,
+            dx: random::<f64>() * 8.0 - 4.0,
+            dy: random::<f64>() * 8.0 - 4.0,
         }
     }
 
@@ -40,10 +40,10 @@ impl Ball {
     ///
     pub fn update(&mut self) {
         // Collide with the edges of the screen
-        if self.x+self.dx+self.radius > 1000.0 && self.dx > 0.0     { self.dx = -self.dx; }
-        if self.y+self.dy+self.radius > 1000.0 && self.dy > 0.0     { self.dy = -self.dy; }
-        if self.x+self.dx-self.radius < 0.0 && self.dx < 0.0        { self.dx = -self.dx; }
-        if self.y+self.dy-self.radius < 0.0 && self.dy < 0.0        { self.dy = -self.dy; }
+        if self.x + self.dx + self.radius > 1000.0 && self.dx > 0.0 { self.dx = -self.dx; }
+        if self.y + self.dy + self.radius > 1000.0 && self.dy > 0.0 { self.dy = -self.dy; }
+        if self.x + self.dx - self.radius < 0.0 && self.dx < 0.0 { self.dx = -self.dx; }
+        if self.y + self.dy - self.radius < 0.0 && self.dy < 0.0 { self.dy = -self.dy; }
 
         // Gravity
         if self.y >= self.radius {
@@ -89,8 +89,8 @@ pub fn main() {
             let height = (flo_h as f32) / (flo_w as f32) * 128.0;
 
             gc.new_path();
-            gc.circle(0.0, 0.0, height/2.0);
-            gc.fill_texture(TextureId(0), -64.0, height/2.0, 64.0, -height/2.0);
+            gc.circle(0.0, 0.0, height / 2.0);
+            gc.fill_texture(TextureId(0), -64.0, height / 2.0, 64.0, -height / 2.0);
             gc.fill();
 
             gc.line_width(0.25);

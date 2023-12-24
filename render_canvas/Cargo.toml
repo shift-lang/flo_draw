@@ -1,33 +1,33 @@
 [package]
-name        = "flo_render_canvas"
-version     = "0.4.0"
-authors     = ["Andrew Hunter"]
-license     = "Apache-2.0"
-edition     = "2018"
-repository  = "https://github.com/Logicalshift/flo_draw"
+name = "flo_render_canvas"
+version = "0.4.0"
+authors = ["Andrew Hunter"]
+license = "Apache-2.0"
+edition = "2018"
+repository = "https://github.com/Logicalshift/flo_draw"
 description = "Converts flo_canvas streams to flo_render streams"
-categories  = [ "graphics", "rendering", "rendering::engine" ]
+categories = ["graphics", "rendering", "rendering::engine"]
 
-include     = [ "Cargo.toml", "src/**/*", "svg/**/*" ]
+include = ["Cargo.toml", "src/**/*", "svg/**/*"]
 
 [features]
-opengl      = [ "flo_render/opengl" ]
-osx-metal   = [ "flo_render/osx-metal" ]
-render-wgpu = [ "flo_render/render-wgpu" ]
-profile     = [ "flo_render/profile" ]
+opengl = ["flo_render/opengl"]
+osx-metal = ["flo_render/osx-metal"]
+render-wgpu = ["flo_render/render-wgpu"]
+profile = ["flo_render/profile"]
 
-scenery     = [ "flo_canvas/scenery" ]
+scenery = ["flo_canvas/scenery"]
 
 [dependencies]
-flo_render  = "0.4"
-flo_canvas  = "0.4"
-flo_stream  = "0.7"
-futures     = "0.3"
-desync      = "0.9"
-lyon        = "1.0"
-num_cpus    = "1.13"
+flo_render.workspace = true
+flo_canvas.workspace = true
+flo_stream = "0.7"
+futures = "0.3"
+desync.workspace = true
+lyon = "1.0"
+num_cpus = "1.13"
 
 [dev-dependencies]
-png         = "0.17"
-lazy_static = "1.2"
-winit       = "0.28"
+png = "0.17"
+once_cell = "1.18"
+winit = "0.28"

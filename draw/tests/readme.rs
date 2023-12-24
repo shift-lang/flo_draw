@@ -4,8 +4,8 @@ use std::str;
 /// Reads the README file for the crate
 ///
 fn readme() -> &'static str {
-    let readme_bytes    = include_bytes!("../README.md");
-    let readme_str      = str::from_utf8(readme_bytes);
+    let readme_bytes = include_bytes!("../README.md");
+    let readme_str = str::from_utf8(readme_bytes);
 
     readme_str.expect("Could not decode README.md")
 }

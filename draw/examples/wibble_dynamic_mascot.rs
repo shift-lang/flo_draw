@@ -1,17 +1,17 @@
-use flo_draw::*;
-use flo_draw::canvas::*;
-use flo_curves::*;
-use flo_curves::bezier::*;
-use flo_curves::bezier::path::*;
-
-use rayon::iter::*;
-use futures::prelude::*;
-use futures::executor;
-use futures::stream;
-
 use std::f64;
 use std::thread;
 use std::time::{Duration, Instant};
+
+use flo_curves::*;
+use flo_curves::bezier::*;
+use flo_curves::bezier::path::*;
+use futures::executor;
+use futures::prelude::*;
+use futures::stream;
+use rayon::iter::*;
+
+use flo_draw::*;
+use flo_draw::canvas::*;
 
 ///
 /// Draws a distorted mascot onto a dynamic sprite, then uses that to draw a lot of copies of the same thing
@@ -19,15 +19,15 @@ use std::time::{Duration, Instant};
 pub fn main() {
     with_2d_graphics(|| {
         // Decode the mascot rendering
-        let mascot      = decode_drawing(MASCOT.chars()).collect::<Result<Vec<Draw>, _>>().unwrap();
+        let mascot = decode_drawing(MASCOT.chars()).collect::<Result<Vec<Draw>, _>>().unwrap();
 
         // Create a window
-        let canvas      = create_drawing_window("Wibbling mascot using a dynamic texture");
+        let canvas = create_drawing_window("Wibbling mascot using a dynamic texture");
 
         // Convert the mascot to a set of paths (note we skip the setup steps here so the paths are not affected by the initial transformation matrix)
-        let render_mascot   = stream::iter(mascot.into_iter().skip(4));
-        let mascot_paths    = drawing_to_attributed_paths::<SimpleBezierPath, _>(render_mascot);
-        let mascot_paths    = executor::block_on(async move { mascot_paths.collect::<Vec<_>>().await });
+        let render_mascot = stream::iter(mascot.into_iter().skip(4));
+        let mascot_paths = drawing_to_attributed_paths::<SimpleBezierPath, _>(render_mascot);
+        let mascot_paths = executor::block_on(async move { mascot_paths.collect::<Vec<_>>().await });
 
         // Draw the mascot with a moving distortion
         let start_time = Instant::now();
@@ -91,20 +91,20 @@ pub fn main() {
 
         loop {
             // Get the current time where we're rendering this
-            let since_start             = Instant::now().duration_since(start_time);
-            let since_start             = since_start.as_nanos() as f64;
-            let amplitude               = 12.0;
+            let since_start = Instant::now().duration_since(start_time);
+            let since_start = since_start.as_nanos() as f64;
+            let amplitude = 12.0;
 
             // Distort each of the paths in turn
-            let distorted_mascot        = mascot_paths.par_iter()
+            let distorted_mascot = mascot_paths.par_iter()
                 .map(|(attributes, path_set)| (attributes, path_set.iter()
                     .map(move |path: &SimpleBezierPath| distort_path::<_, _, SimpleBezierPath>(path, |point: Coord2, _curve, _t| {
-                        let distance    = point.magnitude();
-                        let ripple_1    = (since_start / (f64::consts::PI * 500_000_000.0)) * 10.0;
-                        let ripple_2    = (since_start / (f64::consts::PI * 400_000_000.0)) * 10.0;
+                        let distance = point.magnitude();
+                        let ripple_1 = (since_start / (f64::consts::PI * 500_000_000.0)) * 10.0;
+                        let ripple_2 = (since_start / (f64::consts::PI * 400_000_000.0)) * 10.0;
 
-                        let offset_x    = (distance / (f64::consts::PI*5.0) + ripple_1).sin() * amplitude * 0.5;
-                        let offset_y    = (distance / (f64::consts::PI*4.0) + ripple_2).cos() * amplitude * 0.5;
+                        let offset_x = (distance / (f64::consts::PI * 5.0) + ripple_1).sin() * amplitude * 0.5;
+                        let offset_y = (distance / (f64::consts::PI * 4.0) + ripple_2).cos() * amplitude * 0.5;
 
                         Coord2(point.x() + offset_x, point.y() + offset_y)
                     }, 2.0, 1.0).unwrap())

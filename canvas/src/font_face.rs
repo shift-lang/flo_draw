@@ -1,10 +1,13 @@
-#[cfg(feature = "outline-fonts")] use allsorts::error::{ParseError};
-#[cfg(feature = "outline-fonts")] use allsorts::tables::{FontTableProvider};
-#[cfg(feature = "outline-fonts")] use std::borrow::{Cow};
+#[cfg(feature = "outline-fonts")]
+use allsorts::error::ParseError;
+#[cfg(feature = "outline-fonts")]
+use allsorts::tables::FontTableProvider;
+#[cfg(feature = "outline-fonts")]
+use std::borrow::Cow;
 
-use serde::de::{Deserialize, Deserializer, Visitor, SeqAccess, MapAccess};
-use serde::ser::{Serialize, SerializeStruct, Serializer};
 use serde::de;
+use serde::de::{Deserialize, Deserializer, MapAccess, SeqAccess, Visitor};
+use serde::ser::{Serialize, SerializeStruct, Serializer};
 
 use std::fmt;
 use std::sync::*;
@@ -13,17 +16,23 @@ use std::sync::*;
 #[cfg(feature = "outline-fonts")]
 pub struct CanvasTableProvider<'a>(&'a ttf_parser::Face<'a>);
 
-#[cfg(feature = "outline-fonts")] 
+#[cfg(feature = "outline-fonts")]
 impl<'b> FontTableProvider for CanvasTableProvider<'b> {
     fn table_data<'a>(&'a self, tag: u32) -> Result<Option<Cow<'a, [u8]>>, ParseError> {
-        let table_data = self.0.raw_face().table(ttf_parser::Tag::from_bytes(&tag.to_be_bytes()));
+        let table_data = self
+            .0
+            .raw_face()
+            .table(ttf_parser::Tag::from_bytes(&tag.to_be_bytes()));
         let table_data = table_data.map(|data| Cow::Borrowed(data));
 
         Ok(table_data)
     }
 
     fn has_table<'a>(&'a self, tag: u32) -> bool {
-        let table_data = self.0.raw_face().table(ttf_parser::Tag::from_bytes(&tag.to_be_bytes()));
+        let table_data = self
+            .0
+            .raw_face()
+            .table(ttf_parser::Tag::from_bytes(&tag.to_be_bytes()));
         table_data.is_some()
     }
 }
@@ -46,7 +55,7 @@ mod canvas_font_face {
     }
 
     impl CanvasFontFace {
-        #[cfg(not(feature = "outline-fonts"))] 
+        #[cfg(not(feature = "outline-fonts"))]
         #[inline]
         fn borrow_data(&self) -> &Arc<Pin<Box<[u8]>>> {
             &self.data
@@ -68,11 +77,9 @@ mod canvas_font_face {
             Arc::new(Self::from_pinned(Arc::new(data.into()), 0))
         }
 
-        pub (crate) fn from_pinned(data: Arc<Pin<Box<[u8]>>>, _font_index: u32) -> CanvasFontFace {
+        pub(crate) fn from_pinned(data: Arc<Pin<Box<[u8]>>>, _font_index: u32) -> CanvasFontFace {
             // Generate the font face
-            CanvasFontFace {
-                data:       data,
-            }
+            CanvasFontFace { data: data }
         }
 
         ///
@@ -84,7 +91,7 @@ mod canvas_font_face {
     }
 }
 
-#[cfg(feature = "outline-fonts")] 
+#[cfg(feature = "outline-fonts")]
 mod canvas_font_face {
     use super::*;
 
@@ -110,7 +117,9 @@ mod canvas_font_face {
         data: Arc<Pin<Box<[u8]>>>,
 
         /// The font face for the data
-        #[borrows(data)] #[covariant] ttf_font: ttf_parser::Face<'this>,
+        #[borrows(data)]
+        #[covariant]
+        ttf_font: ttf_parser::Face<'this>,
     }
 
     impl CanvasFontFace {
@@ -131,12 +140,15 @@ mod canvas_font_face {
         }
 
         #[cfg(feature = "outline-fonts")]
-        pub (crate) fn from_pinned(data: Arc<Pin<Box<[u8]>>>, font_index: u32) -> CanvasFontFace {
+        pub(crate) fn from_pinned(data: Arc<Pin<Box<[u8]>>>, font_index: u32) -> CanvasFontFace {
             // Load into the TTF parser with scary self-referential data
             let font_face = CanvasFontFaceBuilder {
-                data:               data,
-                ttf_font_builder:   |data: &Arc<Pin<Box<[u8]>>>| { ttf_parser::Face::parse(&**data, font_index as _).unwrap() },
-            }.build();
+                data: data,
+                ttf_font_builder: |data: &Arc<Pin<Box<[u8]>>>| {
+                    ttf_parser::Face::parse(&**data, font_index as _).unwrap()
+                },
+            }
+                .build();
 
             // Generate the font face
             font_face
@@ -180,14 +192,20 @@ mod canvas_font_face {
 
             // Result is 'None' if the font has no 'units_per_em' value, as that means we don't know how to scale this font
             Some(FontMetrics {
-                em_size:            font.units_per_em() as _,
-                ascender:           font.ascender() as _,
-                descender:          font.descender() as _,
-                height:             font.height() as _,
-                line_gap:           font.line_gap() as _,
-                capital_height:     font.capital_height().map(|h| h as _),
-                underline_position: font.underline_metrics().map(|pos| FontLinePosition { offset: pos.position as _, thickness: pos.thickness as _}),
-                strikeout_position: font.strikeout_metrics().map(|pos| FontLinePosition { offset: pos.position as _, thickness: pos.thickness as _}),
+                em_size: font.units_per_em() as _,
+                ascender: font.ascender() as _,
+                descender: font.descender() as _,
+                height: font.height() as _,
+                line_gap: font.line_gap() as _,
+                capital_height: font.capital_height().map(|h| h as _),
+                underline_position: font.underline_metrics().map(|pos| FontLinePosition {
+                    offset: pos.position as _,
+                    thickness: pos.thickness as _,
+                }),
+                strikeout_position: font.strikeout_metrics().map(|pos| FontLinePosition {
+                    offset: pos.position as _,
+                    thickness: pos.thickness as _,
+                }),
             })
         }
 
@@ -208,8 +226,8 @@ mod canvas_font_face {
         /// Creates a TTF font face for this font
         ///
         pub fn allsorts_font<'a>(&'a self) -> allsorts::Font<CanvasTableProvider<'a>> {
-            let face            = self.ttf_font();
-            let table_provider  = CanvasTableProvider(face);
+            let face = self.ttf_font();
+            let table_provider = CanvasTableProvider(face);
 
             allsorts::Font::new(table_provider)
                 .expect("unable to load font tables")
@@ -229,15 +247,16 @@ impl PartialEq for CanvasFontFace {
 impl fmt::Debug for CanvasFontFace {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("CanvasFontFace")
-         .field("data", &self.font_data())
-         .finish()
+            .field("data", &self.font_data())
+            .finish()
     }
 }
 
 impl Serialize for CanvasFontFace {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-    S: Serializer {
+        where
+            S: Serializer,
+    {
         let mut s = serializer.serialize_struct("CanvasFontFace", 1)?;
         s.serialize_field("data", self.font_data())?;
         s.end()
@@ -246,14 +265,20 @@ impl Serialize for CanvasFontFace {
 
 impl<'de> Deserialize<'de> for CanvasFontFace {
     fn deserialize<D>(deserializer: D) -> Result<CanvasFontFace, D::Error>
-    where D: Deserializer<'de> {
+        where
+            D: Deserializer<'de>,
+    {
         // Field deserializer
-        enum Field { Data }
+        enum Field {
+            Data,
+        }
         const FIELDS: &'static [&'static str] = &["data"];
 
         impl<'de> Deserialize<'de> for Field {
             fn deserialize<D>(deserializer: D) -> Result<Field, D::Error>
-            where D: Deserializer<'de> {
+                where
+                    D: Deserializer<'de>,
+            {
                 struct FieldVisitor;
                 impl<'de> Visitor<'de> for FieldVisitor {
                     type Value = Field;
@@ -263,10 +288,12 @@ impl<'de> Deserialize<'de> for CanvasFontFace {
                     }
 
                     fn visit_str<E>(self, value: &str) -> Result<Field, E>
-                    where E: de::Error {
+                        where
+                            E: de::Error,
+                    {
                         match value {
-                            "data"  => Ok(Field::Data),
-                            _       => Err(de::Error::unknown_field(value, FIELDS)),
+                            "data" => Ok(Field::Data),
+                            _ => Err(de::Error::unknown_field(value, FIELDS)),
                         }
                     }
                 }
@@ -285,15 +312,21 @@ impl<'de> Deserialize<'de> for CanvasFontFace {
             }
 
             fn visit_seq<V>(self, mut seq: V) -> Result<CanvasFontFace, V::Error>
-            where V: SeqAccess<'de> {
-                let bytes: Vec<u8>  = seq.next_element()? .ok_or_else(|| de::Error::invalid_length(0, &self))?;
-                let data            = bytes.into_boxed_slice();
-                let data            = Arc::new(data.into());
+                where
+                    V: SeqAccess<'de>,
+            {
+                let bytes: Vec<u8> = seq
+                    .next_element()?
+                    .ok_or_else(|| de::Error::invalid_length(0, &self))?;
+                let data = bytes.into_boxed_slice();
+                let data = Arc::new(data.into());
                 Ok(CanvasFontFace::from_pinned(data, 0))
             }
 
             fn visit_map<V>(self, mut map: V) -> Result<CanvasFontFace, V::Error>
-            where V: MapAccess<'de> {
+                where
+                    V: MapAccess<'de>,
+            {
                 let mut data: Option<Vec<u8>> = None;
                 while let Some(key) = map.next_key()? {
                     match key {
@@ -306,9 +339,9 @@ impl<'de> Deserialize<'de> for CanvasFontFace {
                     }
                 }
 
-                let data            = data.ok_or_else(|| de::Error::missing_field("data"))?;
-                let data            = data.into_boxed_slice();
-                let data            = Arc::new(data.into());
+                let data = data.ok_or_else(|| de::Error::missing_field("data"))?;
+                let data = data.into_boxed_slice();
+                let data = Arc::new(data.into());
                 Ok(CanvasFontFace::from_pinned(data, 0))
             }
         }
@@ -338,7 +371,7 @@ mod test {
 
     #[test]
     fn serialize_deserialize_font_face() {
-        let font    = CanvasFontFace::from_slice(include_bytes!("../test_data/Lato-Regular.ttf"));
+        let font = CanvasFontFace::from_slice(include_bytes!("../test_data/Lato-Regular.ttf"));
         let encoded = serde_json::to_string(&font).unwrap();
         let decoded = serde_json::from_str::<Arc<CanvasFontFace>>(&encoded).unwrap();
 

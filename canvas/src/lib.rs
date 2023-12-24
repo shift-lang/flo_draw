@@ -18,7 +18,7 @@
 //! `flo_render` can render these instructions to OpenGL or Metal and `flo_render_gl_offscreen` is
 //! available to generate bitmap images on a variety of systems.
 //!
-//! `canvas.js` provides a Javascript implementation that can render the instructions to a HTML 
+//! `canvas.js` provides a Javascript implementation that can render the instructions to a HTML
 //! canvas, and there are also Quartz and Cairo implementations of the canvas provided in FlowBetween's
 //! user interface layers.
 //!
@@ -37,53 +37,56 @@
 #[macro_use]
 extern crate serde_derive;
 
-extern crate futures;
 extern crate desync;
+extern crate futures;
 extern crate hsluv;
 
-mod draw;
-mod path;
-mod font;
-mod color;
-mod sprite;
 mod canvas;
+mod color;
 mod context;
-mod texture;
-mod encoding;
+mod conversion_streams;
 mod decoding;
+mod draw;
+mod draw_resource;
+mod draw_stream;
+mod drawing_target;
+mod encoding;
+mod font;
+mod font_face;
 mod gradient;
 mod namespace;
-mod font_face;
+mod path;
 mod primitives;
+mod sprite;
+mod texture;
 mod transform2d;
-mod draw_stream;
-mod draw_resource;
-mod drawing_target;
-mod conversion_streams;
 
-#[cfg(feature = "outline-fonts")] mod font_line_layout;
-#[cfg(feature = "scenery")] pub mod scenery;
+#[cfg(feature = "outline-fonts")]
+mod font_line_layout;
+#[cfg(feature = "scenery")]
+pub mod scenery;
 
-pub use self::draw::*;
-pub use self::path::*;
-pub use self::font::*;
-pub use self::color::*;
-pub use self::sprite::*;
 pub use self::canvas::*;
+pub use self::color::*;
 pub use self::context::*;
-pub use self::texture::*;
-pub use self::encoding::*;
+pub use self::conversion_streams::*;
 pub use self::decoding::*;
-pub use self::gradient::*;
-pub use self::namespace::*;
-pub use self::font_face::*;
-pub use self::primitives::*;
-pub use self::transform2d::*;
+pub use self::draw::*;
 pub use self::draw_stream::*;
 pub use self::drawing_target::*;
-pub use self::conversion_streams::*;
+pub use self::encoding::*;
+pub use self::font::*;
+pub use self::font_face::*;
+pub use self::gradient::*;
+pub use self::namespace::*;
+pub use self::path::*;
+pub use self::primitives::*;
+pub use self::sprite::*;
+pub use self::texture::*;
+pub use self::transform2d::*;
 
-#[cfg(feature = "outline-fonts")] pub use self::font_line_layout::*;
+#[cfg(feature = "outline-fonts")]
+pub use self::font_line_layout::*;
 
 pub use flo_curves as curves;
-pub use flo_curves::geo::{Coordinate2D, Coord2};
+pub use flo_curves::geo::{Coord2, Coordinate2D};

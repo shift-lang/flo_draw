@@ -1,41 +1,41 @@
 [package]
-name        = "flo_render"
-version     = "0.4.0"
-authors     = ["Andrew Hunter"]
-license     = "Apache-2.0"
-edition     = "2018"
-repository  = "https://github.com/Logicalshift/flowbetween"
+name = "flo_render"
+version = "0.4.0"
+authors = ["Andrew Hunter"]
+license = "Apache-2.0"
+edition = "2018"
+repository = "https://github.com/Logicalshift/flowbetween"
 description = "Streaming API for rendering graphics on hardware"
-categories  = [ "graphics", "rendering", "rendering::graphics-api" ]
-resolver    = "2"
+categories = ["graphics", "rendering", "rendering::graphics-api"]
+resolver = "2"
 
-include     = [ "Cargo.toml", "src/**/*", "shaders/**/*", "bindings/**/*", "build.rs" ]
+include = ["Cargo.toml", "src/**/*", "shaders/**/*", "bindings/**/*", "build.rs"]
 
 [features]
-opengl      = [ "gl", "libc", "flo_render_gl_offscreen" ]
-osx-metal   = [ "metal", "cocoa", "flo_canvas" ]
-render-wgpu = [ "wgpu", "flo_canvas", "lazy_static", "desync", "futures" ]
-profile     = [ ]
+opengl = ["gl", "libc", "flo_render_gl_offscreen"]
+osx-metal = ["metal", "cocoa", "flo_canvas"]
+render-wgpu = ["wgpu", "flo_canvas", "once_cell", "desync", "futures"]
+profile = []
 
 [build-dependencies]
-bindgen = "0.66"
+bindgen = "0.69"
 
 [dependencies]
-gl                      = { version = "0.14", optional = true }
-wgpu                    = { version = "0.16", optional = true }
-metal                   = { version = "0.25", optional = true }
-cocoa                   = { version = "0.25", optional = true }
-libc                    = { version = "0.2", optional = true }
-flo_canvas              = { version = "0.4", optional = true }
-flo_render_gl_offscreen = { version = "0.4", optional = true }
-desync                  = { version = "0.9", optional = true }
-lazy_static             = { version = "1.2", optional = true }
-futures                 = { version = "0.3", optional = true }
-wgpu-profiler           = { version = "0.12", optional = true }
+gl = { version = "0.14", optional = true }
+wgpu = { version = "0.18", optional = true }
+metal = { version = "0.27", optional = true }
+cocoa = { version = "0.25", optional = true }
+libc = { version = "0.2", optional = true }
+flo_canvas = { workspace = true, optional = true }
+flo_render_gl_offscreen = { workspace = true, optional = true }
+desync = { workspace = true, optional = true }
+once_cell = { version = "1.18", optional = true }
+futures = { version = "0.3", optional = true }
+wgpu-profiler = { version = "0.15", optional = true }
 
 [dev-dependencies]
-winit                   = "0.28"
-futures                 = "0.3"
+winit = "0.28"
+futures = "0.3"
 
 [target.'cfg(target_os = "macos")'.dependencies]
-core-foundation         = "0.9"
+core-foundation = "0.9"

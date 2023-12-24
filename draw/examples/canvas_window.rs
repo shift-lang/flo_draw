@@ -1,5 +1,5 @@
-use flo_draw::*;
 use flo_canvas::*;
+use flo_draw::*;
 
 ///
 /// Simple example that displays a canvas window and renders a triangle

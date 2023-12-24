@@ -1,10 +1,10 @@
-use flo_draw::*;
-use flo_draw::canvas::*;
-
 use std::f64;
 use std::sync::*;
 use std::thread;
-use std::time::{Duration};
+use std::time::Duration;
+
+use flo_draw::*;
+use flo_draw::canvas::*;
 
 ///
 /// Draws FlowBetween's mascot as vector graphics with a blur effect
@@ -12,7 +12,9 @@ use std::time::{Duration};
 pub fn main() {
     with_2d_graphics(|| {
         // Decode
-        let mascot = decode_drawing(MASCOT.chars()).collect::<Result<Vec<Draw>, _>>().unwrap();
+        let mascot = decode_drawing(MASCOT.chars())
+            .collect::<Result<Vec<Draw>, _>>()
+            .unwrap();
 
         let canvas = create_drawing_window("Flo with filters");
 
@@ -40,48 +42,78 @@ pub fn main() {
             gc.fill();
 
             gc.layer(LayerId(0));
-            gc.create_dynamic_texture(TextureId(1), SpriteId(1), 0.0, 0.0, 1024.0, 1024.0, 1024.0, 1024.0);
+            gc.create_dynamic_texture(
+                TextureId(1),
+                SpriteId(1),
+                0.0,
+                0.0,
+                1024.0,
+                1024.0,
+                1024.0,
+                1024.0,
+            );
 
             // Create a displacement map filter
             // See wibble_mascot.rs for a way to do a purely vector-based displacement
             gc.create_texture(TextureId(2), 1024, 1024, TextureFormat::Rgba);
-            gc.set_texture_bytes(TextureId(2), 0, 0, 1024, 1024,
-                Arc::new((0..(1024*1024)).into_iter()
-                    .flat_map(|pixel_num| {
-                        let x_pos       = pixel_num % 1024;
-                        let y_pos       = pixel_num / 1024;
+            gc.set_texture_bytes(
+                TextureId(2),
+                0,
+                0,
+                1024,
+                1024,
+                Arc::new(
+                    (0..(1024 * 1024))
+                        .into_iter()
+                        .flat_map(|pixel_num| {
+                            let x_pos = pixel_num % 1024;
+                            let y_pos = pixel_num / 1024;
 
-                        let x_factor    = (x_pos as f64) / 1024.0;
-                        let y_factor    = (y_pos as f64) / 1024.0;
-                        let x_factor    = x_factor * 2.0 * f64::consts::PI;
-                        let y_factor    = y_factor * 2.0 * f64::consts::PI;
-                        let x_factor    = x_factor * 8.0;
-                        let y_factor    = y_factor * 7.0;
+                            let x_factor = (x_pos as f64) / 1024.0;
+                            let y_factor = (y_pos as f64) / 1024.0;
+                            let x_factor = x_factor * 2.0 * f64::consts::PI;
+                            let y_factor = y_factor * 2.0 * f64::consts::PI;
+                            let x_factor = x_factor * 8.0;
+                            let y_factor = y_factor * 7.0;
 
-                        let x_seq       = (x_factor.sin() + 1.0)/2.0;
-                        let y_seq       = (y_factor.cos() + 1.0)/2.0;
+                            let x_seq = (x_factor.sin() + 1.0) / 2.0;
+                            let y_seq = (y_factor.cos() + 1.0) / 2.0;
 
-                        [(y_seq*255.0) as u8, (x_seq*255.0) as u8, 0, 255]
-                    })
-                    .collect::<Vec<_>>()));
+                            [(y_seq * 255.0) as u8, (x_seq * 255.0) as u8, 0, 255]
+                        })
+                        .collect::<Vec<_>>(),
+                ),
+            );
         });
 
         let mut iter = 0;
 
         loop {
-            let phase_1 = (iter as f32)/20.0;
-            let phase_2 = (iter as f32)/23.0;
-            let phase_3 = (iter as f32)/13.0;
-            let phase_4 = (iter as f32)/51.0;
+            let phase_1 = (iter as f32) / 20.0;
+            let phase_2 = (iter as f32) / 23.0;
+            let phase_3 = (iter as f32) / 13.0;
+            let phase_4 = (iter as f32) / 51.0;
 
             let x_off = phase_1.sin() * 50.0;
             let y_off = phase_2.sin() * 50.0;
-            let blur  = (phase_3.sin() + 0.75) * 40.0;
+            let blur = (phase_3.sin() + 0.75) * 40.0;
 
-            let filter = match (iter/(13*20)) % 4 {
-                1     => vec![TextureFilter::GaussianBlur(blur.abs()), TextureFilter::DisplacementMap(TextureId(2), 8.0, 8.0)],
-                2     => vec![TextureFilter::AlphaBlend((phase_3.cos() + 1.0) / 2.0), TextureFilter::GaussianBlur(blur.abs()), TextureFilter::DisplacementMap(TextureId(2), 8.0, 8.0)],
-                3     => vec![TextureFilter::Mask(TextureId(1)), TextureFilter::AlphaBlend((phase_3.cos() + 1.0) / 2.0), TextureFilter::GaussianBlur(blur.abs()), TextureFilter::DisplacementMap(TextureId(2), 8.0, 8.0)],
+            let filter = match (iter / (13 * 20)) % 4 {
+                1 => vec![
+                    TextureFilter::GaussianBlur(blur.abs()),
+                    TextureFilter::DisplacementMap(TextureId(2), 8.0, 8.0),
+                ],
+                2 => vec![
+                    TextureFilter::AlphaBlend((phase_3.cos() + 1.0) / 2.0),
+                    TextureFilter::GaussianBlur(blur.abs()),
+                    TextureFilter::DisplacementMap(TextureId(2), 8.0, 8.0),
+                ],
+                3 => vec![
+                    TextureFilter::Mask(TextureId(1)),
+                    TextureFilter::AlphaBlend((phase_3.cos() + 1.0) / 2.0),
+                    TextureFilter::GaussianBlur(blur.abs()),
+                    TextureFilter::DisplacementMap(TextureId(2), 8.0, 8.0),
+                ],
 
                 0 | _ => vec![TextureFilter::GaussianBlur(blur.abs())],
             };
@@ -93,13 +125,15 @@ pub fn main() {
 
                 gc.sprite_transform(SpriteTransform::Identity);
                 gc.sprite_transform(SpriteTransform::Translate(-512.0, -384.0));
-                gc.sprite_transform(SpriteTransform::Scale((phase_4.sin() + 1.0) * 0.1 + 0.9, (phase_4.sin() + 1.0) * 0.1 + 0.9));
+                gc.sprite_transform(SpriteTransform::Scale(
+                    (phase_4.sin() + 1.0) * 0.1 + 0.9,
+                    (phase_4.sin() + 1.0) * 0.1 + 0.9,
+                ));
                 gc.sprite_transform(SpriteTransform::Rotate((phase_3.sin()) * 5.0));
                 gc.sprite_transform(SpriteTransform::Translate(512.0, 384.0));
                 gc.sprite_transform(SpriteTransform::Translate(x_off, y_off));
                 gc.draw_sprite_with_filters(SpriteId(0), filter);
             });
-
 
             // Wait for the next frame
             thread::sleep(Duration::from_nanos(1_000_000_000 / 60));

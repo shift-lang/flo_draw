@@ -11,7 +11,7 @@ use std::ffi::{c_void};
 ///
 pub struct Buffer {
     /// The buffer that this is managing
-    buffer: metal::Buffer
+    buffer: metal::Buffer,
 }
 
 impl Buffer {
@@ -26,8 +26,8 @@ impl Buffer {
 
         // Generate the buffer
         let buffer = device.new_buffer_with_data(vertices.as_ptr() as *const c_void,
-            (vertices.len() * std::mem::size_of::<MetalVertex2D>()) as u64,
-            metal::MTLResourceOptions::CPUCacheModeDefaultCache | metal::MTLResourceOptions::StorageModeManaged);
+                                                 (vertices.len() * std::mem::size_of::<MetalVertex2D>()) as u64,
+                                                 metal::MTLResourceOptions::CPUCacheModeDefaultCache | metal::MTLResourceOptions::StorageModeManaged);
 
         // Return the buffer object
         Buffer {
@@ -40,8 +40,8 @@ impl Buffer {
     ///
     pub fn from_indices(device: &metal::Device, indices: Vec<u16>) -> Buffer {
         let buffer = device.new_buffer_with_data(indices.as_ptr() as *const c_void,
-            (indices.len() * std::mem::size_of::<u16>()) as u64,
-            metal::MTLResourceOptions::CPUCacheModeDefaultCache | metal::MTLResourceOptions::StorageModeManaged);
+                                                 (indices.len() * std::mem::size_of::<u16>()) as u64,
+                                                 metal::MTLResourceOptions::CPUCacheModeDefaultCache | metal::MTLResourceOptions::StorageModeManaged);
 
         Buffer {
             buffer: buffer

@@ -1,8 +1,8 @@
+use std::thread;
+use std::time::Duration;
+
 use flo_draw::*;
 use flo_draw::canvas::*;
-
-use std::thread;
-use std::time::{Duration};
 
 ///
 /// Dynamic textures can be used to have a texture created from a sprite that is re-rendered to match the resolution of the canvas
@@ -19,7 +19,7 @@ pub fn main() {
             gc.clear_canvas(Color::Rgba(1.0, 1.0, 1.0, 1.0));
             gc.canvas_height(1000.0);
             gc.center_region(0.0, 0.0, 1000.0, 1000.0);
-            
+
             // Set up the sprite
             gc.sprite(SpriteId(0));
             gc.clear_sprite();

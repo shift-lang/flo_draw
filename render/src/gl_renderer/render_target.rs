@@ -26,7 +26,7 @@ pub struct RenderTarget {
     drop_frame_buffer: bool,
 
     /// The size in pixels
-    size: (u16, u16)
+    size: (u16, u16),
 }
 
 impl RenderTarget {
@@ -60,8 +60,8 @@ impl RenderTarget {
                     gl::FramebufferTexture2D(gl::FRAMEBUFFER, gl::COLOR_ATTACHMENT0, gl::TEXTURE_2D, *backing_texture, 0);
 
                     // This type of render target uses a backing texture
-                    texture         = Some(backing_texture);
-                    render_buffer   = None;
+                    texture = Some(backing_texture);
+                    render_buffer = None;
                 }
 
                 RenderTargetType::Multisampled => {
@@ -80,9 +80,9 @@ impl RenderTarget {
                     gl::BindRenderbuffer(gl::RENDERBUFFER, old_renderbuffer as u32);
 
                     // This type of render target uses a render buffer
-                    texture         = None;
-                    render_buffer   = Some(backing_renderbuffer);
-                },
+                    texture = None;
+                    render_buffer = Some(backing_renderbuffer);
+                }
 
                 RenderTargetType::MultisampledTexture => {
                     // Use a backing texture for the rendering
@@ -93,8 +93,8 @@ impl RenderTarget {
                     gl::FramebufferTexture2D(gl::FRAMEBUFFER, gl::COLOR_ATTACHMENT0, gl::TEXTURE_2D_MULTISAMPLE, *backing_texture, 0);
 
                     // This type of render target uses a backing texture
-                    texture         = Some(backing_texture);
-                    render_buffer   = None;
+                    texture = Some(backing_texture);
+                    render_buffer = None;
                 }
 
                 RenderTargetType::Monochrome => {
@@ -106,8 +106,8 @@ impl RenderTarget {
                     gl::FramebufferTexture2D(gl::FRAMEBUFFER, gl::COLOR_ATTACHMENT0, gl::TEXTURE_2D, *backing_texture, 0);
 
                     // This type of render target uses a backing texture
-                    texture         = Some(backing_texture);
-                    render_buffer   = None;
+                    texture = Some(backing_texture);
+                    render_buffer = None;
                 }
 
                 RenderTargetType::MonochromeMultisampledTexture => {
@@ -119,8 +119,8 @@ impl RenderTarget {
                     gl::FramebufferTexture2D(gl::FRAMEBUFFER, gl::COLOR_ATTACHMENT0, gl::TEXTURE_2D_MULTISAMPLE, *backing_texture, 0);
 
                     // This type of render target uses a backing texture
-                    texture         = Some(backing_texture);
-                    render_buffer   = None;
+                    texture = Some(backing_texture);
+                    render_buffer = None;
                 }
             };
 
@@ -131,12 +131,12 @@ impl RenderTarget {
 
             // Create the render target
             RenderTarget {
-                frame_buffer:       frame_buffer,
-                texture:            texture,
-                render_buffer:      render_buffer,
-                size:               (width, height),
-                _render_type:       render_type,
-                drop_frame_buffer:  true
+                frame_buffer: frame_buffer,
+                texture: texture,
+                render_buffer: render_buffer,
+                size: (width, height),
+                _render_type: render_type,
+                drop_frame_buffer: true,
             }
         }
     }
@@ -148,8 +148,8 @@ impl RenderTarget {
         unsafe {
             // Clone the texture for later
             let texture = texture.clone();
-            let width   = texture.width;
-            let height  = texture.height;
+            let width = texture.width;
+            let height = texture.height;
 
             // Find the currently bound frame buffer (so we can rebind it)
             let mut old_frame_buffer = 0;
@@ -163,8 +163,8 @@ impl RenderTarget {
             panic_on_gl_error("Bind new framebuffer");
 
             // We're always using a texture and not a render buffer here
-            let render_buffer   = None;
-            let render_type     = RenderTargetType::Standard;
+            let render_buffer = None;
+            let render_type = RenderTargetType::Standard;
 
             // Bind the texture to the frame buffer
             match texture.texture_target {
@@ -176,7 +176,7 @@ impl RenderTarget {
                     gl::FramebufferTexture2D(gl::FRAMEBUFFER, gl::COLOR_ATTACHMENT0, gl::TEXTURE_2D, *texture, 0);
                 }
 
-                _ => { return None }
+                _ => { return None; }
             }
 
             // Bind back to the original framebuffer
@@ -184,12 +184,12 @@ impl RenderTarget {
 
             // Generate the final render target
             Some(RenderTarget {
-                frame_buffer:       frame_buffer,
-                texture:            Some(texture),
-                render_buffer:      render_buffer,
-                size:               (width as _, height as _),
-                _render_type:       render_type,
-                drop_frame_buffer:  true
+                frame_buffer: frame_buffer,
+                texture: Some(texture),
+                render_buffer: render_buffer,
+                size: (width as _, height as _),
+                _render_type: render_type,
+                drop_frame_buffer: true,
             })
         }
     }
@@ -205,12 +205,12 @@ impl RenderTarget {
         gl::GetIntegerv(gl::DRAW_FRAMEBUFFER_BINDING, &mut current_frame_buffer);
 
         RenderTarget {
-            frame_buffer:       current_frame_buffer as u32,
-            texture:            None,
-            render_buffer:      None,
-            drop_frame_buffer:  false,
-            _render_type:       RenderTargetType::Standard,
-            size:               (width, height)
+            frame_buffer: current_frame_buffer as u32,
+            texture: None,
+            render_buffer: None,
+            drop_frame_buffer: false,
+            _render_type: RenderTargetType::Standard,
+            size: (width, height),
         }
     }
 

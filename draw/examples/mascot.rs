@@ -7,7 +7,9 @@ use flo_draw::canvas::*;
 pub fn main() {
     with_2d_graphics(|| {
         // Decode
-        let mascot = decode_drawing(MASCOT.chars()).collect::<Result<Vec<Draw>, _>>().unwrap();
+        let mascot = decode_drawing(MASCOT.chars())
+            .collect::<Result<Vec<Draw>, _>>()
+            .unwrap();
 
         // Render to a window
         let canvas = create_drawing_window("Flo");

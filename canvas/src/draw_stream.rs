@@ -2,19 +2,19 @@ use crate::draw::*;
 use crate::draw_resource::*;
 
 use ::desync::*;
+use futures::prelude::*;
 use futures::task;
 use futures::task::{Poll, Waker};
-use futures::prelude::*;
 
+use std::collections::{HashMap, HashSet, VecDeque};
 use std::mem;
 use std::pin::*;
 use std::sync::*;
-use std::collections::{VecDeque, HashSet, HashMap};
 
 ///
 /// The draw stream core contains the shared data structures for a stream of drawing instructions
 ///
-pub (crate) struct DrawStreamCore {
+pub(crate) struct DrawStreamCore {
     /// The pending drawing instructions, and the resource that it affects
     pending_drawing: Vec<(DrawResource, Draw)>,
 
@@ -28,7 +28,7 @@ pub (crate) struct DrawStreamCore {
     closed: bool,
 
     /// The waker for this core, if there is one
-    waiting_task: Option<Waker>
+    waiting_task: Option<Waker>,
 }
 
 ///
@@ -39,7 +39,7 @@ pub struct DrawStream {
     core: Arc<Desync<DrawStreamCore>>,
 
     /// Drawing instructions buffered from the core
-    buffer: VecDeque<Draw>
+    buffer: VecDeque<Draw>,
 }
 
 impl DrawStreamCore {
@@ -49,11 +49,11 @@ impl DrawStreamCore {
     pub fn new() -> DrawStreamCore {
         // No drawing instructions, and drawing to layer 0 by default
         DrawStreamCore {
-            pending_drawing:    vec![],
-            target_resource:    DrawResource::Layer(LayerId(0)),
-            usage_count:        0,
-            closed:             false,
-            waiting_task:       None
+            pending_drawing: vec![],
+            target_resource: DrawResource::Layer(LayerId(0)),
+            usage_count: 0,
+            closed: false,
+            waiting_task: None,
         }
     }
 
@@ -87,26 +87,30 @@ impl DrawStreamCore {
         for draw_index in (0..self.pending_drawing.len()).rev() {
             match self.pending_drawing[draw_index] {
                 // Commands that might cause the store/restore to not undo perfectly break the sequence
-                (_, Draw::Clip)         |
-                (_, Draw::Unclip)       |
-                (_, Draw::StartFrame)   |
-                (_, Draw::ShowFrame)    => break,
+                (_, Draw::Clip)
+                | (_, Draw::Unclip)
+                | (_, Draw::StartFrame)
+                | (_, Draw::ShowFrame) => break,
 
                 // If the state stack has a pop for every push then we can remove these requests too
                 // TODO: this has a bug in that if the final event is a 'push' instead of a 'pop'
                 // then it will mistakenly believe the states can be removed
-                (_, Draw::PushState)    => { state_stack_depth += 1; },
-                (_, Draw::PopState)     => { state_stack_depth -= 1; },
+                (_, Draw::PushState) => {
+                    state_stack_depth += 1;
+                }
+                (_, Draw::PopState) => {
+                    state_stack_depth -= 1;
+                }
 
                 // If we find no sequence breaks and a store, this is where we want to rewind to
-                (_, Draw::Store)        => {
+                (_, Draw::Store) => {
                     if state_stack_depth == 0 {
-                        last_store = Some(draw_index+1);
+                        last_store = Some(draw_index + 1);
                     }
                     break;
-                },
+                }
 
-                _               => ()
+                _ => (),
             };
         }
 
@@ -121,20 +125,20 @@ impl DrawStreamCore {
     ///
     pub fn balance_show_frames(&mut self) {
         // The indexes of instructions that cancel each other out
-        let mut indexes_to_remove   = vec![];
+        let mut indexes_to_remove = vec![];
 
         // The stack of active 'show frame' instructions
-        let mut frame_stack         = vec![];
+        let mut frame_stack = vec![];
 
         // Whether or not the pending drawing should be rewritten in a 'start frame/show frame' pair and if it should start by resetting the frame
-        let mut show_frame          = false;
-        let mut reset_frame         = false;
+        let mut show_frame = false;
+        let mut reset_frame = false;
 
         // Trace the pending drawings for frame operations
         for (idx, (_resource, draw)) in self.pending_drawing.iter().enumerate() {
             match draw {
-                Draw::StartFrame    => frame_stack.push(idx),
-                Draw::ShowFrame     => {
+                Draw::StartFrame => frame_stack.push(idx),
+                Draw::ShowFrame => {
                     // Remove the corresponding 'start frame' instruction
                     if let Some(start_frame_idx) = frame_stack.pop() {
                         show_frame = true;
@@ -144,34 +148,35 @@ impl DrawStreamCore {
                     }
                 }
 
-                Draw::ResetFrame    => {
+                Draw::ResetFrame => {
                     // We move the 'reset frame' request to the start of the stack
                     reset_frame = true;
-    
+
                     // Remove all frame instructions up to this point
                     indexes_to_remove.extend(frame_stack.drain(..));
                     indexes_to_remove.push(idx);
                 }
 
-                _                   => { }
+                _ => {}
             }
         }
 
         // Some patterns are 'already balanced' and don't require us to rewrite the whole list of drawing instructions
         let already_balanced = match (show_frame, reset_frame) {
-            (false, false)  => vec![],
-            (false, true)   => vec![0],
-            (true, false)   => vec![0, self.pending_drawing.len()-1],
-            (true, true)    => vec![0, 1, self.pending_drawing.len()-1]
+            (false, false) => vec![],
+            (false, true) => vec![0],
+            (true, false) => vec![0, self.pending_drawing.len() - 1],
+            (true, true) => vec![0, 1, self.pending_drawing.len() - 1],
         };
 
         if indexes_to_remove == already_balanced {
             // If there's just a 'start frame' and a 'show frame' at the end, then there's nothing to do
         } else if indexes_to_remove.len() > 0 {
             // Rewrite the pending queue if there was anything to remove
-            let indexes_to_remove   = indexes_to_remove.into_iter().collect::<HashSet<_>>();
-            let old_drawing         = mem::take(&mut self.pending_drawing);
-            self.pending_drawing    = old_drawing.into_iter()
+            let indexes_to_remove = indexes_to_remove.into_iter().collect::<HashSet<_>>();
+            let old_drawing = mem::take(&mut self.pending_drawing);
+            self.pending_drawing = old_drawing
+                .into_iter()
                 .enumerate()
                 .filter(|(idx, _item)| !indexes_to_remove.contains(idx))
                 .map(|(_idx, item)| item)
@@ -179,12 +184,15 @@ impl DrawStreamCore {
 
             // If any frame instructions were used, wrap the whole set of instructions in a frame (reset frames move to the start)
             if show_frame {
-                self.pending_drawing.insert(0, (DrawResource::Frame, Draw::StartFrame));
-                self.pending_drawing.push((DrawResource::Frame, Draw::ShowFrame));
+                self.pending_drawing
+                    .insert(0, (DrawResource::Frame, Draw::StartFrame));
+                self.pending_drawing
+                    .push((DrawResource::Frame, Draw::ShowFrame));
             }
 
             if reset_frame {
-                self.pending_drawing.insert(0, (DrawResource::Frame, Draw::ResetFrame));
+                self.pending_drawing
+                    .insert(0, (DrawResource::Frame, Draw::ResetFrame));
             }
         }
     }
@@ -194,19 +202,27 @@ impl DrawStreamCore {
     ///
     pub fn clear_resource(&mut self, resource: DrawResource) {
         // The indexes that are unused
-        let mut unused_indexes      = HashSet::new();
+        let mut unused_indexes = HashSet::new();
 
         // The indexes that we're tracking as unused
-        let mut maybe_unused        = vec![];
+        let mut maybe_unused = vec![];
 
         // The index where the resource was last selected
-        let mut last_selection_idx  = None;
+        let mut last_selection_idx = None;
 
         // Analyse the pending drawing for any place the resource is targeted, and for any place it's used
         for (idx, (target_resource, draw)) in self.pending_drawing.iter().enumerate() {
             match draw {
-                Draw::Sprite(sprite_id) => { if resource == DrawResource::Sprite(*sprite_id)    { last_selection_idx = Some(idx); } },
-                Draw::Layer(layer_id)   => { if resource == DrawResource::Layer(*layer_id)      { last_selection_idx = Some(idx); } }
+                Draw::Sprite(sprite_id) => {
+                    if resource == DrawResource::Sprite(*sprite_id) {
+                        last_selection_idx = Some(idx);
+                    }
+                }
+                Draw::Layer(layer_id) => {
+                    if resource == DrawResource::Layer(*layer_id) {
+                        last_selection_idx = Some(idx);
+                    }
+                }
 
                 _ => {}
             }
@@ -221,7 +237,9 @@ impl DrawStreamCore {
                 maybe_unused.push(idx);
             } else if draw.uses_resource(&resource) {
                 // If the resource is used, then these indexes and the last selection index should not be cleared
-                last_selection_idx.take().map(|idx| unused_indexes.remove(&idx));
+                last_selection_idx
+                    .take()
+                    .map(|idx| unused_indexes.remove(&idx));
                 maybe_unused = vec![];
             }
         }
@@ -231,8 +249,9 @@ impl DrawStreamCore {
 
         // Remove any item in the unused index list
         if unused_indexes.len() > 0 {
-            let old_drawing         = mem::take(&mut self.pending_drawing);
-            self.pending_drawing    = old_drawing.into_iter()
+            let old_drawing = mem::take(&mut self.pending_drawing);
+            self.pending_drawing = old_drawing
+                .into_iter()
                 .enumerate()
                 .filter(|(idx, _item)| !unused_indexes.contains(idx))
                 .map(|(_idx, item)| item)
@@ -245,10 +264,10 @@ impl DrawStreamCore {
     ///
     pub fn remove_unused_state_stack_ops(&mut self) {
         // A stack of push states which have no drawing operations (cleared on any drawing operation)
-        let mut push_state_stack    = vec![];
+        let mut push_state_stack = vec![];
 
         // The indexes that we should remove
-        let mut to_remove           = HashSet::new();
+        let mut to_remove = HashSet::new();
 
         for (idx, (_tgt_resource, draw)) in self.pending_drawing.iter().enumerate() {
             match draw {
@@ -280,8 +299,9 @@ impl DrawStreamCore {
 
         // Remove anything in the to_remove hashset
         if to_remove.len() > 0 {
-            let old_drawing         = mem::take(&mut self.pending_drawing);
-            self.pending_drawing    = old_drawing.into_iter()
+            let old_drawing = mem::take(&mut self.pending_drawing);
+            self.pending_drawing = old_drawing
+                .into_iter()
                 .enumerate()
                 .filter(|(idx, _item)| !to_remove.contains(idx))
                 .map(|(_idx, item)| item)
@@ -293,8 +313,8 @@ impl DrawStreamCore {
     /// Removes any resource in this stream that's declared but not used
     ///
     pub fn remove_unused_resources(&mut self) {
-        let mut unused_resources    = HashMap::new();
-        let mut to_remove           = HashSet::new();
+        let mut unused_resources = HashMap::new();
+        let mut to_remove = HashSet::new();
 
         for (idx, (target_resource, draw)) in self.pending_drawing.iter().enumerate() {
             // Figure out the resources used by this step
@@ -318,8 +338,12 @@ impl DrawStreamCore {
                     } else {
                         // A self-reference is added to the indexes that form the declaration of the resource (except for layers and sprites)
                         match resource {
-                            DrawResource::Layer(_) | DrawResource::Sprite(_)    => { },
-                            _                                                   => { unused_resources.get_mut(&resource).map(|declaration_list| declaration_list.push(idx)); }
+                            DrawResource::Layer(_) | DrawResource::Sprite(_) => {}
+                            _ => {
+                                unused_resources
+                                    .get_mut(&resource)
+                                    .map(|declaration_list| declaration_list.push(idx));
+                            }
                         }
                     }
                 }
@@ -328,8 +352,9 @@ impl DrawStreamCore {
 
         // Remove any resources in the to_remove set
         if to_remove.len() > 0 {
-            let old_drawing         = mem::take(&mut self.pending_drawing);
-            self.pending_drawing    = old_drawing.into_iter()
+            let old_drawing = mem::take(&mut self.pending_drawing);
+            self.pending_drawing = old_drawing
+                .into_iter()
                 .enumerate()
                 .filter(|(idx, _item)| !to_remove.contains(idx))
                 .map(|(_idx, item)| item)
@@ -341,8 +366,8 @@ impl DrawStreamCore {
     /// Removes any commands from the stream that have a source or target of a layer
     ///
     fn clear_all_layers(&mut self) {
-        let mut to_remove           = HashSet::new();
-        let mut last_layer          = None;
+        let mut to_remove = HashSet::new();
+        let mut last_layer = None;
 
         // Queue up any instruction that targets a layer for removal
         for (idx, (target_resource, draw)) in self.pending_drawing.iter().enumerate() {
@@ -357,8 +382,9 @@ impl DrawStreamCore {
 
         // Remove any resources in the to_remove set
         if to_remove.len() > 0 {
-            let old_drawing         = mem::take(&mut self.pending_drawing);
-            self.pending_drawing    = old_drawing.into_iter()
+            let old_drawing = mem::take(&mut self.pending_drawing);
+            self.pending_drawing = old_drawing
+                .into_iter()
                 .enumerate()
                 .filter(|(idx, _item)| !to_remove.contains(idx))
                 .map(|(_idx, item)| item)
@@ -367,7 +393,8 @@ impl DrawStreamCore {
 
         // Re-select the target layer if there is one
         if let Some(last_layer) = last_layer {
-            self.pending_drawing.push((DrawResource::Layer(last_layer), Draw::Layer(last_layer)));
+            self.pending_drawing
+                .push((DrawResource::Layer(last_layer), Draw::Layer(last_layer)));
         }
     }
 
@@ -376,42 +403,50 @@ impl DrawStreamCore {
     ///
     pub fn write<DrawIter: Iterator<Item=Draw>>(&mut self, drawing: DrawIter) {
         let mut drawing_cleared = false;
-        let mut balance_frames  = false;
-        let mut has_stack_ops   = false;
+        let mut balance_frames = false;
+        let mut has_stack_ops = false;
 
         for draw in drawing {
             // Process the drawing instruction
             match &draw {
-                Draw::Layer(layer_id)   => { self.target_resource = DrawResource::Layer(*layer_id); },
-                Draw::Sprite(sprite_id) => { self.target_resource = DrawResource::Sprite(*sprite_id); },
+                Draw::Layer(layer_id) => {
+                    self.target_resource = DrawResource::Layer(*layer_id);
+                }
+                Draw::Sprite(sprite_id) => {
+                    self.target_resource = DrawResource::Sprite(*sprite_id);
+                }
 
-                Draw::ClearLayer        |
-                Draw::ClearSprite       => { 
+                Draw::ClearLayer | Draw::ClearSprite => {
                     self.clear_resource(self.target_resource);
-                    drawing_cleared = true; 
-                    
+                    drawing_cleared = true;
+
                     match self.target_resource {
-                        DrawResource::Layer(layer_id)   => self.pending_drawing.push((self.target_resource, Draw::Layer(layer_id))),
-                        DrawResource::Sprite(sprite_id) => self.pending_drawing.push((self.target_resource, Draw::Sprite(sprite_id))),
-                        _                               => unimplemented!()
+                        DrawResource::Layer(layer_id) => self
+                            .pending_drawing
+                            .push((self.target_resource, Draw::Layer(layer_id))),
+                        DrawResource::Sprite(sprite_id) => self
+                            .pending_drawing
+                            .push((self.target_resource, Draw::Sprite(sprite_id))),
+                        _ => unimplemented!(),
                     }
-                },
+                }
 
-                Draw::ClearCanvas(_)    => { 
-                    self.pending_drawing.retain(|(tgt, _action)| tgt == &DrawResource::Frame);
+                Draw::ClearCanvas(_) => {
+                    self.pending_drawing
+                        .retain(|(tgt, _action)| tgt == &DrawResource::Frame);
                     self.target_resource = DrawResource::Layer(LayerId(0));
-                },
+                }
 
-                Draw::ClearAllLayers    => {
+                Draw::ClearAllLayers => {
                     self.clear_all_layers();
                     drawing_cleared = true;
                 }
 
-                Draw::PopState          => {
+                Draw::PopState => {
                     has_stack_ops = true;
                 }
 
-                _                       => { }
+                _ => {}
             }
 
             // Append the drawing instruction to the pending drawing
@@ -424,7 +459,7 @@ impl DrawStreamCore {
                     // Rewind if the action is a 'restore' action
                     self.rewind_to_last_store();
                     drawing_cleared = true;
-                },
+                }
 
                 Draw::FreeStoredBuffer => {
                     // If we free a stored buffer immediately after a store, then both operations
@@ -436,8 +471,7 @@ impl DrawStreamCore {
                     }
                 }
 
-                Draw::ShowFrame         |
-                Draw::ResetFrame        => {
+                Draw::ShowFrame | Draw::ResetFrame => {
                     balance_frames = true;
                     self.pending_drawing.push((DrawResource::Frame, draw));
                 }
@@ -481,8 +515,9 @@ impl DrawStreamCore {
     ///
     /// Returns the pending drawing operations in this core
     ///
-    pub fn get_pending_drawing<'a>(&'a self) -> impl 'a+Iterator<Item=Draw> {
-        self.pending_drawing.iter()
+    pub fn get_pending_drawing<'a>(&'a self) -> impl 'a + Iterator<Item=Draw> {
+        self.pending_drawing
+            .iter()
             .map(|(_, drawing)| drawing)
             .cloned()
     }
@@ -492,10 +527,10 @@ impl DrawStream {
     ///
     /// Creates a draw stream that will read from the specified core
     ///
-    pub (crate) fn with_core(core: &Arc<Desync<DrawStreamCore>>) -> DrawStream {
+    pub(crate) fn with_core(core: &Arc<Desync<DrawStreamCore>>) -> DrawStream {
         DrawStream {
-            core:   Arc::clone(core),
-            buffer: VecDeque::new()
+            core: Arc::clone(core),
+            buffer: VecDeque::new(),
         }
     }
 }
@@ -520,7 +555,9 @@ impl Stream for DrawStream {
                     (VecDeque::new(), core.closed)
                 } else {
                     // Convert the buffer for reading (will always be at least one item in the result)
-                    let new_buffer = core.pending_drawing.drain(..)
+                    let new_buffer = core
+                        .pending_drawing
+                        .drain(..)
                         .map(|(_, draw)| draw)
                         .collect();
 

@@ -49,7 +49,7 @@ pub enum TextureRenderRequest {
     CopyTexture(render::TextureId, render::TextureId),
 
     /// Applies a filter to the texture
-    Filter(render::TextureId, TextureFilterRequest)
+    Filter(render::TextureId, TextureFilterRequest),
 }
 
 impl TextureRenderRequest {
@@ -60,13 +60,13 @@ impl TextureRenderRequest {
         use TextureRenderRequest::*;
 
         match self {
-            CreateBlankTexture(_, _, _)             => vec![],
-            SetBytes(_, _, _, _)                    => vec![],
-            CreateMipMaps(_)                        => vec![],
-            FromSprite(_, _, _)                     => vec![],
+            CreateBlankTexture(_, _, _) => vec![],
+            SetBytes(_, _, _, _) => vec![],
+            CreateMipMaps(_) => vec![],
+            FromSprite(_, _, _) => vec![],
             DynamicTexture(_, _, _, _, _, requests) => requests.iter().flat_map(|request| request.used_textures()).collect(),
-            CopyTexture(copy_from, _)               => vec![*copy_from],
-            Filter(_, filter_request)               => filter_request.used_textures(),
+            CopyTexture(copy_from, _) => vec![*copy_from],
+            Filter(_, filter_request) => filter_request.used_textures(),
         }
     }
 }

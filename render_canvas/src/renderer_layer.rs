@@ -30,7 +30,7 @@ pub struct Layer {
     pub alpha: f64,
 
     /// The stored states for this layer
-    pub stored_states: Vec<LayerState>
+    pub stored_states: Vec<LayerState>,
 }
 
 impl Layer {
@@ -40,7 +40,7 @@ impl Layer {
     pub fn update_transform(&mut self, active_transform: &canvas::Transform2D) {
         if &self.state.current_matrix != active_transform && !self.state.is_sprite {
             // Update the current matrix
-            self.state.current_matrix   = *active_transform;
+            self.state.current_matrix = *active_transform;
 
             self.update_scale_factor();
 
@@ -56,9 +56,9 @@ impl Layer {
         // Work out the scale factor from the matrix (skewed matrices won't produce accurate values here)
         let canvas::Transform2D([[_a, _b, _], [d, e, _], [_, _, _]]) = self.state.current_matrix;
         // let scale_x              = a*a + b*b;
-        let scale_y                 = d*d + e*e;
+        let scale_y = d * d + e * e;
 
-        self.state.scale_factor     = scale_y.sqrt() * self.state.base_scale_factor;
+        self.state.scale_factor = scale_y.sqrt() * self.state.base_scale_factor;
     }
 
     ///
@@ -73,8 +73,8 @@ impl Layer {
     ///
     pub fn pop_state(&mut self) {
         // The active layer transform is preserved across a state pop (the transform is global). These are the values set by `update_transform` above
-        let old_matrix          = self.state.current_matrix;
-        let old_scale_factor    = self.state.scale_factor;
+        let old_matrix = self.state.current_matrix;
+        let old_scale_factor = self.state.scale_factor;
 
         // Pop the state from the layer
         self.stored_states.pop()
@@ -83,8 +83,8 @@ impl Layer {
         // Keep the matrix/scale factor from before so `update_transform` will do the right thing later on (see PopState: note that the transform is popped independently of the layer state)
         if !self.state.is_sprite {
             // Sprites update transforms more immediately so they are excluded here
-            self.state.current_matrix   = old_matrix;
-            self.state.scale_factor     = old_scale_factor;
+            self.state.current_matrix = old_matrix;
+            self.state.scale_factor = old_scale_factor;
         }
     }
 }

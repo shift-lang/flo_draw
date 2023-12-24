@@ -1,5 +1,5 @@
-use flo_draw::*;
 use flo_canvas::*;
+use flo_draw::*;
 
 ///
 /// Displays a filled circle
@@ -7,7 +7,7 @@ use flo_canvas::*;
 pub fn main() {
     with_2d_graphics(|| {
         // Create a window
-        let canvas      = create_drawing_window("Circle");
+        let canvas = create_drawing_window("Circle");
 
         // Draw a circle
         canvas.draw(|gc| {

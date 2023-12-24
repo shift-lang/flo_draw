@@ -18,10 +18,10 @@ impl Default for LayerBounds {
     fn default() -> Self {
         // Default value is an undefined bounds value
         LayerBounds {
-            min_x:  f32::MAX,
-            min_y:  f32::MAX,
-            max_x:  f32::MIN,
-            max_y:  f32::MIN
+            min_x: f32::MAX,
+            min_y: f32::MAX,
+            max_x: f32::MIN,
+            max_y: f32::MIN,
         }
     }
 }
@@ -49,9 +49,9 @@ impl LayerBounds {
     #[inline]
     pub fn is_undefined(&self) -> bool {
         self.min_x == f32::MAX ||
-        self.min_y == f32::MAX ||
-        self.max_x == f32::MIN ||
-        self.max_y == f32::MIN
+            self.min_y == f32::MAX ||
+            self.max_x == f32::MIN ||
+            self.max_y == f32::MIN
     }
 
     ///
@@ -66,7 +66,7 @@ impl LayerBounds {
             min_x: self.min_x - radius,
             min_y: self.min_y - radius,
             max_x: self.max_x + radius,
-            max_y: self.max_y + radius
+            max_y: self.max_y + radius,
         };
 
         if new_bounds.min_x > new_bounds.max_x || new_bounds.min_y > new_bounds.max_y {
@@ -139,15 +139,15 @@ impl LayerBounds {
     ///
     pub fn to_viewport_pixels(&self, viewport_size: &render::Size2D) -> LayerBounds {
         // The viewport occupies the coordinates -1 to 1: these map to the pixel coordinates 0-viewport_size
-        let render::Size2D(w, h)    = viewport_size;
-        let w                       = *w as f32;
-        let h                       = *h as f32;
+        let render::Size2D(w, h) = viewport_size;
+        let w = *w as f32;
+        let h = *h as f32;
 
         LayerBounds {
-            min_x: (self.min_x + 1.0)/2.0 * w,
-            min_y: (self.min_y + 1.0)/2.0 * h,
-            max_x: (self.max_x + 1.0)/2.0 * w,
-            max_y: (self.max_y + 1.0)/2.0 * h,
+            min_x: (self.min_x + 1.0) / 2.0 * w,
+            min_y: (self.min_y + 1.0) / 2.0 * h,
+            max_x: (self.max_x + 1.0) / 2.0 * w,
+            max_y: (self.max_y + 1.0) / 2.0 * h,
         }
     }
 
@@ -155,9 +155,9 @@ impl LayerBounds {
     /// Converts from viewport pixel coordinates to viewport rendering coordinates (from -1 to 1)
     ///
     pub fn to_viewport_coordinates(&self, viewport_size: &render::Size2D) -> LayerBounds {
-        let render::Size2D(w, h)    = viewport_size;
-        let w                       = *w as f32;
-        let h                       = *h as f32;
+        let render::Size2D(w, h) = viewport_size;
+        let w = *w as f32;
+        let h = *h as f32;
 
         LayerBounds {
             min_x: (self.min_x / w) * 2.0 - 1.0,
@@ -184,7 +184,7 @@ impl LayerBounds {
     ///
     pub fn to_sprite_bounds(&self) -> canvas::SpriteBounds {
         canvas::SpriteBounds(
-            canvas::SpritePosition(self.min_x, self.min_y), 
+            canvas::SpritePosition(self.min_x, self.min_y),
             canvas::SpriteSize(self.width(), self.height()))
     }
 }

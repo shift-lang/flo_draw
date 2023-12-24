@@ -7,20 +7,20 @@
 //! implemented using `flo_draw` from changes to glutin.
 //!
 
-mod key;
 mod draw_event;
+mod key;
 mod pointer_event;
 
-mod render_request;
 mod draw_event_request;
+mod render_request;
 
 mod draw_window_request;
 
-pub use self::key::*;
 pub use self::draw_event::*;
+pub use self::key::*;
 pub use self::pointer_event::*;
 
-pub use self::render_request::*;
 pub use self::draw_event_request::*;
+pub use self::render_request::*;
 
 pub use self::draw_window_request::*;

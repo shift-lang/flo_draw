@@ -8,7 +8,7 @@ use flo_canvas as canvas;
 ///
 pub struct RenderEntityDetails {
     /// The bounds for the render entity
-    pub bounds: LayerBounds
+    pub bounds: LayerBounds,
 }
 
 impl RenderEntityDetails {
@@ -34,7 +34,7 @@ impl RenderEntityDetails {
             min_x: min.0,
             min_y: min.1,
             max_x: max.0,
-            max_y: max.1
+            max_y: max.1,
         };
         let bounds = bounds.transform(transform);
 

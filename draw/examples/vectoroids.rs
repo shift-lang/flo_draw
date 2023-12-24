@@ -1,16 +1,15 @@
-use flo_draw::*;
-use flo_canvas::*;
-use flo_stream::*;
-
-use rand::*;
-
-use futures::prelude::*;
-use futures::stream;
-use futures::executor;
-use futures_timer::*;
-
 use std::f64;
 use std::time::*;
+
+use flo_stream::*;
+use futures::executor;
+use futures::prelude::*;
+use futures::stream;
+use futures_timer::*;
+use rand::*;
+
+use flo_canvas::*;
+use flo_draw::*;
 
 ///
 /// Demonstration of `flo_draw` that illustrates a way to implement a simple game
@@ -25,13 +24,13 @@ pub fn main() {
             let tick_stream = tick_stream();
 
             // Combine the tick generator into the events stream
-            let events      = events.map(|evt| VectorEvent::DrawEvent(evt));
-            let mut events  = stream::select(events, tick_stream);
+            let events = events.map(|evt| VectorEvent::DrawEvent(evt));
+            let mut events = stream::select(events, tick_stream);
 
             // Set up the canvas by declaring the sprites and the background
-            let ship_sprite     = SpriteId(0);
-            let bullet_sprite   = SpriteId(1);
-            let roid_sprite     = SpriteId(2);
+            let ship_sprite = SpriteId(0);
+            let bullet_sprite = SpriteId(1);
+            let roid_sprite = SpriteId(2);
             canvas.draw(|gc| {
                 gc.clear_canvas(Color::Rgba(0.1, 0.1, 0.1, 1.0));
 
@@ -94,7 +93,7 @@ pub fn main() {
                     let x = random::<f32>() * 1000.0;
                     let y = random::<f32>() * 1000.0;
 
-                    gc.rect(x-1.0, y-1.0, x+1.0, y+1.0);
+                    gc.rect(x - 1.0, y - 1.0, x + 1.0, y + 1.0);
                     gc.fill();
                 }
             });
@@ -104,7 +103,7 @@ pub fn main() {
 
             while let Some(event) = events.next().await {
                 match event {
-                    VectorEvent::Tick   => {
+                    VectorEvent::Tick => {
                         // Update the game state
                         game_state.tick();
 
@@ -151,57 +150,57 @@ pub fn main() {
 ///
 enum VectorEvent {
     Tick,
-    DrawEvent(DrawEvent)
+    DrawEvent(DrawEvent),
 }
 
 ///
 /// Represents the state of a game
 ///
 struct GameState {
-    ship:           Ship,
-    roids:          Vec<Roid>,
-    bullets:        Vec<Bullet>
+    ship: Ship,
+    roids: Vec<Roid>,
+    bullets: Vec<Bullet>,
 }
 
 ///
 /// Represents the state of the player's ship
 ///
 struct Ship {
-    sprite:     SpriteId,
+    sprite: SpriteId,
 
-    x:          f64,
-    y:          f64,
-    angle:      f64,
-    vel_x:      f64,
-    vel_y:      f64,
-    rotation:   f64,
-    thrust:     f64
+    x: f64,
+    y: f64,
+    angle: f64,
+    vel_x: f64,
+    vel_y: f64,
+    rotation: f64,
+    thrust: f64,
 }
 
 ///
 /// Represents the state of a 'roid
 ///
 struct Roid {
-    sprite:     SpriteId,
+    sprite: SpriteId,
 
-    x:          f64,
-    y:          f64,
-    angle:      f64,
-    rotation:   f64,
-    vel_x:      f64,
-    vel_y:      f64,
+    x: f64,
+    y: f64,
+    angle: f64,
+    rotation: f64,
+    vel_x: f64,
+    vel_y: f64,
 }
 
 ///
 /// Represents the state of a bullet
 ///
 struct Bullet {
-    sprite:     SpriteId,
-    x:          f64,
-    y:          f64,
-    vel_x:      f64,
-    vel_y:      f64,
-    time_left:  usize
+    sprite: SpriteId,
+    x: f64,
+    y: f64,
+    vel_x: f64,
+    vel_y: f64,
+    time_left: usize,
 }
 
 impl GameState {
@@ -210,9 +209,9 @@ impl GameState {
     ///
     pub fn new(ship_sprite: SpriteId, roid_sprite: SpriteId) -> GameState {
         GameState {
-            ship:           Ship::new(ship_sprite),
-            roids:          (0..20).into_iter().map(|_| Roid::new(roid_sprite)).collect(),
-            bullets:        vec![]
+            ship: Ship::new(ship_sprite),
+            roids: (0..20).into_iter().map(|_| Roid::new(roid_sprite)).collect(),
+            bullets: vec![],
         }
     }
 
@@ -240,15 +239,15 @@ impl Ship {
     ///
     pub fn new(sprite: SpriteId) -> Ship {
         Ship {
-            sprite:     sprite,
-            x:          500.0,
-            y:          500.0,
-            vel_x:      0.0,
-            vel_y:      0.0,
-            angle:      0.0,
-            rotation:   0.0,
-            thrust:     0.0
-        }        
+            sprite: sprite,
+            x: 500.0,
+            y: 500.0,
+            vel_x: 0.0,
+            vel_y: 0.0,
+            angle: 0.0,
+            rotation: 0.0,
+            thrust: 0.0,
+        }
     }
 
     ///
@@ -256,10 +255,10 @@ impl Ship {
     ///
     pub fn tick(&mut self) {
         // Move the ship
-        self.x      += self.vel_x;
-        self.y      += self.vel_y;
-        self.angle  += self.rotation;
-        self.angle  = self.angle % 360.0;
+        self.x += self.vel_x;
+        self.y += self.vel_y;
+        self.angle += self.rotation;
+        self.angle = self.angle % 360.0;
 
         // Clip to the play area
         if self.x < 0.0 { self.x = 1000.0 };
@@ -292,14 +291,14 @@ impl Roid {
     ///
     pub fn new(sprite: SpriteId) -> Roid {
         Roid {
-            sprite:     sprite,
-            x:          random::<f64>() * 1000.0,
-            y:          random::<f64>() * 1000.0,
-            vel_x:      random::<f64>() * 3.0 - 1.5,
-            vel_y:      random::<f64>() * 3.0 - 1.5,
-            angle:      random::<f64>() * 360.0,
-            rotation:   random::<f64>() * 8.0 - 4.0
-        }        
+            sprite: sprite,
+            x: random::<f64>() * 1000.0,
+            y: random::<f64>() * 1000.0,
+            vel_x: random::<f64>() * 3.0 - 1.5,
+            vel_y: random::<f64>() * 3.0 - 1.5,
+            angle: random::<f64>() * 360.0,
+            rotation: random::<f64>() * 8.0 - 4.0,
+        }
     }
 
     ///
@@ -307,10 +306,10 @@ impl Roid {
     ///
     pub fn tick(&mut self) {
         // Move the 'roid
-        self.x      += self.vel_x;
-        self.y      += self.vel_y;
-        self.angle  += self.rotation;
-        self.angle  = self.angle % 360.0;
+        self.x += self.vel_x;
+        self.y += self.vel_y;
+        self.angle += self.rotation;
+        self.angle = self.angle % 360.0;
 
         // Clip to the play area
         if self.x < 0.0 { self.x = 1000.0 };
@@ -333,21 +332,21 @@ impl Bullet {
     /// Creates a new bullet state
     ///
     pub fn new(sprite: SpriteId, x: f64, y: f64, ship_vel_x: f64, ship_vel_y: f64, ship_angle: f64) -> Bullet {
-        let transform               = Transform2D::rotate_degrees(ship_angle as _);
-        let (offset_x, offset_y)    = transform.transform_point(0.0, 11.0);
-        let (x, y)                  = (x+offset_x as f64, y+offset_y as f64);
+        let transform = Transform2D::rotate_degrees(ship_angle as _);
+        let (offset_x, offset_y) = transform.transform_point(0.0, 11.0);
+        let (x, y) = (x + offset_x as f64, y + offset_y as f64);
 
-        let (vel_x, vel_y)          = transform.transform_point(0.0, 4.0);
-        let (vel_x, vel_y)          = (ship_vel_x+vel_x as f64, ship_vel_y+vel_y as f64);
+        let (vel_x, vel_y) = transform.transform_point(0.0, 4.0);
+        let (vel_x, vel_y) = (ship_vel_x + vel_x as f64, ship_vel_y + vel_y as f64);
 
         Bullet {
-            sprite:     sprite,
-            x:          x,
-            y:          y,
-            vel_x:      vel_x,
-            vel_y:      vel_y,
-            time_left:  90
-        }        
+            sprite: sprite,
+            x: x,
+            y: y,
+            vel_x: vel_x,
+            vel_y: vel_y,
+            time_left: 90,
+        }
     }
 
     ///
@@ -355,9 +354,9 @@ impl Bullet {
     ///
     pub fn tick(&mut self) {
         // Move the bullet
-        self.x          += self.vel_x;
-        self.y          += self.vel_y;
-        self.time_left  -= 1;
+        self.x += self.vel_x;
+        self.y += self.vel_y;
+        self.time_left -= 1;
 
         // Clip to the play area
         if self.x < 0.0 { self.x = 1000.0 };
@@ -377,25 +376,25 @@ impl Bullet {
 ///
 /// A stream that generates a 'tick' event every time the game state should update
 ///
-fn tick_stream() -> impl Send+Unpin+Stream<Item=VectorEvent> {
+fn tick_stream() -> impl Send + Unpin + Stream<Item=VectorEvent> {
     generator_stream(|yield_value| async move {
         // Set up the clock
-        let start_time          = Instant::now();
-        let mut last_time       = Duration::from_millis(0);
+        let start_time = Instant::now();
+        let mut last_time = Duration::from_millis(0);
 
         // We limit to a certain number of ticks per callback (in case the task is suspended or stuck for a prolonged period of time)
-        let max_ticks_per_call  = 5;
+        let max_ticks_per_call = 5;
 
         // Ticks are generated 60 times a second
-        let tick_length         = Duration::from_nanos(1_000_000_000 / 60);
+        let tick_length = Duration::from_nanos(1_000_000_000 / 60);
 
         loop {
             // Time that has elapsed since the last tick
-            let elapsed         = start_time.elapsed() - last_time;
+            let elapsed = start_time.elapsed() - last_time;
 
             // Time remaining
-            let mut remaining   = elapsed;
-            let mut num_ticks   = 0;
+            let mut remaining = elapsed;
+            let mut num_ticks = 0;
             while remaining >= tick_length {
                 if num_ticks < max_ticks_per_call {
                     // Generate the tick

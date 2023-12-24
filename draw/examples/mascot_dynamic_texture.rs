@@ -1,10 +1,9 @@
+use flo_curves::bezier::path::*;
+use futures::executor;
+use futures::prelude::*;
+
 use flo_draw::*;
 use flo_draw::canvas::*;
-
-use futures::prelude::*;
-use futures::executor;
-
-use flo_curves::bezier::path::*;
 
 ///
 /// Draws FlowBetween's mascot onto a dynamic texture, then draw the texture onto a window (so it's possible to see the pixellation, but it's always a fixed size)
@@ -14,12 +13,15 @@ use flo_curves::bezier::path::*;
 pub fn main() {
     with_2d_graphics(|| {
         // Decode
-        let mascot = decode_drawing(MASCOT.chars()).collect::<Result<Vec<Draw>, _>>().unwrap();
+        let mascot = decode_drawing(MASCOT.chars())
+            .collect::<Result<Vec<Draw>, _>>()
+            .unwrap();
 
         // Convert the mascot to a set of paths (note we skip the setup steps here so the paths are not affected by the initial transformation matrix)
-        let render_mascot   = stream::iter(mascot.into_iter().skip(4));
-        let mascot_paths    = drawing_to_attributed_paths::<SimpleBezierPath, _>(render_mascot);
-        let mascot_paths    = executor::block_on(async move { mascot_paths.collect::<Vec<_>>().await });
+        let render_mascot = stream::iter(mascot.into_iter().skip(4));
+        let mascot_paths = drawing_to_attributed_paths::<SimpleBezierPath, _>(render_mascot);
+        let mascot_paths =
+            executor::block_on(async move { mascot_paths.collect::<Vec<_>>().await });
 
         let canvas = create_drawing_window("Dynamically pixelated Flo");
         canvas.draw(|gc| {
@@ -38,10 +40,19 @@ pub fn main() {
             gc.layer(LayerId(0));
 
             // Draw the sprite to a texture
-            let flo_w       = 256.0;
-            let flo_h       = 256.0;
+            let flo_w = 256.0;
+            let flo_h = 256.0;
 
-            gc.create_dynamic_texture(TextureId(0), SpriteId(0), 0.0, 0.0, 1024.0, 1024.0, flo_w, flo_h);
+            gc.create_dynamic_texture(
+                TextureId(0),
+                SpriteId(0),
+                0.0,
+                0.0,
+                1024.0,
+                1024.0,
+                flo_w,
+                flo_h,
+            );
 
             // Draw the texture to the display
             gc.new_path();

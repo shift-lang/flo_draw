@@ -1,9 +1,9 @@
-use flo_draw::*;
-use flo_draw::canvas::*;
-
 use std::io;
 use std::thread;
-use std::time::{Duration};
+use std::time::Duration;
+
+use flo_draw::*;
+use flo_draw::canvas::*;
 
 ///
 /// Simple example that displays a canvas window and renders a spinning image from a png file
@@ -27,9 +27,9 @@ pub fn main() {
             gc.center_region(0.0, 0.0, 1000.0, 1000.0);
 
             // Set up the texture
-            let (w, h)  = gc.load_texture(TextureId(0), io::Cursor::new(flo_bytes)).unwrap();
-            flo_w       = w;
-            flo_h       = h;
+            let (w, h) = gc.load_texture(TextureId(0), io::Cursor::new(flo_bytes)).unwrap();
+            flo_w = w;
+            flo_h = h;
         });
 
         let mut angle = 0.0;
@@ -41,23 +41,23 @@ pub fn main() {
                 gc.layer(LayerId(0));
                 gc.clear_layer();
 
-                let ratio   = (flo_w as f32)/(flo_h as f32);
-                let height  = 1000.0 / ratio;
-                let y_pos   = (1000.0-height)/2.0;
+                let ratio = (flo_w as f32) / (flo_h as f32);
+                let height = 1000.0 / ratio;
+                let y_pos = (1000.0 - height) / 2.0;
 
                 let mid_x = 500.0;
-                let mid_y = y_pos+(height/2.0);
+                let mid_y = y_pos + (height / 2.0);
 
                 // Draw a circle...
                 gc.new_path();
-                gc.circle(mid_x, mid_y, height/2.0);
+                gc.circle(mid_x, mid_y, height / 2.0);
 
                 // Fill with the texture we just loaded
-                gc.fill_texture(TextureId(0), 0.0, y_pos+height as f32, 1000.0, y_pos);
+                gc.fill_texture(TextureId(0), 0.0, y_pos + height as f32, 1000.0, y_pos);
 
                 gc.fill_transform(Transform2D::translate(-mid_x, -mid_y));
                 gc.fill_transform(Transform2D::rotate_degrees(angle));
-                gc.fill_transform(Transform2D::scale(1.0/3.0, 1.0/3.0));
+                gc.fill_transform(Transform2D::scale(1.0 / 3.0, 1.0 / 3.0));
                 gc.fill_transform(Transform2D::translate(mid_x, mid_y));
                 gc.fill();
 
@@ -65,11 +65,11 @@ pub fn main() {
                 gc.fill_color(Color::Rgba(0.0, 0.0, 0.0, 1.0));
 
                 gc.new_path();
-                gc.circle(mid_x - height/2.5, mid_y - height/2.5, 32.0);
+                gc.circle(mid_x - height / 2.5, mid_y - height / 2.5, 32.0);
                 gc.fill();
 
                 gc.new_path();
-                gc.circle(mid_x + height/2.5, mid_y + height/2.5, 32.0);
+                gc.circle(mid_x + height / 2.5, mid_y + height / 2.5, 32.0);
                 gc.fill();
             });
 

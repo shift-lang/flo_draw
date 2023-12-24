@@ -13,7 +13,7 @@ use std::ffi::{c_void};
 ///
 pub struct MatrixBuffer {
     /// The buffer that this is managing
-    buffer: metal::Buffer
+    buffer: metal::Buffer,
 }
 
 impl MatrixBuffer {
@@ -25,10 +25,10 @@ impl MatrixBuffer {
         let matrix = matrix_float4x4::from(matrix);
 
         // Generate a metal buffer containing the matrix
-        let matrix_ptr: *const matrix_float4x4  = &matrix;
-        let buffer                              = device.new_buffer_with_data(matrix_ptr as *const c_void,
-            std::mem::size_of::<matrix_float4x4>() as u64,
-            metal::MTLResourceOptions::CPUCacheModeDefaultCache | metal::MTLResourceOptions::StorageModeManaged);
+        let matrix_ptr: *const matrix_float4x4 = &matrix;
+        let buffer = device.new_buffer_with_data(matrix_ptr as *const c_void,
+                                                 std::mem::size_of::<matrix_float4x4>() as u64,
+                                                 metal::MTLResourceOptions::CPUCacheModeDefaultCache | metal::MTLResourceOptions::StorageModeManaged);
 
         // Return the buffer object
         MatrixBuffer {

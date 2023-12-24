@@ -1,12 +1,12 @@
-use flo_draw::*;
-use flo_draw::canvas::*;
-
-use futures::prelude::*;
-use futures::executor;
-
 use std::f64;
 use std::io;
 use std::sync::*;
+
+use futures::executor;
+use futures::prelude::*;
+
+use flo_draw::*;
+use flo_draw::canvas::*;
 
 ///
 /// Simple example that displays a canvas window and renders an image from a png file
@@ -15,11 +15,11 @@ pub fn main() {
     // 'with_2d_graphics' is used to support operating systems that can't run event loops anywhere other than the main thread
     with_2d_graphics(|| {
         // Load a png file
-        let flo_bytes: &[u8]    = include_bytes!["flo_drawing_on_window.png"];
-        let lato                = CanvasFontFace::from_slice(include_bytes!["Lato-Regular.ttf"]);
+        let flo_bytes: &[u8] = include_bytes!["flo_drawing_on_window.png"];
+        let lato = CanvasFontFace::from_slice(include_bytes!["Lato-Regular.ttf"]);
 
         // Create a window
-        let (canvas, events)    = create_drawing_window_with_events("Filtered texture");
+        let (canvas, events) = create_drawing_window_with_events("Filtered texture");
 
         // Set up the canvas
         let mut flo_w = 0;
@@ -87,18 +87,18 @@ pub fn main() {
                             gc.fill();
 
                             gc.filter_texture(TextureId(1), TextureFilter::AlphaBlend(0.7))
-                        },
+                        }
 
                         // Mask
                         2 => {
                             // Make 1000.0 units our width, and define the height based on the size of the image
-                            let sprite_height = 1000.0*(flo_h as f32)/(flo_w as f32);
+                            let sprite_height = 1000.0 * (flo_h as f32) / (flo_w as f32);
 
                             // Define sprite 0 as our mask
                             gc.sprite(SpriteId(0));
                             gc.clear_sprite();
                             gc.set_font_size(FontId(1), 200.0);
-                            gc.begin_line_layout(500.0, sprite_height/2.0-100.0, TextAlignment::Center);
+                            gc.begin_line_layout(500.0, sprite_height / 2.0 - 100.0, TextAlignment::Center);
                             gc.layout_text(FontId(1), "MASK".to_string());
                             gc.draw_text_layout();
 
@@ -116,42 +116,42 @@ pub fn main() {
                             // Define a texture to use as the displacement map (the red and green channels are the x and y displacement as a proportion of the scaling factor)
                             gc.create_texture(TextureId(2), flo_w as _, flo_h as _, TextureFormat::Rgba);
                             gc.set_texture_bytes(TextureId(2), 0, 0, flo_w as _, flo_h as _,
-                                Arc::new((0..(flo_w*flo_h)).into_iter()
-                                    .flat_map(|pixel_num| {
-                                        let x_pos       = pixel_num % flo_w;
-                                        let y_pos       = pixel_num / flo_w;
+                                                 Arc::new((0..(flo_w * flo_h)).into_iter()
+                                                     .flat_map(|pixel_num| {
+                                                         let x_pos = pixel_num % flo_w;
+                                                         let y_pos = pixel_num / flo_w;
 
-                                        let x_factor    = (x_pos as f64) / (flo_w as f64);
-                                        let y_factor    = (y_pos as f64) / (flo_h as f64);
-                                        let x_factor    = x_factor * 2.0 * f64::consts::PI;
-                                        let y_factor    = y_factor * 2.0 * f64::consts::PI;
-                                        let x_factor    = x_factor * 8.0;
-                                        let y_factor    = y_factor * 7.0;
+                                                         let x_factor = (x_pos as f64) / (flo_w as f64);
+                                                         let y_factor = (y_pos as f64) / (flo_h as f64);
+                                                         let x_factor = x_factor * 2.0 * f64::consts::PI;
+                                                         let y_factor = y_factor * 2.0 * f64::consts::PI;
+                                                         let x_factor = x_factor * 8.0;
+                                                         let y_factor = y_factor * 7.0;
 
-                                        let x_seq       = (x_factor.sin() + 1.0)/2.0;
-                                        let y_seq       = (y_factor.cos() + 1.0)/2.0;
+                                                         let x_seq = (x_factor.sin() + 1.0) / 2.0;
+                                                         let y_seq = (y_factor.cos() + 1.0) / 2.0;
 
-                                        [(y_seq*255.0) as u8, (x_seq*255.0) as u8, 0, 255]
-                                    })
-                                    .collect::<Vec<_>>()));
+                                                         [(y_seq * 255.0) as u8, (x_seq * 255.0) as u8, 0, 255]
+                                                     })
+                                                     .collect::<Vec<_>>()));
 
                             // Distort the texture with the filter we just created
                             gc.filter_texture(TextureId(1), TextureFilter::DisplacementMap(TextureId(2), 8.0, 8.0));
                         }
 
-                        _ => { }
+                        _ => {}
                     }
 
                     // Draw a rectangle...
-                    let ratio   = (flo_w as f32)/(flo_h as f32);
-                    let height  = 1000.0 / ratio;
-                    let y_pos   = (1000.0-height)/2.0;
+                    let ratio = (flo_w as f32) / (flo_h as f32);
+                    let height = 1000.0 / ratio;
+                    let y_pos = (1000.0 - height) / 2.0;
 
                     gc.new_path();
-                    gc.rect(0.0, y_pos, 1000.0, y_pos+height);
+                    gc.rect(0.0, y_pos, 1000.0, y_pos + height);
 
                     // Fill with the texture we just filtered
-                    gc.fill_texture(TextureId(1), 0.0, y_pos+height as f32, 1000.0, y_pos);
+                    gc.fill_texture(TextureId(1), 0.0, y_pos + height as f32, 1000.0, y_pos);
                     gc.fill();
                 });
 
