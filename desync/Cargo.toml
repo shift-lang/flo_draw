@@ -1,0 +1,24 @@
+[package]
+name = "desync"
+version = "0.9.0"
+authors = ["Andrew Hunter <andrew@logicalshift.io>"]
+license = "Apache-2.0"
+edition = "2018"
+
+description = "A hassle-free data type for asynchronous programming"
+homepage = "https://github.com/Logicalshift/desync"
+repository = "https://github.com/Logicalshift/desync"
+documentation = "http://docs.rs/desync/"
+readme = "README.md"
+keywords = ["async", "futures", "concurrency"]
+categories = ["concurrency", "asynchronous", "algorithms", "data-structures"]
+
+[dependencies]
+lazy_static = "1.3"
+futures = "0.3"
+
+[dev-dependencies]
+wasm-bindgen-test = "0.3"
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+num_cpus = "1.10"
