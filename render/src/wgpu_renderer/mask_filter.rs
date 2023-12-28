@@ -1,5 +1,11 @@
-use super::texture::*;
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
 use super::pipeline::*;
+use super::texture::*;
 use super::to_buffer::*;
 
 use crate::buffer::*;
@@ -12,7 +18,13 @@ use std::sync::*;
 ///
 /// Runs tha mask filter against a texture
 ///
-pub(crate) fn mask(device: &wgpu::Device, encoder: &mut wgpu::CommandEncoder, mask_pipeline: &Pipeline, source_texture: &WgpuTexture, mask_texture: &WgpuTexture) -> WgpuTexture {
+pub(crate) fn mask(
+    device: &wgpu::Device,
+    encoder: &mut wgpu::CommandEncoder,
+    mask_pipeline: &Pipeline,
+    source_texture: &WgpuTexture,
+    mask_texture: &WgpuTexture,
+) -> WgpuTexture {
     // Set up buffers
     let vertices = vec![
         Vertex2D::with_pos(-1.0, -1.0),
@@ -21,7 +33,8 @@ pub(crate) fn mask(device: &wgpu::Device, encoder: &mut wgpu::CommandEncoder, ma
         Vertex2D::with_pos(-1.0, -1.0),
         Vertex2D::with_pos(1.0, -1.0),
         Vertex2D::with_pos(1.0, 1.0),
-    ].to_buffer(device, wgpu::BufferUsages::VERTEX);
+    ]
+    .to_buffer(device, wgpu::BufferUsages::VERTEX);
 
     // Create a target texture
     let mut target_descriptor = source_texture.descriptor.clone();
@@ -45,8 +58,12 @@ pub(crate) fn mask(device: &wgpu::Device, encoder: &mut wgpu::CommandEncoder, ma
     });
 
     // Bind the resources
-    let source_view = source_texture.texture.create_view(&wgpu::TextureViewDescriptor::default());
-    let mask_view = mask_texture.texture.create_view(&wgpu::TextureViewDescriptor::default());
+    let source_view = source_texture
+        .texture
+        .create_view(&wgpu::TextureViewDescriptor::default());
+    let mask_view = mask_texture
+        .texture
+        .create_view(&wgpu::TextureViewDescriptor::default());
     let layout = &*mask_pipeline.mask_layout;
 
     let filter_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
@@ -71,13 +88,19 @@ pub(crate) fn mask(device: &wgpu::Device, encoder: &mut wgpu::CommandEncoder, ma
     // Run a render pass to apply the filter
     {
         let target_view = target_texture.create_view(&wgpu::TextureViewDescriptor::default());
-        let color_attachments = vec![
-            Some(wgpu::RenderPassColorAttachment {
-                view: &target_view,
-                resolve_target: None,
-                ops: wgpu::Operations { load: wgpu::LoadOp::Clear(wgpu::Color { r: 0.0, g: 0.0, b: 0.0, a: 0.0 }), store: wgpu::StoreOp::Store },
-            })
-        ];
+        let color_attachments = vec![Some(wgpu::RenderPassColorAttachment {
+            view: &target_view,
+            resolve_target: None,
+            ops: wgpu::Operations {
+                load: wgpu::LoadOp::Clear(wgpu::Color {
+                    r: 0.0,
+                    g: 0.0,
+                    b: 0.0,
+                    a: 0.0,
+                }),
+                store: wgpu::StoreOp::Store,
+            },
+        })];
         let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
             label: Some("mask"),
             depth_stencil_attachment: None,

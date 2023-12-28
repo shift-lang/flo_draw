@@ -1,4 +1,10 @@
-use super::{GraphPath, GraphEdge, GraphEdgeRef};
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
+use super::{GraphEdge, GraphEdgeRef, GraphPath};
 use crate::geo::*;
 
 impl GraphEdgeRef {
@@ -14,7 +20,9 @@ impl GraphEdgeRef {
 ///
 /// A GraphEdgeRef can be created from a GraphEdge in order to release the borrow
 ///
-impl<'a, Point: 'a + Coordinate, Label: 'a + Copy> From<GraphEdge<'a, Point, Label>> for GraphEdgeRef {
+impl<'a, Point: 'a + Coordinate, Label: 'a + Copy> From<GraphEdge<'a, Point, Label>>
+    for GraphEdgeRef
+{
     fn from(edge: GraphEdge<'a, Point, Label>) -> GraphEdgeRef {
         edge.edge
     }
@@ -23,7 +31,9 @@ impl<'a, Point: 'a + Coordinate, Label: 'a + Copy> From<GraphEdge<'a, Point, Lab
 ///
 /// A GraphEdgeRef can be created from a GraphEdge in order to release the borrow
 ///
-impl<'a, 'b, Point: 'a + Coordinate, Label: 'a + Copy> From<&'b GraphEdge<'a, Point, Label>> for GraphEdgeRef {
+impl<'a, 'b, Point: 'a + Coordinate, Label: 'a + Copy> From<&'b GraphEdge<'a, Point, Label>>
+    for GraphEdgeRef
+{
     fn from(edge: &'b GraphEdge<'a, Point, Label>) -> GraphEdgeRef {
         edge.edge
     }
@@ -38,7 +48,11 @@ impl<Point: Coordinate + Coordinate2D, Label> GraphPath<Point, Label> {
         if edge_ref.reverse {
             // Need to search in reverse for the edge
             for connected_from in self.points[edge_ref.start_idx].connected_from.iter() {
-                for (edge_idx, edge) in self.points[*connected_from].forward_edges.iter().enumerate() {
+                for (edge_idx, edge) in self.points[*connected_from]
+                    .forward_edges
+                    .iter()
+                    .enumerate()
+                {
                     if edge.end_idx == edge_ref.start_idx {
                         return GraphEdgeRef {
                             start_idx: *connected_from,
@@ -62,4 +76,3 @@ impl<Point: Coordinate + Coordinate2D, Label> GraphPath<Point, Label> {
         }
     }
 }
-

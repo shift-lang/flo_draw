@@ -1,3 +1,9 @@
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
 use crate::draw::*;
 use crate::path::*;
 
@@ -16,10 +22,10 @@ pub fn path_to_dashed_lines<PathIn, PathOut, DashPattern>(
     dash_pattern: DashPattern,
     pattern_offset: f64,
 ) -> Vec<PathOut>
-    where
-        PathIn: BezierPath,
-        PathOut: BezierPathFactory<Point=PathIn::Point>,
-        DashPattern: Iterator<Item=f64>,
+where
+    PathIn: BezierPath,
+    PathOut: BezierPathFactory<Point = PathIn::Point>,
+    DashPattern: Iterator<Item = f64>,
 {
     // Create the resulting set of paths (most will have just a single curve in them)
     let mut output_paths = vec![];
@@ -153,9 +159,9 @@ pub fn path_to_dashed_lines<PathIn, PathOut, DashPattern>(
 ///
 /// Converts dashed line stroke operations into separate lines
 ///
-pub fn drawing_without_dashed_lines<InStream: 'static + Send + Unpin + Stream<Item=Draw>>(
+pub fn drawing_without_dashed_lines<InStream: 'static + Send + Unpin + Stream<Item = Draw>>(
     draw_stream: InStream,
-) -> impl Send + Unpin + Stream<Item=Draw> {
+) -> impl Send + Unpin + Stream<Item = Draw> {
     generator_stream(move |yield_value| async move {
         let mut draw_stream = draw_stream;
 
@@ -283,11 +289,11 @@ pub fn drawing_without_dashed_lines<InStream: 'static + Send + Unpin + Stream<It
 
                         for subpath in current_path.iter() {
                             for (start_point, curves) in
-                            path_to_dashed_lines::<_, SimpleBezierPath, _>(
-                                subpath,
-                                dash_pattern.iter().map(|p| (*p) as f64),
-                                dash_pattern_offset as _,
-                            )
+                                path_to_dashed_lines::<_, SimpleBezierPath, _>(
+                                    subpath,
+                                    dash_pattern.iter().map(|p| (*p) as f64),
+                                    dash_pattern_offset as _,
+                                )
                             {
                                 yield_value(Path(Move(start_point.x() as _, start_point.y() as _)))
                                     .await;
@@ -297,7 +303,7 @@ pub fn drawing_without_dashed_lines<InStream: 'static + Send + Unpin + Stream<It
                                         ((cp1x as _, cp1y as _), (cp2x as _, cp2y as _)),
                                         (x as _, y as _),
                                     )))
-                                        .await;
+                                    .await;
                                 }
                             }
                         }
@@ -316,7 +322,7 @@ pub fn drawing_without_dashed_lines<InStream: 'static + Send + Unpin + Stream<It
                                     ((*cp1x as _, *cp1y as _), (*cp2x as _, *cp2y as _)),
                                     (*x as _, *y as _),
                                 )))
-                                    .await;
+                                .await;
                             }
                         }
                     } else {
@@ -360,13 +366,13 @@ mod test {
             assert!(
                 output_drawing
                     == vec![
-                    Draw::Path(PathOp::NewPath),
-                    Draw::Path(PathOp::Move(10.0, 10.0)),
-                    Draw::Path(PathOp::Line(10.0, 100.0)),
-                    Draw::Path(PathOp::Line(100.0, 100.0)),
-                    Draw::Path(PathOp::Line(100.0, 10.0)),
-                    Draw::Path(PathOp::ClosePath),
-                ]
+                        Draw::Path(PathOp::NewPath),
+                        Draw::Path(PathOp::Move(10.0, 10.0)),
+                        Draw::Path(PathOp::Line(10.0, 100.0)),
+                        Draw::Path(PathOp::Line(100.0, 100.0)),
+                        Draw::Path(PathOp::Line(100.0, 10.0)),
+                        Draw::Path(PathOp::ClosePath),
+                    ]
             );
         });
     }
@@ -391,63 +397,63 @@ mod test {
             assert!(
                 output_drawing
                     == vec![
-                    Draw::Path(PathOp::NewPath),
-                    Draw::Path(PathOp::Move(10.0, 10.0)),
-                    Draw::Path(PathOp::Line(10.0, 100.0)),
-                    Draw::Path(PathOp::NewPath),
-                    Draw::Path(PathOp::Move(10.0, 10.0)),
-                    Draw::Path(PathOp::BezierCurve(
-                        ((10.0, 11.666667), (10.0, 13.333333)),
-                        (10.0, 15.0),
-                    )),
-                    Draw::Path(PathOp::Move(10.0, 20.0)),
-                    Draw::Path(PathOp::BezierCurve(
-                        ((10.0, 21.666666), (10.0, 23.333334)),
-                        (10.0, 25.0),
-                    )),
-                    Draw::Path(PathOp::Move(10.0, 30.0)),
-                    Draw::Path(PathOp::BezierCurve(
-                        ((10.0, 31.666666), (10.0, 33.333332)),
-                        (10.0, 35.0),
-                    )),
-                    Draw::Path(PathOp::Move(10.0, 40.0)),
-                    Draw::Path(PathOp::BezierCurve(
-                        ((10.0, 41.666668), (10.0, 43.333332)),
-                        (10.0, 45.0),
-                    )),
-                    Draw::Path(PathOp::Move(10.0, 50.0)),
-                    Draw::Path(PathOp::BezierCurve(
-                        ((10.0, 51.666668), (10.0, 53.333332)),
-                        (10.0, 55.0),
-                    )),
-                    Draw::Path(PathOp::Move(10.0, 60.0)),
-                    Draw::Path(PathOp::BezierCurve(
-                        ((10.0, 61.666668), (10.0, 63.333332)),
-                        (10.0, 65.0),
-                    )),
-                    Draw::Path(PathOp::Move(10.0, 70.0)),
-                    Draw::Path(PathOp::BezierCurve(
-                        ((10.0, 71.666664), (10.0, 73.333336)),
-                        (10.0, 75.0),
-                    )),
-                    Draw::Path(PathOp::Move(10.0, 80.0)),
-                    Draw::Path(PathOp::BezierCurve(
-                        ((10.0, 81.666664), (10.0, 83.333336)),
-                        (10.0, 85.0),
-                    )),
-                    Draw::Path(PathOp::Move(10.0, 90.0)),
-                    Draw::Path(PathOp::BezierCurve(
-                        ((10.0, 91.666664), (10.0, 93.333336)),
-                        (10.0, 95.0),
-                    )),
-                    Draw::Stroke,
-                    Draw::Path(PathOp::NewPath),
-                    Draw::Path(PathOp::Move(10.0, 10.0)),
-                    Draw::Path(PathOp::BezierCurve(
-                        ((10.0, 40.0), (10.0, 70.0)),
-                        (10.0, 100.0),
-                    )),
-                ]
+                        Draw::Path(PathOp::NewPath),
+                        Draw::Path(PathOp::Move(10.0, 10.0)),
+                        Draw::Path(PathOp::Line(10.0, 100.0)),
+                        Draw::Path(PathOp::NewPath),
+                        Draw::Path(PathOp::Move(10.0, 10.0)),
+                        Draw::Path(PathOp::BezierCurve(
+                            ((10.0, 11.666667), (10.0, 13.333333)),
+                            (10.0, 15.0),
+                        )),
+                        Draw::Path(PathOp::Move(10.0, 20.0)),
+                        Draw::Path(PathOp::BezierCurve(
+                            ((10.0, 21.666666), (10.0, 23.333334)),
+                            (10.0, 25.0),
+                        )),
+                        Draw::Path(PathOp::Move(10.0, 30.0)),
+                        Draw::Path(PathOp::BezierCurve(
+                            ((10.0, 31.666666), (10.0, 33.333332)),
+                            (10.0, 35.0),
+                        )),
+                        Draw::Path(PathOp::Move(10.0, 40.0)),
+                        Draw::Path(PathOp::BezierCurve(
+                            ((10.0, 41.666668), (10.0, 43.333332)),
+                            (10.0, 45.0),
+                        )),
+                        Draw::Path(PathOp::Move(10.0, 50.0)),
+                        Draw::Path(PathOp::BezierCurve(
+                            ((10.0, 51.666668), (10.0, 53.333332)),
+                            (10.0, 55.0),
+                        )),
+                        Draw::Path(PathOp::Move(10.0, 60.0)),
+                        Draw::Path(PathOp::BezierCurve(
+                            ((10.0, 61.666668), (10.0, 63.333332)),
+                            (10.0, 65.0),
+                        )),
+                        Draw::Path(PathOp::Move(10.0, 70.0)),
+                        Draw::Path(PathOp::BezierCurve(
+                            ((10.0, 71.666664), (10.0, 73.333336)),
+                            (10.0, 75.0),
+                        )),
+                        Draw::Path(PathOp::Move(10.0, 80.0)),
+                        Draw::Path(PathOp::BezierCurve(
+                            ((10.0, 81.666664), (10.0, 83.333336)),
+                            (10.0, 85.0),
+                        )),
+                        Draw::Path(PathOp::Move(10.0, 90.0)),
+                        Draw::Path(PathOp::BezierCurve(
+                            ((10.0, 91.666664), (10.0, 93.333336)),
+                            (10.0, 95.0),
+                        )),
+                        Draw::Stroke,
+                        Draw::Path(PathOp::NewPath),
+                        Draw::Path(PathOp::Move(10.0, 10.0)),
+                        Draw::Path(PathOp::BezierCurve(
+                            ((10.0, 40.0), (10.0, 70.0)),
+                            (10.0, 100.0),
+                        )),
+                    ]
             );
         });
     }

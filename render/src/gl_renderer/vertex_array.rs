@@ -1,6 +1,12 @@
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
 use gl;
 
-use std::ops::{Deref};
+use std::ops::Deref;
 
 ///
 /// Abstraction for an OpenGL vertex array object
@@ -21,7 +27,7 @@ impl VertexArray {
 
             // Encapsulate into the structure
             VertexArray {
-                vertex_array_object: new_array
+                vertex_array_object: new_array,
             }
         }
     }

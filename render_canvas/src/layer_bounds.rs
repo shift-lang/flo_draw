@@ -1,7 +1,13 @@
-use crate::render_entity_details::*;
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
 
 use flo_canvas as canvas;
 use flo_render as render;
+
+use crate::render_entity_details::*;
 
 ///
 /// Represents the bounds of a particular layer on the canvas
@@ -48,10 +54,10 @@ impl LayerBounds {
     ///
     #[inline]
     pub fn is_undefined(&self) -> bool {
-        self.min_x == f32::MAX ||
-            self.min_y == f32::MAX ||
-            self.max_x == f32::MIN ||
-            self.max_y == f32::MIN
+        self.min_x == f32::MAX
+            || self.min_y == f32::MAX
+            || self.max_x == f32::MIN
+            || self.max_y == f32::MIN
     }
 
     ///
@@ -59,7 +65,9 @@ impl LayerBounds {
     ///
     pub fn inflate(&self, radius: f32) -> LayerBounds {
         // Nothing to do if already undefined
-        if self.is_undefined() { return *self; }
+        if self.is_undefined() {
+            return *self;
+        }
 
         // Add the radius to the sides of the bounds
         let new_bounds = LayerBounds {
@@ -117,7 +125,9 @@ impl LayerBounds {
     ///
     pub fn transform(&self, transform: &canvas::Transform2D) -> LayerBounds {
         // Transforming has no effect on undefined layer bounds
-        if self.is_undefined() { return LayerBounds::default(); }
+        if self.is_undefined() {
+            return LayerBounds::default();
+        }
 
         // Transform the x and y coordinates of the four corners of the bounding box
         let (x1, y1) = transform.transform_point(self.min_x, self.min_y);
@@ -185,6 +195,7 @@ impl LayerBounds {
     pub fn to_sprite_bounds(&self) -> canvas::SpriteBounds {
         canvas::SpriteBounds(
             canvas::SpritePosition(self.min_x, self.min_y),
-            canvas::SpriteSize(self.width(), self.height()))
+            canvas::SpriteSize(self.width(), self.height()),
+        )
     }
 }

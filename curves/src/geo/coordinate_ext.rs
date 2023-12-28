@@ -1,3 +1,9 @@
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
 use crate::geo::coordinate::*;
 
 ///
@@ -21,8 +27,8 @@ pub trait Coordinate2DExt {
 }
 
 impl<T> CoordinateExt for T
-    where
-        T: Coordinate,
+where
+    T: Coordinate,
 {
     fn unit_vector() -> Self {
         let mut components = vec![0.0; Self::len()];
@@ -33,8 +39,8 @@ impl<T> CoordinateExt for T
 }
 
 impl<T> Coordinate2DExt for T
-    where
-        T: Coordinate + Coordinate2D,
+where
+    T: Coordinate + Coordinate2D,
 {
     fn unit_vector_at_angle(radians: impl Into<f64>) -> Self {
         let radians = radians.into();

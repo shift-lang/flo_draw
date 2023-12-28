@@ -1,9 +1,15 @@
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
 use super::scheduler_future::*;
 
+use futures::channel::oneshot;
 use futures::prelude::*;
 use futures::task;
-use futures::task::{Poll};
-use futures::channel::oneshot;
+use futures::task::Poll;
 
 use std::mem;
 use std::pin::*;
@@ -12,7 +18,9 @@ use std::pin::*;
 /// The state of a SyncFuture operation
 ///
 enum SyncFutureState<TFn, TFuture>
-    where TFuture: Future {
+where
+    TFuture: Future,
+{
     /// Waiting for the queue to start running the future
     WaitingForQueue(oneshot::Receiver<()>, TFn),
 
@@ -34,9 +42,11 @@ enum SyncFutureState<TFn, TFuture>
 /// The queue is allowed to continue once the returned future has completed.
 ///
 pub struct SyncFuture<TFn, TFuture>
-    where TFn: Send + FnOnce() -> TFuture,
-          TFuture: Send + Future,
-          TFuture::Output: Send {
+where
+    TFn: Send + FnOnce() -> TFuture,
+    TFuture: Send + Future,
+    TFuture::Output: Send,
+{
     /// The state of this future
     state: SyncFutureState<TFn, TFuture>,
 
@@ -48,13 +58,20 @@ pub struct SyncFuture<TFn, TFuture>
 }
 
 impl<TFn, TFuture> SyncFuture<TFn, TFuture>
-    where TFn: Send + FnOnce() -> TFuture,
-          TFuture: Send + Future,
-          TFuture::Output: Send {
+where
+    TFn: Send + FnOnce() -> TFuture,
+    TFuture: Send + Future,
+    TFuture::Output: Send,
+{
     ///
     /// Creates a new SyncFuture
     ///
-    pub fn new(create_future: TFn, scheduler_future: SchedulerFuture<()>, queue_ready: oneshot::Receiver<()>, task_finished: oneshot::Sender<()>) -> SyncFuture<TFn, TFuture> {
+    pub fn new(
+        create_future: TFn,
+        scheduler_future: SchedulerFuture<()>,
+        queue_ready: oneshot::Receiver<()>,
+        task_finished: oneshot::Sender<()>,
+    ) -> SyncFuture<TFn, TFuture> {
         SyncFuture {
             state: SyncFutureState::WaitingForQueue(queue_ready, create_future),
             scheduler_future: scheduler_future,
@@ -64,9 +81,11 @@ impl<TFn, TFuture> SyncFuture<TFn, TFuture>
 }
 
 impl<TFn, TFuture> Future for SyncFuture<TFn, TFuture>
-    where TFn: Unpin + Send + FnOnce() -> TFuture,
-          TFuture: Unpin + Send + Future,
-          TFuture::Output: Send {
+where
+    TFn: Unpin + Send + FnOnce() -> TFuture,
+    TFuture: Unpin + Send + Future,
+    TFuture::Output: Send,
+{
     type Output = Result<TFuture::Output, oneshot::Canceled>;
 
     fn poll(mut self: Pin<&mut Self>, context: &mut task::Context) -> Poll<Self::Output> {

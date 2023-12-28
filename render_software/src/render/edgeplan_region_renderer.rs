@@ -1,11 +1,17 @@
-use super::renderer::*;
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
 use super::render_slice::*;
+use super::renderer::*;
 use super::scanline_renderer::*;
 
 use crate::edgeplan::*;
 use crate::scanplan::*;
 
-use std::marker::{PhantomData};
+use std::marker::PhantomData;
 use std::sync::*;
 
 ///
@@ -13,10 +19,10 @@ use std::sync::*;
 /// with any kind of renderer that takes scanline plans (ScanlineRenderer being the most simple example of this)
 ///
 pub struct EdgePlanRegionRenderer<TEdge, TPlanner, TLineRenderer>
-    where
-        TEdge: EdgeDescriptor,
-        TPlanner: ScanPlanner,
-        TLineRenderer: Renderer<Region=ScanlineRenderRegion, Source=ScanlinePlan>,
+where
+    TEdge: EdgeDescriptor,
+    TPlanner: ScanPlanner,
+    TLineRenderer: Renderer<Region = ScanlineRenderRegion, Source = ScanlinePlan>,
 {
     edge_plan: PhantomData<Mutex<TEdge>>,
     scan_planner: TPlanner,
@@ -24,10 +30,10 @@ pub struct EdgePlanRegionRenderer<TEdge, TPlanner, TLineRenderer>
 }
 
 impl<TEdge, TPlanner, TLineRenderer> EdgePlanRegionRenderer<TEdge, TPlanner, TLineRenderer>
-    where
-        TEdge: EdgeDescriptor,
-        TPlanner: ScanPlanner,
-        TLineRenderer: Renderer<Region=ScanlineRenderRegion, Source=ScanlinePlan>,
+where
+    TEdge: EdgeDescriptor,
+    TPlanner: ScanPlanner,
+    TLineRenderer: Renderer<Region = ScanlineRenderRegion, Source = ScanlinePlan>,
 {
     ///
     /// Creates a new region renderer
@@ -41,18 +47,24 @@ impl<TEdge, TPlanner, TLineRenderer> EdgePlanRegionRenderer<TEdge, TPlanner, TLi
     }
 }
 
-impl<'a, TEdge, TPlanner, TLineRenderer, TPixel> Renderer for EdgePlanRegionRenderer<TEdge, TPlanner, TLineRenderer>
-    where
-        TPixel: Send,
-        TEdge: EdgeDescriptor,
-        TPlanner: ScanPlanner<Edge=TEdge>,
-        TLineRenderer: Renderer<Region=ScanlineRenderRegion, Source=ScanlinePlan, Dest=[TPixel]>,
+impl<'a, TEdge, TPlanner, TLineRenderer, TPixel> Renderer
+    for EdgePlanRegionRenderer<TEdge, TPlanner, TLineRenderer>
+where
+    TPixel: Send,
+    TEdge: EdgeDescriptor,
+    TPlanner: ScanPlanner<Edge = TEdge>,
+    TLineRenderer: Renderer<Region = ScanlineRenderRegion, Source = ScanlinePlan, Dest = [TPixel]>,
 {
     type Region = RenderSlice;
     type Source = EdgePlan<TEdge>;
     type Dest = [TPixel];
 
-    fn render(&self, region: &RenderSlice, source: &EdgePlan<TEdge>, dest: &mut TLineRenderer::Dest) {
+    fn render(
+        &self,
+        region: &RenderSlice,
+        source: &EdgePlan<TEdge>,
+        dest: &mut TLineRenderer::Dest,
+    ) {
         let y_positions = &region.y_positions;
         let width = region.width as f64;
         let edge_plan = source;
@@ -63,7 +75,13 @@ impl<'a, TEdge, TPlanner, TLineRenderer, TPixel> Renderer for EdgePlanRegionRend
 
         // Plan the lines
         let mut scanlines = vec![(0.0f64, ScanlinePlan::default()); y_positions.len()];
-        self.scan_planner.plan_scanlines(edge_plan, &transform, y_positions, 0.0..width, &mut scanlines);
+        self.scan_planner.plan_scanlines(
+            edge_plan,
+            &transform,
+            y_positions,
+            0.0..width,
+            &mut scanlines,
+        );
 
         // Pass them on to the line renderer to generate the result
         let mut region = ScanlineRenderRegion {

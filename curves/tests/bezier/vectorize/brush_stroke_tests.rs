@@ -1,21 +1,31 @@
-use super::daub_brush_distance_field_tests::{check_contour_against_bitmap};
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
+use super::daub_brush_distance_field_tests::check_contour_against_bitmap;
 
 use flo_curves::arc::*;
-use flo_curves::geo::*;
-use flo_curves::bezier::*;
 use flo_curves::bezier::path::*;
 use flo_curves::bezier::rasterize::*;
 use flo_curves::bezier::vectorize::*;
+use flo_curves::bezier::*;
+use flo_curves::geo::*;
 
 use std::f64;
 
 fn curve_is_smooth<TCurve>(curve: &TCurve) -> bool
-    where
-        TCurve: BezierCurve,
-        TCurve::Point: Coordinate2D,
+where
+    TCurve: BezierCurve,
+    TCurve::Point: Coordinate2D,
 {
     let (sp, (cp1, cp2), ep) = curve.all_points();
-    let (d1, d2, d3) = (sp.distance_to(&cp1), cp2.distance_to(&ep), sp.distance_to(&ep));
+    let (d1, d2, d3) = (
+        sp.distance_to(&cp1),
+        cp2.distance_to(&ep),
+        sp.distance_to(&ep),
+    );
 
     if (d1 > d3 * 20.0) || (d2 > d3 * 20.0) {
         return false;
@@ -25,9 +35,9 @@ fn curve_is_smooth<TCurve>(curve: &TCurve) -> bool
 }
 
 fn path_is_smooth<TPath>(path: &TPath) -> bool
-    where
-        TPath: BezierPath,
-        TPath::Point: Coordinate2D,
+where
+    TPath: BezierPath,
+    TPath::Point: Coordinate2D,
 {
     for curve in path.to_curves::<Curve<_>>() {
         if !curve_is_smooth(&curve) {
@@ -45,10 +55,22 @@ fn brush_curve(counter: i64) -> Curve<Coord3> {
     let off2 = pos / 2.0;
 
     let t = (counter as f64) / 40.0;
-    let p0 = Coord2(-(t * 1.0 / 2.0).cos() * 400.0, (t * 1.0 / 3.0).sin() * 500.0) + Coord2(500.0, 500.0);
-    let p1 = Coord2(-(t * 2.0 / 3.0).cos() * 400.0, (t * 1.0 / 4.0).sin() * 200.0) + Coord2(500.0, 500.0);
-    let p2 = Coord2((t * 1.0 / 4.0).cos() * 200.0, -(t * 2.0 / 3.0).sin() * 400.0) + Coord2(500.0, 500.0);
-    let p3 = Coord2((t * 1.0 / 3.0).cos() * 500.0, -(t * 1.0 / 2.0).sin() * 200.0) + Coord2(500.0, 500.0);
+    let p0 = Coord2(
+        -(t * 1.0 / 2.0).cos() * 400.0,
+        (t * 1.0 / 3.0).sin() * 500.0,
+    ) + Coord2(500.0, 500.0);
+    let p1 = Coord2(
+        -(t * 2.0 / 3.0).cos() * 400.0,
+        (t * 1.0 / 4.0).sin() * 200.0,
+    ) + Coord2(500.0, 500.0);
+    let p2 = Coord2(
+        (t * 1.0 / 4.0).cos() * 200.0,
+        -(t * 2.0 / 3.0).sin() * 400.0,
+    ) + Coord2(500.0, 500.0);
+    let p3 = Coord2(
+        (t * 1.0 / 3.0).cos() * 500.0,
+        -(t * 1.0 / 2.0).sin() * 200.0,
+    ) + Coord2(500.0, 500.0);
 
     let p0_3 = Coord3::from((p0, off1));
     let p1_3 = Coord3::from((p1, (off2 - off1) * (1.0 / 3.0) + off1));
@@ -82,7 +104,8 @@ fn broken_brush_is_smooth_2() {
         println!("counter = {:?}", counter);
 
         let brush_curve = brush_curve(counter);
-        let (daubs, _offset) = brush_stroke_daubs_from_curve(&CircularBrush, &brush_curve, 0.5, 0.25);
+        let (daubs, _offset) =
+            brush_stroke_daubs_from_curve(&CircularBrush, &brush_curve, 0.5, 0.25);
 
         let daub_distance_field = DaubBrushDistanceField::from_daubs(daubs);
         let paths = trace_paths_from_distance_field::<SimpleBezierPath>(&daub_distance_field, 0.5);
@@ -99,7 +122,12 @@ fn broken_brush_is_smooth_3() {
         println!("counter = {}", counter);
 
         let brush_curve = brush_curve(counter);
-        let paths = brush_stroke_from_curve::<SimpleBezierPath, _, _>(&CircularBrush, &brush_curve, 0.5, 0.25);
+        let paths = brush_stroke_from_curve::<SimpleBezierPath, _, _>(
+            &CircularBrush,
+            &brush_curve,
+            0.5,
+            0.25,
+        );
 
         for path in paths {
             assert!(path_is_smooth(&path));
@@ -113,8 +141,15 @@ fn broken_brush_is_smooth_4() {
         println!("counter = {}", counter);
 
         let brush_curve = brush_curve(counter);
-        let brush_path = BezierPathBuilder::<SimpleBezierPath3>::start(brush_curve.start_point()).curve_to(brush_curve.control_points(), brush_curve.end_point()).build();
-        let paths = brush_stroke_from_path::<SimpleBezierPath, _, _>(&CircularBrush, &brush_path, 0.5, 0.25);
+        let brush_path = BezierPathBuilder::<SimpleBezierPath3>::start(brush_curve.start_point())
+            .curve_to(brush_curve.control_points(), brush_curve.end_point())
+            .build();
+        let paths = brush_stroke_from_path::<SimpleBezierPath, _, _>(
+            &CircularBrush,
+            &brush_path,
+            0.5,
+            0.25,
+        );
 
         for path in paths {
             assert!(path_is_smooth(&path));

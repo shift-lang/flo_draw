@@ -1,5 +1,11 @@
-use std::thread;
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
 use std::sync::mpsc::*;
+use std::thread;
 
 ///
 /// Creates a FnMut that runs a FnOnce once (or panics)
@@ -37,18 +43,22 @@ pub struct SchedulerThread {
 
 impl SchedulerThread {
     ///
-    /// Creates a new scheduler thread 
+    /// Creates a new scheduler thread
     ///
     pub fn new() -> SchedulerThread {
         // All the thread does is run jobs from its channel
-        let (jobs_in, jobs_out): (Sender<Box<dyn FnMut() -> () + Send>>, Receiver<Box<dyn FnMut() -> () + Send>>) = channel();
+        let (jobs_in, jobs_out): (
+            Sender<Box<dyn FnMut() -> () + Send>>,
+            Receiver<Box<dyn FnMut() -> () + Send>>,
+        ) = channel();
         let thread = thread::Builder::new()
             .name("desync jobs thread".to_string())
             .spawn(move || {
                 while let Ok(mut job) = jobs_out.recv() {
                     (*job)();
                 }
-            }).unwrap();
+            })
+            .unwrap();
 
         SchedulerThread {
             jobs: jobs_in,
@@ -71,7 +81,7 @@ impl SchedulerThread {
     }
 
     ///
-    /// De-spawns this thread and returns the join handle 
+    /// De-spawns this thread and returns the join handle
     ///
     pub fn despawn(self) -> thread::JoinHandle<()> {
         self.thread

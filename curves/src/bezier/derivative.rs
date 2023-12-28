@@ -1,3 +1,9 @@
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
 use crate::geo::*;
 
 use smallvec::*;
@@ -7,7 +13,9 @@ use smallvec::*;
 ///
 /// (Resolves to a smallvec as Rust can't currently return a slice with a definition like [Point; N-1])
 ///
-pub fn derivative_n<Point: Coordinate, const N: usize>(points: SmallVec<[Point; N]>) -> SmallVec<[Point; N]> {
+pub fn derivative_n<Point: Coordinate, const N: usize>(
+    points: SmallVec<[Point; N]>,
+) -> SmallVec<[Point; N]> {
     let n = points.len();
     let multiplier = (n - 1) as f64;
 
@@ -22,7 +30,12 @@ pub fn derivative_n<Point: Coordinate, const N: usize>(points: SmallVec<[Point; 
 ///
 /// Returns the 1st derivative of a cubic bezier curve
 ///
-pub fn derivative4<Point: Coordinate>(w1: Point, w2: Point, w3: Point, w4: Point) -> (Point, Point, Point) {
+pub fn derivative4<Point: Coordinate>(
+    w1: Point,
+    w2: Point,
+    w3: Point,
+    w4: Point,
+) -> (Point, Point, Point) {
     ((w2 - w1) * 3.0, (w3 - w2) * 3.0, (w4 - w3) * 3.0)
 }
 

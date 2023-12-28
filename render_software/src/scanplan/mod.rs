@@ -1,3 +1,9 @@
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
 //!
 //! # ScanPlan
 //!
@@ -14,21 +20,21 @@
 
 pub(crate) mod buffer_stack;
 mod pixel_scan_planner;
-mod shard;
-mod shard_scan_planner;
-mod scanspan;
-mod scanline_plan;
+mod scan_planner;
 mod scanline_intercept;
+mod scanline_plan;
 mod scanline_shard_intercept;
 mod scanline_transform;
-mod scan_planner;
+mod scanspan;
+mod shard;
+mod shard_scan_planner;
 
 pub use pixel_scan_planner::*;
-pub use shard::*;
-pub use shard_scan_planner::*;
-pub use scanspan::*;
-pub use scanline_plan::*;
+pub use scan_planner::*;
 pub use scanline_intercept::*;
+pub use scanline_plan::*;
 pub use scanline_shard_intercept::*;
 pub use scanline_transform::*;
-pub use scan_planner::*;
+pub use scanspan::*;
+pub use shard::*;
+pub use shard_scan_planner::*;

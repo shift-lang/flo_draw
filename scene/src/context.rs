@@ -1,12 +1,20 @@
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
 use std::any::TypeId;
+use std::cell::RefCell;
 use std::mem;
 use std::sync::*;
 
-use ::desync::*;
 use futures::future;
 use futures::prelude::*;
 use futures::stream::BoxStream;
 use futures::task::Poll;
+
+use ::desync::*;
 
 use crate::entity_channel::*;
 use crate::entity_id::*;
@@ -80,7 +88,7 @@ struct DropContext {
 ///
 /// context.convert_message::<MyRequest, ExampleRequest>().unwrap();
 /// let channel = context.send_to::<MyRequest>(EXAMPLE).unwrap();
-/// ``` 
+/// ```
 ///
 /// Run a background process in an entity:
 ///
@@ -155,8 +163,7 @@ impl SceneContext {
     /// Retrieves the active scene context (or a context error if one is available)
     ///
     pub fn current() -> Arc<SceneContext> {
-        let context = CURRENT_CONTEXT
-            .try_with(|ctxt| ctxt.borrow().clone());
+        let context = CURRENT_CONTEXT.try_with(|ctxt| ctxt.borrow().clone());
 
         match context {
             Ok(Some(context)) => context,
@@ -183,7 +190,7 @@ impl SceneContext {
     }
 
     ///
-    /// Returns a context with no active entity 
+    /// Returns a context with no active entity
     ///
     pub(crate) fn with_no_entity(core: &Arc<Desync<SceneCore>>) -> SceneContext {
         SceneContext {
@@ -206,9 +213,7 @@ impl SceneContext {
                 }
             }
 
-            Err(err) => {
-                Err(*err)
-            }
+            Err(err) => Err(*err),
         }
     }
 
@@ -219,9 +224,12 @@ impl SceneContext {
     /// artificially change contexts (eg: if an entity spawns its own thread, or in an independent runtime)
     ///
     #[inline]
-    pub fn with_context<TFn, TResult>(new_context: &Arc<SceneContext>, in_context: TFn) -> Result<TResult, SceneContextError>
-        where
-            TFn: FnOnce() -> TResult
+    pub fn with_context<TFn, TResult>(
+        new_context: &Arc<SceneContext>,
+        in_context: TFn,
+    ) -> Result<TResult, SceneContextError>
+    where
+        TFn: FnOnce() -> TResult,
     {
         let new_context = Arc::clone(new_context);
 
@@ -249,9 +257,12 @@ impl SceneContext {
     /// artificially change contexts (eg: if an entity spawns its own thread, or in an independent runtime)
     ///
     #[inline]
-    pub fn with_context_async<'a, TFuture>(new_context: &Arc<SceneContext>, future: TFuture) -> impl 'a + Send + Future<Output=Result<TFuture::Output, SceneContextError>>
-        where
-            TFuture: 'a + Future + Send
+    pub fn with_context_async<'a, TFuture>(
+        new_context: &Arc<SceneContext>,
+        future: TFuture,
+    ) -> impl 'a + Send + Future<Output = Result<TFuture::Output, SceneContextError>>
+    where
+        TFuture: 'a + Future + Send,
     {
         let new_context = Arc::clone(new_context);
         let mut future = future.boxed();
@@ -259,16 +270,23 @@ impl SceneContext {
         async move {
             let result = future::poll_fn(move |context| {
                 // When the function returns, reset the context
-                let previous_context = match CURRENT_CONTEXT.try_with(|ctxt| ctxt.borrow().clone()) {
+                let previous_context = match CURRENT_CONTEXT.try_with(|ctxt| ctxt.borrow().clone())
+                {
                     Ok(context) => context,
-                    Err(err) => { return Poll::Ready(Err(err.into())); }
+                    Err(err) => {
+                        return Poll::Ready(Err(err.into()));
+                    }
                 };
                 let last_context = DropContext { previous_context };
 
                 // Set the updated context
-                match CURRENT_CONTEXT.try_with(|ctxt| { *(ctxt.borrow_mut()) = Some(Arc::clone(&new_context)); }) {
+                match CURRENT_CONTEXT.try_with(|ctxt| {
+                    *(ctxt.borrow_mut()) = Some(Arc::clone(&new_context));
+                }) {
                     Ok(()) => {}
-                    Err(err) => { return Poll::Ready(Err(err.into())); }
+                    Err(err) => {
+                        return Poll::Ready(Err(err.into()));
+                    }
                 }
 
                 // Call the function with the new context
@@ -279,9 +297,10 @@ impl SceneContext {
 
                 match poll_result {
                     Poll::Ready(val) => Poll::Ready(Ok(val)),
-                    Poll::Pending => Poll::Pending
+                    Poll::Pending => Poll::Pending,
                 }
-            }).await;
+            })
+            .await;
 
             result
         }
@@ -301,9 +320,9 @@ impl SceneContext {
     /// so that `EntityChannel<Message=TOriginalMessage>` also works.
     ///
     pub fn convert_message<TOriginalMessage, TNewMessage>(&self) -> Result<(), SceneContextError>
-        where
-            TOriginalMessage: 'static + Send + Into<TNewMessage>,
-            TNewMessage: 'static + Send,
+    where
+        TOriginalMessage: 'static + Send + Into<TNewMessage>,
+        TNewMessage: 'static + Send,
     {
         self.scene_core()?.sync(move |core| {
             // Register that one type can be converted to another
@@ -311,7 +330,13 @@ impl SceneContext {
 
             // Send to the entity registry
             if let Ok(channel) = core.send_to::<InternalRegistryRequest>(ENTITY_REGISTRY) {
-                core.send_background_message(channel, InternalRegistryRequest::ConvertMessage(TypeId::of::<TOriginalMessage>(), TypeId::of::<TNewMessage>()));
+                core.send_background_message(
+                    channel,
+                    InternalRegistryRequest::ConvertMessage(
+                        TypeId::of::<TOriginalMessage>(),
+                        TypeId::of::<TNewMessage>(),
+                    ),
+                );
             }
         });
 
@@ -321,21 +346,26 @@ impl SceneContext {
     ///
     /// Creates a channel to send messages in this context
     ///
-    pub fn send_to<TMessage>(&self, entity_id: EntityId) -> Result<BoxedEntityChannel<'static, TMessage>, EntityChannelError>
-        where
-            TMessage: 'static + Send,
+    pub fn send_to<TMessage>(
+        &self,
+        entity_id: EntityId,
+    ) -> Result<BoxedEntityChannel<'static, TMessage>, EntityChannelError>
+    where
+        TMessage: 'static + Send,
     {
-        self.scene_core()?.sync(|core| {
-            core.send_to(entity_id)
-        })
+        self.scene_core()?.sync(|core| core.send_to(entity_id))
     }
 
     ///
     /// Sends a message without waiting for the channel to finish processing it
     ///
-    pub fn send<TMessage>(&self, entity_id: EntityId, message: TMessage) -> impl 'static + Future<Output=Result<(), EntityChannelError>>
-        where
-            TMessage: 'static + Send,
+    pub fn send<TMessage>(
+        &self,
+        entity_id: EntityId,
+        message: TMessage,
+    ) -> impl 'static + Future<Output = Result<(), EntityChannelError>>
+    where
+        TMessage: 'static + Send,
     {
         let channel = self.send_to::<TMessage>(entity_id);
         async move {
@@ -349,9 +379,13 @@ impl SceneContext {
     ///
     /// This will use the `<TMessage, ()>` interface of the entity to send the data
     ///
-    pub fn send_stream<TMessage>(&self, entity_id: EntityId, stream: impl 'static + Send + Stream<Item=TMessage>) -> Result<impl Send + Future<Output=()>, EntityChannelError>
-        where
-            TMessage: 'static + Send,
+    pub fn send_stream<TMessage>(
+        &self,
+        entity_id: EntityId,
+        stream: impl 'static + Send + Stream<Item = TMessage>,
+    ) -> Result<impl Send + Future<Output = ()>, EntityChannelError>
+    where
+        TMessage: 'static + Send,
     {
         // Connect to the entity
         let mut channel = self.send_to::<TMessage>(entity_id)?;
@@ -374,11 +408,15 @@ impl SceneContext {
     ///
     /// Creates an entity that processes a particular kind of message
     ///
-    pub fn create_entity<TMessage, TFn, TFnFuture>(&self, entity_id: EntityId, runtime: TFn) -> Result<SimpleEntityChannel<TMessage>, CreateEntityError>
-        where
-            TMessage: 'static + Send,
-            TFn: 'static + Send + FnOnce(Arc<SceneContext>, BoxStream<'static, TMessage>) -> TFnFuture,
-            TFnFuture: 'static + Send + Future<Output=()>,
+    pub fn create_entity<TMessage, TFn, TFnFuture>(
+        &self,
+        entity_id: EntityId,
+        runtime: TFn,
+    ) -> Result<SimpleEntityChannel<TMessage>, CreateEntityError>
+    where
+        TMessage: 'static + Send,
+        TFn: 'static + Send + FnOnce(Arc<SceneContext>, BoxStream<'static, TMessage>) -> TFnFuture,
+        TFnFuture: 'static + Send + Future<Output = ()>,
     {
         // Create a SceneContext for the new entity
         let new_context = Arc::new(SceneContext {
@@ -387,9 +425,8 @@ impl SceneContext {
         });
 
         // Request that the core create the entity
-        self.scene_core()?.sync(move |core| {
-            core.create_entity(new_context, runtime)
-        })
+        self.scene_core()?
+            .sync(move |core| core.create_entity(new_context, runtime))
     }
 
     ///
@@ -398,12 +435,14 @@ impl SceneContext {
     /// Normally this isn't necessary but sometimes (for example when retrieving a property), it can be useful to wait for
     /// an entity to finish initializing before requesting information about it.
     ///
-    pub fn wait_for_entity_to_start(&self, entity_id: EntityId) -> impl Send + Future<Output=()> {
+    pub fn wait_for_entity_to_start(&self, entity_id: EntityId) -> impl Send + Future<Output = ()> {
         let scene_core = self.scene_core();
 
         async move {
             if let Ok(scene_core) = scene_core {
-                scene_core.sync(|core| core.wait_for_entity_to_start(entity_id)).await;
+                scene_core
+                    .sync(|core| core.wait_for_entity_to_start(entity_id))
+                    .await;
             }
         }
     }
@@ -421,8 +460,8 @@ impl SceneContext {
     /// Called when an entity in this context has finished
     ///
     pub(crate) fn finish_entity<TMessage>(&self, entity_id: EntityId)
-        where
-            TMessage: 'static + Send,
+    where
+        TMessage: 'static + Send,
     {
         if let Ok(scene_core) = self.scene_core() {
             scene_core.desync(move |core| core.finish_entity(entity_id));
@@ -435,26 +474,30 @@ impl SceneContext {
     pub(crate) fn send_heartbeat(&self) {
         if let Ok(scene_core) = self.scene_core() {
             scene_core
-                .future_desync(move |core| async move {
-                    core.send_heartbeat().await;
-                }.boxed())
+                .future_desync(move |core| {
+                    async move {
+                        core.send_heartbeat().await;
+                    }
+                    .boxed()
+                })
                 .detach();
         }
     }
 
     ///
-    /// Adds a future to run in the background of the current entity 
+    /// Adds a future to run in the background of the current entity
     ///
     /// These background futures will be dropped when the main entity runtime terminates, and are scheduled alongside each other and the main runtime
     /// (ie, all of the main runtime and the background futures will get scheduled on the same thread)
     ///
-    pub fn run_in_background(&self, future: impl 'static + Send + Future<Output=()>) -> Result<(), EntityFutureError> {
+    pub fn run_in_background(
+        &self,
+        future: impl 'static + Send + Future<Output = ()>,
+    ) -> Result<(), EntityFutureError> {
         let scene_core = self.scene_core()?;
 
         if let Some(entity_id) = self.entity {
-            scene_core.sync(move |core| {
-                core.run_in_background(entity_id, future)
-            })?;
+            scene_core.sync(move |core| core.run_in_background(entity_id, future))?;
 
             Ok(())
         } else {
@@ -469,7 +512,8 @@ impl SceneContext {
     /// scene.
     ///
     pub fn seal_entity(&self, entity_id: EntityId) -> Result<(), EntityChannelError> {
-        self.scene_core()?.sync(|core| core.seal_entity(entity_id))?;
+        self.scene_core()?
+            .sync(|core| core.seal_entity(entity_id))?;
 
         Ok(())
     }
@@ -483,7 +527,8 @@ impl SceneContext {
     /// point the entity fully stops.
     ///
     pub fn close_entity(&self, entity_id: EntityId) -> Result<(), EntityChannelError> {
-        self.scene_core()?.sync(|core| core.close_entity(entity_id))?;
+        self.scene_core()?
+            .sync(|core| core.close_entity(entity_id))?;
 
         Ok(())
     }
@@ -494,7 +539,8 @@ impl SceneContext {
     /// Generally 'close_entity' should be used instead of this, but this will also shut the entity down.
     ///
     pub fn kill_entity(&self, entity_id: EntityId) -> Result<(), EntityChannelError> {
-        self.scene_core()?.sync(|core| core.stop_entity(entity_id))?;
+        self.scene_core()?
+            .sync(|core| core.stop_entity(entity_id))?;
 
         Ok(())
     }
@@ -512,7 +558,9 @@ impl SceneContext {
 impl Drop for DropContext {
     fn drop(&mut self) {
         let previous_context = self.previous_context.take();
-        CURRENT_CONTEXT.try_with(move |ctxt| *(ctxt.borrow_mut()) = previous_context).ok();
+        CURRENT_CONTEXT
+            .try_with(move |ctxt| *(ctxt.borrow_mut()) = previous_context)
+            .ok();
     }
 }
 
@@ -529,16 +577,20 @@ pub fn scene_current_entity() -> Option<EntityId> {
 /// These background futures will be dropped when the main entity runtime terminates, and are scheduled alongside each other and the main runtime
 /// (ie, all of the main runtime and the background futures will get scheduled on the same thread)
 ///
-pub fn scene_run_in_background(future: impl 'static + Send + Future<Output=()>) -> Result<(), EntityFutureError> {
+pub fn scene_run_in_background(
+    future: impl 'static + Send + Future<Output = ()>,
+) -> Result<(), EntityFutureError> {
     SceneContext::current().run_in_background(future)
 }
 
 ///
 /// Creates a channel for sending messages to a entity (in the current context)
 ///
-pub fn scene_send_to<TMessage>(entity_id: EntityId) -> Result<BoxedEntityChannel<'static, TMessage>, EntityChannelError>
-    where
-        TMessage: 'static + Send,
+pub fn scene_send_to<TMessage>(
+    entity_id: EntityId,
+) -> Result<BoxedEntityChannel<'static, TMessage>, EntityChannelError>
+where
+    TMessage: 'static + Send,
 {
     SceneContext::current().send_to(entity_id)
 }
@@ -546,9 +598,12 @@ pub fn scene_send_to<TMessage>(entity_id: EntityId) -> Result<BoxedEntityChannel
 ///
 /// Sends a single message to an entity
 ///
-pub async fn scene_send<TMessage>(entity_id: EntityId, message: TMessage) -> Result<(), EntityChannelError>
-    where
-        TMessage: 'static + Send,
+pub async fn scene_send<TMessage>(
+    entity_id: EntityId,
+    message: TMessage,
+) -> Result<(), EntityChannelError>
+where
+    TMessage: 'static + Send,
 {
     SceneContext::current().send(entity_id, message).await
 }
@@ -558,9 +613,12 @@ pub async fn scene_send<TMessage>(entity_id: EntityId, message: TMessage) -> Res
 ///
 /// This will use the `<TMessage, ()>` interface of the entity to send the data
 ///
-pub fn scene_send_stream<TMessage>(entity_id: EntityId, stream: impl 'static + Send + Stream<Item=TMessage>) -> Result<impl Send + Future<Output=()>, EntityChannelError>
-    where
-        TMessage: 'static + Send,
+pub fn scene_send_stream<TMessage>(
+    entity_id: EntityId,
+    stream: impl 'static + Send + Stream<Item = TMessage>,
+) -> Result<impl Send + Future<Output = ()>, EntityChannelError>
+where
+    TMessage: 'static + Send,
 {
     SceneContext::current().send_stream(entity_id, stream)
 }
@@ -568,11 +626,14 @@ pub fn scene_send_stream<TMessage>(entity_id: EntityId, stream: impl 'static + S
 ///
 /// Creates a new entity in the current scene
 ///
-pub fn scene_create_entity<TMessage, TFn, TFnFuture>(entity_id: EntityId, runtime: TFn) -> Result<SimpleEntityChannel<TMessage>, CreateEntityError>
-    where
-        TMessage: 'static + Send,
-        TFn: 'static + Send + FnOnce(Arc<SceneContext>, BoxStream<'static, TMessage>) -> TFnFuture,
-        TFnFuture: 'static + Send + Future<Output=()>,
+pub fn scene_create_entity<TMessage, TFn, TFnFuture>(
+    entity_id: EntityId,
+    runtime: TFn,
+) -> Result<SimpleEntityChannel<TMessage>, CreateEntityError>
+where
+    TMessage: 'static + Send,
+    TFn: 'static + Send + FnOnce(Arc<SceneContext>, BoxStream<'static, TMessage>) -> TFnFuture,
+    TFnFuture: 'static + Send + Future<Output = ()>,
 {
     SceneContext::current().create_entity(entity_id, runtime)
 }

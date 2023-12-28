@@ -1,10 +1,22 @@
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
 use crate::geo::*;
 use smallvec::*;
 
 ///
 /// Computes the bezier coefficients (A, B, C, D) for a bezier curve
 ///
-pub fn bezier_coefficients<Point: Coordinate>(dimension: usize, w1: &Point, w2: &Point, w3: &Point, w4: &Point) -> (f64, f64, f64, f64) {
+pub fn bezier_coefficients<Point: Coordinate>(
+    dimension: usize,
+    w1: &Point,
+    w2: &Point,
+    w3: &Point,
+    w4: &Point,
+) -> (f64, f64, f64, f64) {
     let w1 = w1.get(dimension);
     let w2 = w2.get(dimension);
     let w3 = w3.get(dimension);
@@ -14,7 +26,7 @@ pub fn bezier_coefficients<Point: Coordinate>(dimension: usize, w1: &Point, w2: 
         w4 - (3.0 * w3) + (3.0 * w2) - w1,
         (3.0 * w3) - (6.0 * w2) + 3.0 * w1,
         3.0 * w2 - 3.0 * w1,
-        w1
+        w1,
     )
 }
 
@@ -40,7 +52,10 @@ pub fn basis<Point: Coordinate>(t: f64, w1: Point, w2: Point, w3: Point, w4: Poi
 /// de Casteljau's algorithm for bezier curves of arbitrary degree
 ///
 #[inline]
-pub fn de_casteljau_n<Point: Coordinate, const N: usize>(t: f64, points: SmallVec<[Point; N]>) -> Point {
+pub fn de_casteljau_n<Point: Coordinate, const N: usize>(
+    t: f64,
+    points: SmallVec<[Point; N]>,
+) -> Point {
     let mut points = points;
 
     while points.len() > 1 {
@@ -60,7 +75,13 @@ pub fn de_casteljau_n<Point: Coordinate, const N: usize>(t: f64, points: SmallVe
 /// de Casteljau's algorithm for cubic bezier curves
 ///
 #[inline]
-pub fn de_casteljau4<Point: Coordinate>(t: f64, w1: Point, w2: Point, w3: Point, w4: Point) -> Point {
+pub fn de_casteljau4<Point: Coordinate>(
+    t: f64,
+    w1: Point,
+    w2: Point,
+    w3: Point,
+    w4: Point,
+) -> Point {
     let wn1 = w1 * (1.0 - t) + w2 * t;
     let wn2 = w2 * (1.0 - t) + w3 * t;
     let wn3 = w3 * (1.0 - t) + w4 * t;

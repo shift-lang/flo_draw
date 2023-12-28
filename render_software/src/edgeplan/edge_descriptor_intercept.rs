@@ -1,6 +1,12 @@
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
 use super::edge_intercept_direction::*;
 
-use std::cmp::{Ordering};
+use std::cmp::Ordering;
 
 ///
 /// Describes a position within an edge descriptor

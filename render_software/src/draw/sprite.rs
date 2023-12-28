@@ -1,17 +1,24 @@
-use super::canvas_drawing::*;
-use super::drawing_state::*;
-use super::layer::*;
-use super::prepared_layer::*;
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
+use std::sync::*;
+
+use smallvec::*;
+
+use flo_canvas as canvas;
 
 use crate::edgeplan::*;
 use crate::edges::*;
 use crate::pixel::*;
 use crate::pixel_programs::*;
 
-use flo_canvas as canvas;
-use smallvec::*;
-
-use std::sync::*;
+use super::canvas_drawing::*;
+use super::drawing_state::*;
+use super::layer::*;
+use super::prepared_layer::*;
 
 impl SpriteTransform {
     ///
@@ -20,17 +27,19 @@ impl SpriteTransform {
     #[inline]
     pub(crate) fn matrix(&self) -> canvas::Transform2D {
         match self {
-            SpriteTransform::ScaleTransform { scale, translate } =>
-                canvas::Transform2D::scale(scale.0 as _, scale.1 as _) * canvas::Transform2D::translate(translate.0 as _, translate.1 as _),
+            SpriteTransform::ScaleTransform { scale, translate } => {
+                canvas::Transform2D::scale(scale.0 as _, scale.1 as _)
+                    * canvas::Transform2D::translate(translate.0 as _, translate.1 as _)
+            }
 
-            SpriteTransform::Matrix(matrix) => *matrix
+            SpriteTransform::Matrix(matrix) => *matrix,
         }
     }
 }
 
 impl<TPixel, const N: usize> CanvasDrawing<TPixel, N>
-    where
-        TPixel: 'static + Send + Sync + Pixel<N>,
+where
+    TPixel: 'static + Send + Sync + Pixel<N>,
 {
     ///
     /// Selects a sprite for rendering
@@ -41,7 +50,9 @@ impl<TPixel, const N: usize> CanvasDrawing<TPixel, N>
         let namespace_id = self.current_namespace;
 
         // Update the transform of the layer we're leaving
-        if let Some(layer) = self.layer(self.current_layer) { layer.last_transform = transform; }
+        if let Some(layer) = self.layer(self.current_layer) {
+            layer.last_transform = transform;
+        }
 
         if let Some(sprite_layer) = self.sprites.get(&(namespace_id, sprite_id)) {
             // Use the existing sprite layer
@@ -58,14 +69,17 @@ impl<TPixel, const N: usize> CanvasDrawing<TPixel, N>
             self.layers.insert(new_layer_handle.0, new_layer);
 
             // Store as a sprite
-            self.sprites.insert((self.current_namespace, sprite_id), new_layer_handle);
+            self.sprites
+                .insert((self.current_namespace, sprite_id), new_layer_handle);
 
             // Use the layer we just created
             self.current_layer = new_layer_handle;
         }
 
         // Update the transform of the layer we're entering
-        if let Some(layer) = self.layer(self.current_layer) { layer.last_transform = transform; }
+        if let Some(layer) = self.layer(self.current_layer) {
+            layer.last_transform = transform;
+        }
     }
 
     ///
@@ -115,7 +129,8 @@ impl<TPixel, const N: usize> CanvasDrawing<TPixel, N>
             };
 
             // Store in the cache (drawing should clear the prepared layer)
-            self.prepared_layers.insert(layer_handle.0, prepared_layer.clone());
+            self.prepared_layers
+                .insert(layer_handle.0, prepared_layer.clone());
 
             prepared_layer
         } else {
@@ -160,7 +175,8 @@ impl<TPixel, const N: usize> CanvasDrawing<TPixel, N>
                 let upper_right = inverse_transform.transform_point(upper_right.0, upper_right.1);
 
                 // Map back on to the canvas using the sprite transform (generates render coordinates again)
-                let canvas_transform = self.current_state.transform * self.current_state.sprite_transform.matrix();
+                let canvas_transform =
+                    self.current_state.transform * self.current_state.sprite_transform.matrix();
                 let lower_left = canvas_transform.transform_point(lower_left.0, lower_left.1);
                 let lower_right = canvas_transform.transform_point(lower_right.0, lower_right.1);
                 let upper_left = canvas_transform.transform_point(upper_left.0, upper_left.1);
@@ -173,16 +189,26 @@ impl<TPixel, const N: usize> CanvasDrawing<TPixel, N>
                 // Future stuff renders on top of the sprite
                 current_layer.z_index += 1;
 
-                if (lower_left.1 - lower_right.1).abs() < VERY_CLOSE && (upper_left.1 - upper_right.1).abs() < VERY_CLOSE && false {
+                if (lower_left.1 - lower_right.1).abs() < VERY_CLOSE
+                    && (upper_left.1 - upper_right.1).abs() < VERY_CLOSE
+                    && false
+                {
                     let scale_x = (max_x - min_x) / (lower_right.0 - lower_left.0) as f64;
                     let scale_y = (max_y - min_y) / (upper_left.1 - lower_left.1) as f64;
 
-                    let translate = (min_x - (lower_left.0 as f64 * scale_x), min_y - (lower_left.1 as f64 * scale_y));
+                    let translate = (
+                        min_x - (lower_left.0 as f64 * scale_x),
+                        min_y - (lower_left.1 as f64 * scale_y),
+                    );
                     let scale = (scale_x, scale_y);
 
                     // Create the brush data
                     let data = BasicSpriteData::new(sprite_layer.edges, scale, translate);
-                    let data_id = self.program_cache.program_cache.store_program_data(&self.program_cache.basic_sprite, &mut self.program_data_cache, data);
+                    let data_id = self.program_cache.program_cache.store_program_data(
+                        &self.program_cache.basic_sprite,
+                        &mut self.program_data_cache,
+                        data,
+                    );
 
                     // Shape is a transparent rectangle that runs this program
                     let shape_descriptor = ShapeDescriptor {
@@ -193,25 +219,39 @@ impl<TPixel, const N: usize> CanvasDrawing<TPixel, N>
                     let shape_id = ShapeId::new();
 
                     // Create a rectangle edge for this data
-                    let sprite_edge = RectangleEdge::new(shape_id, (lower_left.0 as f64)..(lower_right.0 as f64), (lower_left.1 as f64)..(upper_left.1 as f64));
+                    let sprite_edge = RectangleEdge::new(
+                        shape_id,
+                        (lower_left.0 as f64)..(lower_right.0 as f64),
+                        (lower_left.1 as f64)..(upper_left.1 as f64),
+                    );
                     let sprite_edge: Arc<dyn EdgeDescriptor> = Arc::new(sprite_edge);
 
                     // Store in the current layer
-                    current_layer.edges.add_shape(shape_id, shape_descriptor, iter::once(sprite_edge));
+                    current_layer.edges.add_shape(
+                        shape_id,
+                        shape_descriptor,
+                        iter::once(sprite_edge),
+                    );
                     current_layer.used_data.push(data_id);
                 } else {
                     // Transform from the coordinates used in the final sprite back to render coordinates
                     let transform = sprite_layer.inverse_transform * self.current_state.transform;
 
                     // Map the sprite transform to render coordinates
-                    let sprite_transform = self.current_state.transform * self.current_state.sprite_transform.matrix() * self.current_state.transform.invert().unwrap();
+                    let sprite_transform = self.current_state.transform
+                        * self.current_state.sprite_transform.matrix()
+                        * self.current_state.transform.invert().unwrap();
 
                     // Perform a final transform to generate the transformation from sprite render coordinates to canvas render coordinates
                     let transform = transform * sprite_transform;
 
                     // Use the transformed sprite program
                     let data = TransformedSpriteData::new(sprite_layer.edges, transform);
-                    let data_id = self.program_cache.program_cache.store_program_data(&self.program_cache.transformed_sprite, &mut self.program_data_cache, data);
+                    let data_id = self.program_cache.program_cache.store_program_data(
+                        &self.program_cache.transformed_sprite,
+                        &mut self.program_data_cache,
+                        data,
+                    );
 
                     // Shape is a polyline for the bounds of the sprite
                     let shape_descriptor = ShapeDescriptor {
@@ -227,11 +267,18 @@ impl<TPixel, const N: usize> CanvasDrawing<TPixel, N>
                     let upper_left = canvas::Coord2(upper_left.0 as _, upper_left.1 as _);
                     let upper_right = canvas::Coord2(upper_right.0 as _, upper_right.1 as _);
 
-                    let sprite_edge = PolylineNonZeroEdge::new(shape_id, vec![lower_left, lower_right, upper_right, upper_left, lower_left]);
+                    let sprite_edge = PolylineNonZeroEdge::new(
+                        shape_id,
+                        vec![lower_left, lower_right, upper_right, upper_left, lower_left],
+                    );
                     let sprite_edge: Arc<dyn EdgeDescriptor> = Arc::new(sprite_edge);
 
                     // Store in the current layer
-                    current_layer.edges.add_shape(shape_id, shape_descriptor, iter::once(sprite_edge));
+                    current_layer.edges.add_shape(
+                        shape_id,
+                        shape_descriptor,
+                        iter::once(sprite_edge),
+                    );
                     current_layer.used_data.push(data_id);
                 }
 
@@ -252,7 +299,12 @@ impl DrawingState {
         let sprite_transform = &mut self.sprite_transform;
 
         match (transform, sprite_transform) {
-            (Identity, transform) => *transform = SpriteTransform::ScaleTransform { scale: (1.0, 1.0), translate: (0.0, 0.0) },
+            (Identity, transform) => {
+                *transform = SpriteTransform::ScaleTransform {
+                    scale: (1.0, 1.0),
+                    translate: (0.0, 0.0),
+                }
+            }
 
             (Translate(x, y), SpriteTransform::ScaleTransform { translate, scale }) => {
                 translate.0 += x as f64 * scale.0;
@@ -263,11 +315,21 @@ impl DrawingState {
                 scale.1 *= y as f64;
             }
 
-            (Rotate(theta), sprite_transform) => { *sprite_transform = SpriteTransform::Matrix(sprite_transform.matrix() * canvas::Transform2D::rotate_degrees(theta)); }
-            (Transform2D(matrix), sprite_transform) => { *sprite_transform = SpriteTransform::Matrix(sprite_transform.matrix() * matrix); }
+            (Rotate(theta), sprite_transform) => {
+                *sprite_transform = SpriteTransform::Matrix(
+                    sprite_transform.matrix() * canvas::Transform2D::rotate_degrees(theta),
+                );
+            }
+            (Transform2D(matrix), sprite_transform) => {
+                *sprite_transform = SpriteTransform::Matrix(sprite_transform.matrix() * matrix);
+            }
 
-            (Translate(x, y), SpriteTransform::Matrix(t)) => { *t = *t * canvas::Transform2D::translate(x, y); }
-            (Scale(x, y), SpriteTransform::Matrix(t)) => { *t = *t * canvas::Transform2D::scale(x, y); }
+            (Translate(x, y), SpriteTransform::Matrix(t)) => {
+                *t = *t * canvas::Transform2D::translate(x, y);
+            }
+            (Scale(x, y), SpriteTransform::Matrix(t)) => {
+                *t = *t * canvas::Transform2D::scale(x, y);
+            }
         }
     }
 }

@@ -1,3 +1,9 @@
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
 use crate::color::*;
 
 use itertools::*;
@@ -52,7 +58,7 @@ fn components_to_bytes(components: (f32, f32, f32, f32)) -> [u8; 4] {
 ///
 /// Creates a gradient scale, as 8-bit RGBA quads from a set of gradient operations
 ///
-pub fn gradient_scale<GradientIter: IntoIterator<Item=GradientOp>, const N: usize>(
+pub fn gradient_scale<GradientIter: IntoIterator<Item = GradientOp>, const N: usize>(
     description: GradientIter,
 ) -> [[u8; 4]; N] {
     // Create a blank scale

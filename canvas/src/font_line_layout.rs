@@ -1,3 +1,9 @@
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
 use crate::context::*;
 use crate::draw::*;
 use crate::font::*;
@@ -101,7 +107,7 @@ impl CanvasFontLineLayout {
     ///
     /// Update the rendering between the glyphs
     ///
-    pub fn draw<DrawIter: IntoIterator<Item=Draw>>(&mut self, drawing: DrawIter) {
+    pub fn draw<DrawIter: IntoIterator<Item = Draw>>(&mut self, drawing: DrawIter) {
         self.layout_pending();
         self.layout
             .extend(drawing.into_iter().map(|item| LayoutAction::Draw(item)));

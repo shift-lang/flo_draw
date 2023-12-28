@@ -1,15 +1,22 @@
-use crate::rope_binding::core::*;
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
 
-use flo_rope::*;
-use ::desync::*;
-use futures::task::*;
-use futures::prelude::*;
-use futures::future::{BoxFuture};
-
+use std::collections::VecDeque;
 use std::mem;
 use std::pin::*;
 use std::sync::*;
-use std::collections::{VecDeque};
+
+use flo_rope::*;
+use futures::future::BoxFuture;
+use futures::prelude::*;
+use futures::task::*;
+
+use ::desync::*;
+
+use crate::rope_binding::core::*;
 
 ///
 /// A rope stream monitors a rope binding, and supplies them as a stream so they can be mirrored elsewhere
@@ -17,9 +24,9 @@ use std::collections::{VecDeque};
 /// An example of a use for a rope stream is to send updates from a rope to a user interface.
 ///
 pub struct RopeStream<Cell, Attribute>
-    where
-        Cell: 'static + Send + Unpin + Clone + PartialEq,
-        Attribute: 'static + Send + Sync + Clone + Unpin + PartialEq + Default,
+where
+    Cell: 'static + Send + Unpin + Clone + PartialEq,
+    Attribute: 'static + Send + Sync + Clone + Unpin + PartialEq + Default,
 {
     /// The identifier for this stream
     pub(super) identifier: usize,
@@ -28,7 +35,8 @@ pub struct RopeStream<Cell, Attribute>
     pub(super) core: Arc<Desync<RopeBindingCore<Cell, Attribute>>>,
 
     /// A future that will return the next poll result
-    pub(super) poll_future: Option<BoxFuture<'static, Poll<Option<VecDeque<RopeAction<Cell, Attribute>>>>>>,
+    pub(super) poll_future:
+        Option<BoxFuture<'static, Poll<Option<VecDeque<RopeAction<Cell, Attribute>>>>>>,
 
     /// The actions that are currently being drained through this stream
     pub(super) draining: VecDeque<RopeAction<Cell, Attribute>>,
@@ -38,13 +46,16 @@ pub struct RopeStream<Cell, Attribute>
 }
 
 impl<Cell, Attribute> Stream for RopeStream<Cell, Attribute>
-    where
-        Cell: 'static + Send + Unpin + Clone + PartialEq,
-        Attribute: 'static + Send + Sync + Clone + Unpin + PartialEq + Default,
+where
+    Cell: 'static + Send + Unpin + Clone + PartialEq,
+    Attribute: 'static + Send + Sync + Clone + Unpin + PartialEq + Default,
 {
     type Item = RopeAction<Cell, Attribute>;
 
-    fn poll_next(mut self: Pin<&mut Self>, ctxt: &mut Context<'_>) -> Poll<Option<RopeAction<Cell, Attribute>>> {
+    fn poll_next(
+        mut self: Pin<&mut Self>,
+        ctxt: &mut Context<'_>,
+    ) -> Poll<Option<RopeAction<Cell, Attribute>>> {
         // If we've got a set of actions we're already reading, then return those as fast as we can
         if self.draining.len() > 0 {
             return Poll::Ready(self.draining.pop_back());
@@ -59,38 +70,42 @@ impl<Cell, Attribute> Stream for RopeStream<Cell, Attribute>
             // Ask the core for the next stream state
             let stream_id = self.identifier;
 
-            self.core.future_desync(move |core| {
-                async move {
-                    // Pull any pending changes from the rope
-                    core.pull_rope();
+            self.core
+                .future_desync(move |core| {
+                    async move {
+                        // Pull any pending changes from the rope
+                        core.pull_rope();
 
-                    // Find the state of this stream
-                    let stream_state = core.stream_states.iter_mut()
-                        .filter(|state| state.identifier == stream_id)
-                        .nth(0)
-                        .unwrap();
+                        // Find the state of this stream
+                        let stream_state = core
+                            .stream_states
+                            .iter_mut()
+                            .filter(|state| state.identifier == stream_id)
+                            .nth(0)
+                            .unwrap();
 
-                    // Check for data
-                    if stream_state.pending_changes.len() > 0 {
-                        // Return the changes to the waiting stream
-                        let mut changes = VecDeque::new();
-                        mem::swap(&mut changes, &mut stream_state.pending_changes);
+                        // Check for data
+                        if stream_state.pending_changes.len() > 0 {
+                            // Return the changes to the waiting stream
+                            let mut changes = VecDeque::new();
+                            mem::swap(&mut changes, &mut stream_state.pending_changes);
 
-                        Poll::Ready(Some(changes))
-                    } else if core.usage_count == 0 {
-                        // No changes, and nothing is using the core any more
-                        Poll::Ready(None)
-                    } else {
-                        // No changes are waiting
-                        Poll::Pending
+                            Poll::Ready(Some(changes))
+                        } else if core.usage_count == 0 {
+                            // No changes, and nothing is using the core any more
+                            Poll::Ready(None)
+                        } else {
+                            // No changes are waiting
+                            Poll::Pending
+                        }
                     }
-                }.boxed()
-            })
+                    .boxed()
+                })
                 .map(|result| {
                     // Error would indicate the core had gone away before the request should complete, so we signal this as an end-of-stream event
                     match result {
                         Ok(result) => result,
-                        Err(_) => Poll::Ready(None)
+                        Err(_) => Poll::Ready(None),
                     }
                 })
                 .boxed()
@@ -132,16 +147,17 @@ impl<Cell, Attribute> Stream for RopeStream<Cell, Attribute>
 }
 
 impl<Cell, Attribute> Drop for RopeStream<Cell, Attribute>
-    where
-        Cell: 'static + Send + Unpin + Clone + PartialEq,
-        Attribute: 'static + Send + Sync + Clone + Unpin + PartialEq + Default
+where
+    Cell: 'static + Send + Unpin + Clone + PartialEq,
+    Attribute: 'static + Send + Sync + Clone + Unpin + PartialEq + Default,
 {
     fn drop(&mut self) {
         // Remove the stream state when the stream is no more
         let dropped_stream_id = self.identifier;
         let retains_core = self.retains_core;
         self.core.desync(move |core| {
-            core.stream_states.retain(|state| state.identifier != dropped_stream_id);
+            core.stream_states
+                .retain(|state| state.identifier != dropped_stream_id);
 
             if retains_core {
                 // Core is no longer in use

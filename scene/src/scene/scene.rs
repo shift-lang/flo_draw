@@ -1,13 +1,20 @@
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
 use std::mem;
 use std::sync::*;
 
-use ::desync::*;
 use futures::channel::oneshot;
 use futures::future;
 use futures::prelude::*;
 use futures::stream::BoxStream;
 use futures::task;
 use futures::task::Poll;
+
+use ::desync::*;
 
 use crate::context::*;
 use crate::entity_channel::*;
@@ -20,7 +27,7 @@ use super::scene_core::*;
 use super::scene_waker::*;
 
 ///
-/// A `Scene` is a container for a set of entities. It provides a way to connect a set of small components into a larger program 
+/// A `Scene` is a container for a set of entities. It provides a way to connect a set of small components into a larger program
 /// or system. Software can be designed around a single scene containing everything, but multiple and even nested scenes are
 /// supported (so software could be designed around scene per user, per document or per session as needed)
 ///
@@ -108,9 +115,7 @@ impl Scene {
         let core = SceneCore::default();
         let core = Arc::new(Desync::new(core));
 
-        Scene {
-            core
-        }
+        Scene { core }
     }
 
     ///
@@ -123,9 +128,12 @@ impl Scene {
     ///
     /// Creates a channel to send messages in this context
     ///
-    pub fn send_to<TMessage>(&self, entity_id: EntityId) -> Result<impl EntityChannel<Message=TMessage>, EntityChannelError>
-        where
-            TMessage: 'static + Send,
+    pub fn send_to<TMessage>(
+        &self,
+        entity_id: EntityId,
+    ) -> Result<impl EntityChannel<Message = TMessage>, EntityChannelError>
+    where
+        TMessage: 'static + Send,
     {
         SceneContext::with_no_entity(&self.core).send_to(entity_id)
     }
@@ -133,11 +141,15 @@ impl Scene {
     ///
     /// Creates an entity that processes a particular kind of message
     ///
-    pub fn create_entity<TMessage, TFn, TFnFuture>(&self, entity_id: EntityId, runtime: TFn) -> Result<SimpleEntityChannel<TMessage>, CreateEntityError>
-        where
-            TMessage: 'static + Send,
-            TFn: 'static + Send + FnOnce(Arc<SceneContext>, BoxStream<'static, TMessage>) -> TFnFuture,
-            TFnFuture: 'static + Send + Future<Output=()>,
+    pub fn create_entity<TMessage, TFn, TFnFuture>(
+        &self,
+        entity_id: EntityId,
+        runtime: TFn,
+    ) -> Result<SimpleEntityChannel<TMessage>, CreateEntityError>
+    where
+        TMessage: 'static + Send,
+        TFn: 'static + Send + FnOnce(Arc<SceneContext>, BoxStream<'static, TMessage>) -> TFnFuture,
+        TFnFuture: 'static + Send + Future<Output = ()>,
     {
         SceneContext::with_no_entity(&self.core).create_entity(entity_id, runtime)
     }
@@ -149,9 +161,9 @@ impl Scene {
     /// so that `EntityChannel<Message=TSourceMessage>` also works.
     ///
     pub fn convert_message<TOriginalMessage, TNewMessage>(&self) -> Result<(), SceneContextError>
-        where
-            TOriginalMessage: 'static + Send,
-            TNewMessage: 'static + Send + From<TOriginalMessage>,
+    where
+        TOriginalMessage: 'static + Send,
+        TNewMessage: 'static + Send + From<TOriginalMessage>,
     {
         SceneContext::with_no_entity(&self.core).convert_message::<TOriginalMessage, TNewMessage>()
     }
@@ -192,14 +204,17 @@ impl Scene {
                 });
 
                 // Stop running if the scene core is stopped
-                let waiting_futures = if let Some(waiting_futures) = waiting_futures { waiting_futures } else { return Poll::Ready(()); };
+                let waiting_futures = if let Some(waiting_futures) = waiting_futures {
+                    waiting_futures
+                } else {
+                    return Poll::Ready(());
+                };
 
                 // Each future gets its own waker
-                let waiting_futures = waiting_futures.into_iter()
-                    .map(|future| {
-                        let waker = Arc::new(SceneWaker::from_context(context));
-                        Some((waker, future))
-                    });
+                let waiting_futures = waiting_futures.into_iter().map(|future| {
+                    let waker = Arc::new(SceneWaker::from_context(context));
+                    Some((waker, future))
+                });
                 running_futures.extend(waiting_futures);
 
                 // Run futures until they're all asleep again, or the core wakes us
@@ -250,8 +265,9 @@ impl Scene {
                         // Core is asleep, and all of the internal futures are asleep too
                         return Poll::Pending;
                     }
-                }   // Inner loop
-            }       // Outer loop
-        }).await;
+                } // Inner loop
+            } // Outer loop
+        })
+        .await;
     }
 }

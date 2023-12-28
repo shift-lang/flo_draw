@@ -1,3 +1,9 @@
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
 use super::curve::*;
 use super::section::*;
 use crate::geo::*;
@@ -10,9 +16,7 @@ pub fn control_polygon_length(curve: &impl BezierCurve) -> f64 {
     let (p2, p3) = curve.control_points();
     let p4 = curve.end_point();
 
-    p1.distance_to(&p2)
-        + p2.distance_to(&p3)
-        + p3.distance_to(&p4)
+    p1.distance_to(&p2) + p2.distance_to(&p3) + p3.distance_to(&p4)
 }
 
 ///

@@ -1,5 +1,11 @@
-use crate::geo::*;
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
 use super::basis::*;
+use crate::geo::*;
 
 use smallvec::*;
 
@@ -7,9 +13,12 @@ use smallvec::*;
 /// Subdivides a bezier curve with any number of weights at a particular point. Returns the weights for the
 /// two curves on either side of the subdivision point.
 ///
-pub fn subdivide_n<TPoint, const N: usize>(t: f64, points: [TPoint; N]) -> ([TPoint; N], [TPoint; N])
-    where
-        TPoint: Coordinate,
+pub fn subdivide_n<TPoint, const N: usize>(
+    t: f64,
+    points: [TPoint; N],
+) -> ([TPoint; N], [TPoint; N])
+where
+    TPoint: Coordinate,
 {
     // Want to store 1+2+3+...+N weights in total
     let num_weights = (N * (N + 1)) / 2;
@@ -49,7 +58,9 @@ pub fn subdivide_n<TPoint, const N: usize>(t: f64, points: [TPoint; N]) -> ([TPo
     }
 
     // Second set of weights will be reversed at this point, so we need to switch them around
-    if let (Ok(first_weights), Ok(second_weights)) = (first_weights.into_inner(), second_weights.into_inner()) {
+    if let (Ok(first_weights), Ok(second_weights)) =
+        (first_weights.into_inner(), second_weights.into_inner())
+    {
         let mut second_weights: [TPoint; N] = second_weights;
         second_weights.reverse();
 
@@ -63,8 +74,13 @@ pub fn subdivide_n<TPoint, const N: usize>(t: f64, points: [TPoint; N]) -> ([TPo
 /// Subdivides a cubic bezier curve at a particular point, returning the weights of
 /// the two component curves
 ///
-pub fn subdivide4<Point: Coordinate>(t: f64, w1: Point, w2: Point, w3: Point, w4: Point) ->
-((Point, Point, Point, Point), (Point, Point, Point, Point)) {
+pub fn subdivide4<Point: Coordinate>(
+    t: f64,
+    w1: Point,
+    w2: Point,
+    w3: Point,
+    w4: Point,
+) -> ((Point, Point, Point, Point), (Point, Point, Point, Point)) {
     // Weights (from de casteljau)
     let wn1 = w1 * (1.0 - t) + w2 * t;
     let wn2 = w2 * (1.0 - t) + w3 * t;
@@ -98,15 +114,55 @@ mod test {
         let ([wa1, wa2, wa3, wa4], [wb1, wb2, wb3, wb4]) = subdivide_n(0.33, [w1, w2, w3, w4]);
         let ((waa1, waa2, waa3, waa4), (wbb1, wbb2, wbb3, wbb4)) = subdivide4(0.33, w1, w2, w3, w4);
 
-        debug_assert!(approx_equal(wa1, waa1), "{:?} != {:?}", ((wa1, wa2, wa3, wa4), (wb1, wb2, wb3, wb4)), ((waa1, waa2, waa3, waa4), (wbb1, wbb2, wbb3, wbb4)));
-        debug_assert!(approx_equal(wa2, waa2), "{:?} != {:?}", ((wa1, wa2, wa3, wa4), (wb1, wb2, wb3, wb4)), ((waa1, waa2, waa3, waa4), (wbb1, wbb2, wbb3, wbb4)));
-        debug_assert!(approx_equal(wa3, waa3), "{:?} != {:?}", ((wa1, wa2, wa3, wa4), (wb1, wb2, wb3, wb4)), ((waa1, waa2, waa3, waa4), (wbb1, wbb2, wbb3, wbb4)));
-        debug_assert!(approx_equal(wa4, waa4), "{:?} != {:?}", ((wa1, wa2, wa3, wa4), (wb1, wb2, wb3, wb4)), ((waa1, waa2, waa3, waa4), (wbb1, wbb2, wbb3, wbb4)));
+        debug_assert!(
+            approx_equal(wa1, waa1),
+            "{:?} != {:?}",
+            ((wa1, wa2, wa3, wa4), (wb1, wb2, wb3, wb4)),
+            ((waa1, waa2, waa3, waa4), (wbb1, wbb2, wbb3, wbb4))
+        );
+        debug_assert!(
+            approx_equal(wa2, waa2),
+            "{:?} != {:?}",
+            ((wa1, wa2, wa3, wa4), (wb1, wb2, wb3, wb4)),
+            ((waa1, waa2, waa3, waa4), (wbb1, wbb2, wbb3, wbb4))
+        );
+        debug_assert!(
+            approx_equal(wa3, waa3),
+            "{:?} != {:?}",
+            ((wa1, wa2, wa3, wa4), (wb1, wb2, wb3, wb4)),
+            ((waa1, waa2, waa3, waa4), (wbb1, wbb2, wbb3, wbb4))
+        );
+        debug_assert!(
+            approx_equal(wa4, waa4),
+            "{:?} != {:?}",
+            ((wa1, wa2, wa3, wa4), (wb1, wb2, wb3, wb4)),
+            ((waa1, waa2, waa3, waa4), (wbb1, wbb2, wbb3, wbb4))
+        );
 
-        debug_assert!(approx_equal(wb1, wbb1), "{:?} != {:?}", ((wa1, wa2, wa3, wa4), (wb1, wb2, wb3, wb4)), ((waa1, waa2, waa3, waa4), (wbb1, wbb2, wbb3, wbb4)));
-        debug_assert!(approx_equal(wb2, wbb2), "{:?} != {:?}", ((wa1, wa2, wa3, wa4), (wb1, wb2, wb3, wb4)), ((waa1, waa2, waa3, waa4), (wbb1, wbb2, wbb3, wbb4)));
-        debug_assert!(approx_equal(wb3, wbb3), "{:?} != {:?}", ((wa1, wa2, wa3, wa4), (wb1, wb2, wb3, wb4)), ((waa1, waa2, waa3, waa4), (wbb1, wbb2, wbb3, wbb4)));
-        debug_assert!(approx_equal(wb4, wbb4), "{:?} != {:?}", ((wa1, wa2, wa3, wa4), (wb1, wb2, wb3, wb4)), ((waa1, waa2, waa3, waa4), (wbb1, wbb2, wbb3, wbb4)));
+        debug_assert!(
+            approx_equal(wb1, wbb1),
+            "{:?} != {:?}",
+            ((wa1, wa2, wa3, wa4), (wb1, wb2, wb3, wb4)),
+            ((waa1, waa2, waa3, waa4), (wbb1, wbb2, wbb3, wbb4))
+        );
+        debug_assert!(
+            approx_equal(wb2, wbb2),
+            "{:?} != {:?}",
+            ((wa1, wa2, wa3, wa4), (wb1, wb2, wb3, wb4)),
+            ((waa1, waa2, waa3, waa4), (wbb1, wbb2, wbb3, wbb4))
+        );
+        debug_assert!(
+            approx_equal(wb3, wbb3),
+            "{:?} != {:?}",
+            ((wa1, wa2, wa3, wa4), (wb1, wb2, wb3, wb4)),
+            ((waa1, waa2, waa3, waa4), (wbb1, wbb2, wbb3, wbb4))
+        );
+        debug_assert!(
+            approx_equal(wb4, wbb4),
+            "{:?} != {:?}",
+            ((wa1, wa2, wa3, wa4), (wb1, wb2, wb3, wb4)),
+            ((waa1, waa2, waa3, waa4), (wbb1, wbb2, wbb3, wbb4))
+        );
 
         // Check that the original curve corresponds to the basis function for wa
         for x in 0..100 {

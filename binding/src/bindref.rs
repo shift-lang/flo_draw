@@ -1,10 +1,17 @@
-use crate::traits::*;
-use crate::binding::*;
-use crate::computed::*;
-#[cfg(feature = "stream")]
-use super::bind_stream::*;
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
 
 use std::sync::*;
+
+use crate::binding::*;
+use crate::computed::*;
+use crate::traits::*;
+
+#[cfg(feature = "stream")]
+use super::bind_stream::*;
 
 ///
 /// A `BindRef` references another binding without needing to know precisely
@@ -15,7 +22,7 @@ use std::sync::*;
 /// Cloning a `BindRef` will create another reference to the same binding.
 ///
 pub struct BindRef<Target> {
-    reference: Arc<dyn Bound<Value=Target>>,
+    reference: Arc<dyn Bound<Value = Target>>,
 }
 
 impl<TValue> Bound for BindRef<TValue> {
@@ -42,7 +49,7 @@ impl<Value> Changeable for BindRef<Value> {
 impl<Value> Clone for BindRef<Value> {
     fn clone(&self) -> Self {
         BindRef {
-            reference: Arc::clone(&self.reference)
+            reference: Arc::clone(&self.reference),
         }
     }
 }
@@ -53,11 +60,11 @@ impl<TValue> BindRef<TValue> {
     ///
     #[inline]
     pub fn new<Binding>(binding: &Binding) -> BindRef<TValue>
-        where
-            Binding: 'static + Clone + Bound<Value=TValue>,
+    where
+        Binding: 'static + Clone + Bound<Value = TValue>,
     {
         BindRef {
-            reference: Arc::new(binding.clone())
+            reference: Arc::new(binding.clone()),
         }
     }
 
@@ -66,11 +73,11 @@ impl<TValue> BindRef<TValue> {
     ///
     #[inline]
     pub fn from_arc<Binding>(binding_ref: Arc<Binding>) -> BindRef<TValue>
-        where
-            Binding: 'static + Bound<Value=TValue>,
+    where
+        Binding: 'static + Bound<Value = TValue>,
     {
         BindRef {
-            reference: binding_ref
+            reference: binding_ref,
         }
     }
 }
@@ -86,7 +93,7 @@ impl<Value: 'static + Clone + Send + PartialEq> From<Binding<Value>> for BindRef
     #[inline]
     fn from(val: Binding<Value>) -> Self {
         BindRef {
-            reference: Arc::new(val)
+            reference: Arc::new(val),
         }
     }
 }
@@ -95,32 +102,40 @@ impl<'a, Value: 'static + Clone + PartialEq + Send> From<&'a Binding<Value>> for
     #[inline]
     fn from(val: &'a Binding<Value>) -> Self {
         BindRef {
-            reference: Arc::new(val.clone())
+            reference: Arc::new(val.clone()),
         }
     }
 }
 
-impl<Value: 'static + Clone + PartialEq + Send, TFn> From<ComputedBinding<Value, TFn>> for BindRef<Value>
-    where TFn: 'static + Send + Sync + Fn() -> Value {
+impl<Value: 'static + Clone + PartialEq + Send, TFn> From<ComputedBinding<Value, TFn>>
+    for BindRef<Value>
+where
+    TFn: 'static + Send + Sync + Fn() -> Value,
+{
     #[inline]
     fn from(val: ComputedBinding<Value, TFn>) -> Self {
         BindRef {
-            reference: Arc::new(val)
+            reference: Arc::new(val),
         }
     }
 }
 
-impl<'a, Value: 'static + Clone + PartialEq + Send, TFn> From<&'a ComputedBinding<Value, TFn>> for BindRef<Value>
-    where TFn: 'static + Send + Sync + Fn() -> Value {
+impl<'a, Value: 'static + Clone + PartialEq + Send, TFn> From<&'a ComputedBinding<Value, TFn>>
+    for BindRef<Value>
+where
+    TFn: 'static + Send + Sync + Fn() -> Value,
+{
     #[inline]
     fn from(val: &'a ComputedBinding<Value, TFn>) -> Self {
         BindRef {
-            reference: Arc::new(val.clone())
+            reference: Arc::new(val.clone()),
         }
     }
 }
 
-impl<'a, Value: 'static + Clone + PartialEq + Send + Into<Binding<Value>>> From<&'a Value> for BindRef<Value> {
+impl<'a, Value: 'static + Clone + PartialEq + Send + Into<Binding<Value>>> From<&'a Value>
+    for BindRef<Value>
+{
     #[inline]
     fn from(val: &'a Value) -> BindRef<Value> {
         let binding: Binding<Value> = val.into();
@@ -133,7 +148,7 @@ impl<Value: 'static + Clone + Send + PartialEq> From<StreamBinding<Value>> for B
     #[inline]
     fn from(val: StreamBinding<Value>) -> Self {
         BindRef {
-            reference: Arc::new(val)
+            reference: Arc::new(val),
         }
     }
 }

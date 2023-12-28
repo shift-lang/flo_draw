@@ -1,3 +1,9 @@
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
 #[cfg(feature = "outline-fonts")]
 use allsorts::error::ParseError;
 #[cfg(feature = "outline-fonts")]
@@ -148,7 +154,7 @@ mod canvas_font_face {
                     ttf_parser::Face::parse(&**data, font_index as _).unwrap()
                 },
             }
-                .build();
+            .build();
 
             // Generate the font face
             font_face
@@ -254,8 +260,8 @@ impl fmt::Debug for CanvasFontFace {
 
 impl Serialize for CanvasFontFace {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-        where
-            S: Serializer,
+    where
+        S: Serializer,
     {
         let mut s = serializer.serialize_struct("CanvasFontFace", 1)?;
         s.serialize_field("data", self.font_data())?;
@@ -265,8 +271,8 @@ impl Serialize for CanvasFontFace {
 
 impl<'de> Deserialize<'de> for CanvasFontFace {
     fn deserialize<D>(deserializer: D) -> Result<CanvasFontFace, D::Error>
-        where
-            D: Deserializer<'de>,
+    where
+        D: Deserializer<'de>,
     {
         // Field deserializer
         enum Field {
@@ -276,8 +282,8 @@ impl<'de> Deserialize<'de> for CanvasFontFace {
 
         impl<'de> Deserialize<'de> for Field {
             fn deserialize<D>(deserializer: D) -> Result<Field, D::Error>
-                where
-                    D: Deserializer<'de>,
+            where
+                D: Deserializer<'de>,
             {
                 struct FieldVisitor;
                 impl<'de> Visitor<'de> for FieldVisitor {
@@ -288,8 +294,8 @@ impl<'de> Deserialize<'de> for CanvasFontFace {
                     }
 
                     fn visit_str<E>(self, value: &str) -> Result<Field, E>
-                        where
-                            E: de::Error,
+                    where
+                        E: de::Error,
                     {
                         match value {
                             "data" => Ok(Field::Data),
@@ -312,8 +318,8 @@ impl<'de> Deserialize<'de> for CanvasFontFace {
             }
 
             fn visit_seq<V>(self, mut seq: V) -> Result<CanvasFontFace, V::Error>
-                where
-                    V: SeqAccess<'de>,
+            where
+                V: SeqAccess<'de>,
             {
                 let bytes: Vec<u8> = seq
                     .next_element()?
@@ -324,8 +330,8 @@ impl<'de> Deserialize<'de> for CanvasFontFace {
             }
 
             fn visit_map<V>(self, mut map: V) -> Result<CanvasFontFace, V::Error>
-                where
-                    V: MapAccess<'de>,
+            where
+                V: MapAccess<'de>,
             {
                 let mut data: Option<Vec<u8>> = None;
                 while let Some(key) = map.next_key()? {

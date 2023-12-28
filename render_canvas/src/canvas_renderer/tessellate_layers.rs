@@ -1,21 +1,27 @@
-use super::canvas_renderer::*;
-use super::tessellate_build_path::*;
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
 
-use crate::fill_state::*;
-use crate::layer_state::*;
-use crate::layer_bounds::*;
-use crate::layer_handle::*;
-use crate::render_entity::*;
-use crate::renderer_layer::*;
-use crate::stroke_settings::*;
+use std::mem;
+use std::sync::*;
+
+use lyon::tessellation::FillRule;
 
 use flo_canvas as canvas;
 use flo_render as render;
 
-use lyon::tessellation::{FillRule};
+use crate::fill_state::*;
+use crate::layer_bounds::*;
+use crate::layer_handle::*;
+use crate::layer_state::*;
+use crate::render_entity::*;
+use crate::renderer_layer::*;
+use crate::stroke_settings::*;
 
-use std::mem;
-use std::sync::*;
+use super::canvas_renderer::*;
+use super::tessellate_build_path::*;
 
 impl CanvasRenderer {
     ///
@@ -32,7 +38,7 @@ impl CanvasRenderer {
                 stroke_settings: StrokeSettings::new(),
                 current_matrix: canvas::Transform2D::identity(),
                 sprite_matrix: canvas::Transform2D::identity(),
-                scale_factor: 0.002,                              // Canvas height of approximately 768 (1.0 will tessellate at far too fine a detail for these coordinate schemes, so we default to 0.002 as a safety net)
+                scale_factor: 0.002, // Canvas height of approximately 768 (1.0 will tessellate at far too fine a detail for these coordinate schemes, so we default to 0.002 as a safety net)
                 base_scale_factor: 1.0,
                 blend_mode: canvas::BlendMode::SourceOver,
                 restore_point: None,
@@ -49,7 +55,11 @@ impl CanvasRenderer {
     ///
     /// Clears the canvas entirely
     ///
-    pub(super) fn tes_clear_canvas(&mut self, background: canvas::Color, path_state: &mut PathState) {
+    pub(super) fn tes_clear_canvas(
+        &mut self,
+        background: canvas::Color,
+        path_state: &mut PathState,
+    ) {
         //todo!("Stop any incoming tessellated data for this layer");
         //todo!("Mark vertex buffers as freed");
 
@@ -62,7 +72,9 @@ impl CanvasRenderer {
 
             for (_canvas_id, render_id) in old_textures.into_iter() {
                 let render_id = (&render_id).into();
-                core.used_textures.get_mut(&render_id).map(|usage_count| *usage_count -= 1);
+                core.used_textures
+                    .get_mut(&render_id)
+                    .map(|usage_count| *usage_count -= 1);
             }
 
             // Release the existing layers
@@ -106,7 +118,7 @@ impl CanvasRenderer {
         let layer_id = layer_id as usize;
         let core = Arc::clone(&self.core);
 
-        // Generate layers 
+        // Generate layers
         core.sync(|core| {
             while core.layers.len() <= layer_id {
                 let new_layer = Self::create_default_layer();
@@ -122,7 +134,11 @@ impl CanvasRenderer {
     ///
     /// Sets how a particular layer is blended with the underlying layer
     ///
-    pub(super) fn tes_layer_blend(&mut self, canvas::LayerId(layer_id): canvas::LayerId, blend_mode: canvas::BlendMode) {
+    pub(super) fn tes_layer_blend(
+        &mut self,
+        canvas::LayerId(layer_id): canvas::LayerId,
+        blend_mode: canvas::BlendMode,
+    ) {
         self.core.sync(move |core| {
             let layer_id = layer_id as usize;
 
@@ -145,7 +161,11 @@ impl CanvasRenderer {
     ///
     /// Sets the alpha blend mode for a particular layer
     ///
-    pub(super) fn tes_layer_alpha(&mut self, canvas::LayerId(layer_id): canvas::LayerId, layer_alpha: f32) {
+    pub(super) fn tes_layer_alpha(
+        &mut self,
+        canvas::LayerId(layer_id): canvas::LayerId,
+        layer_alpha: f32,
+    ) {
         self.core.sync(move |core| {
             let layer_id = layer_id as usize;
 
@@ -191,7 +211,8 @@ impl CanvasRenderer {
             mem::swap(core.layer(self.current_layer), &mut layer);
 
             // Ensure the layer transform is up to date
-            core.layer(self.current_layer).update_transform(&self.active_transform);
+            core.layer(self.current_layer)
+                .update_transform(&self.active_transform);
 
             // Free the data for the layer that we just replaced
             core.free_layer_entities(layer);
@@ -228,7 +249,11 @@ impl CanvasRenderer {
     ///
     /// Swaps two layers (changing their render order)
     ///
-    pub(super) fn tes_swap_layers(&mut self, canvas::LayerId(layer1): canvas::LayerId, canvas::LayerId(layer2): canvas::LayerId) {
+    pub(super) fn tes_swap_layers(
+        &mut self,
+        canvas::LayerId(layer1): canvas::LayerId,
+        canvas::LayerId(layer2): canvas::LayerId,
+    ) {
         if layer1 != layer2 {
             self.core.sync(move |core| {
                 // Create layers if they don't already exist so we can swap with arbitrary layers
@@ -244,7 +269,8 @@ impl CanvasRenderer {
                 let LayerHandle(handle2) = core.layers[layer2 as usize];
 
                 if handle1 != handle2 {
-                    core.layer_definitions.swap(handle1 as usize, handle2 as usize);
+                    core.layer_definitions
+                        .swap(handle1 as usize, handle2 as usize);
                 }
             });
         }

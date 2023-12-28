@@ -1,8 +1,14 @@
-use flo_curves::*;
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
 use flo_curves::bezier;
 use flo_curves::bezier::path::*;
-use flo_draw::*;
+use flo_curves::*;
 use flo_draw::canvas::*;
+use flo_draw::*;
 
 use std::f64;
 use std::thread;
@@ -21,7 +27,11 @@ fn main() {
             .build();
 
         // Line to use as a source curve
-        let source_curve = bezier::Curve::from_points(Coord2(300.0, 200.0), (Coord2(300.0, 300.0), Coord2(700.0, 100.0)), Coord2(700.0, 200.0));
+        let source_curve = bezier::Curve::from_points(
+            Coord2(300.0, 200.0),
+            (Coord2(300.0, 300.0), Coord2(700.0, 100.0)),
+            Coord2(700.0, 200.0),
+        );
 
         // We'll change the amount of distortion over time
         let start_time = Instant::now();
@@ -35,22 +45,39 @@ fn main() {
             let since_start = since_start.as_nanos() as f64;
             let amplitude = (since_start / (f64::consts::PI * 500_000_000.0)).sin() * 50.0;
 
-            let distorted_path = bezier::distort_path::<_, _, SimpleBezierPath>(&source_path, |point, _curve, _t| {
-                let distance = point.magnitude();
-                let ripple = (since_start / (f64::consts::PI * 500_000_000.0)) * 10.0;
+            let distorted_path = bezier::distort_path::<_, _, SimpleBezierPath>(
+                &source_path,
+                |point, _curve, _t| {
+                    let distance = point.magnitude();
+                    let ripple = (since_start / (f64::consts::PI * 500_000_000.0)) * 10.0;
 
-                let offset_x = (distance / (f64::consts::PI * 5.0) + ripple).sin() * amplitude * 0.5;
-                let offset_y = (distance / (f64::consts::PI * 4.0) + ripple).cos() * amplitude * 0.5;
+                    let offset_x =
+                        (distance / (f64::consts::PI * 5.0) + ripple).sin() * amplitude * 0.5;
+                    let offset_y =
+                        (distance / (f64::consts::PI * 4.0) + ripple).cos() * amplitude * 0.5;
 
-                Coord2(point.x() + offset_x, point.y() + offset_y)
-            }, 1.0, 0.1).unwrap();
+                    Coord2(point.x() + offset_x, point.y() + offset_y)
+                },
+                1.0,
+                0.1,
+            )
+            .unwrap();
 
-            let distorted_curve = bezier::distort_curve::<_, _, bezier::Curve<Coord2>>(&source_curve, |point, _t| {
-                let offset_x = (point.x() / (f64::consts::PI * 25.0) * (amplitude / 50.0)).sin() * amplitude * 2.0;
-                let offset_y = (point.x() / (f64::consts::PI * 12.0)).cos() * amplitude * 2.0;
+            let distorted_curve = bezier::distort_curve::<_, _, bezier::Curve<Coord2>>(
+                &source_curve,
+                |point, _t| {
+                    let offset_x = (point.x() / (f64::consts::PI * 25.0) * (amplitude / 50.0))
+                        .sin()
+                        * amplitude
+                        * 2.0;
+                    let offset_y = (point.x() / (f64::consts::PI * 12.0)).cos() * amplitude * 2.0;
 
-                Coord2(point.x() + offset_x, point.y() + offset_y)
-            }, 1.0, 0.1).unwrap();
+                    Coord2(point.x() + offset_x, point.y() + offset_y)
+                },
+                1.0,
+                0.1,
+            )
+            .unwrap();
 
             canvas.draw(|gc| {
                 gc.clear_canvas(Color::Rgba(1.0, 1.0, 1.0, 1.0));
@@ -63,13 +90,19 @@ fn main() {
                 // Render the distorted curve and the original
                 gc.stroke_color(Color::Rgba(0.8, 0.6, 0.0, 1.0));
                 gc.new_path();
-                gc.move_to(source_curve.start_point().x() as _, source_curve.start_point.y() as _);
+                gc.move_to(
+                    source_curve.start_point().x() as _,
+                    source_curve.start_point.y() as _,
+                );
                 gc.bezier_curve(&source_curve);
                 gc.stroke();
 
                 gc.stroke_color(Color::Rgba(0.0, 0.6, 0.8, 1.0));
                 gc.new_path();
-                gc.move_to(distorted_curve[0].start_point().x() as _, distorted_curve[0].start_point.y() as _);
+                gc.move_to(
+                    distorted_curve[0].start_point().x() as _,
+                    distorted_curve[0].start_point.y() as _,
+                );
                 for curve in distorted_curve.iter() {
                     gc.bezier_curve(curve);
                 }

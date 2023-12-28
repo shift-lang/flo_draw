@@ -1,8 +1,14 @@
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
 use std::thread;
 use std::time::Duration;
 
-use flo_draw::*;
 use flo_draw::canvas::*;
+use flo_draw::*;
 
 ///
 /// Dynamic textures can be used to have a texture created from a sprite that is re-rendered to match the resolution of the canvas
@@ -37,7 +43,16 @@ pub fn main() {
             gc.layer(LayerId(0));
 
             // Create a dynamic texture that fits on a 100x100 block on the screen
-            gc.create_dynamic_texture(TextureId(0), SpriteId(0), 0.0, 0.0, 100.0, 100.0, 100.0, 100.0);
+            gc.create_dynamic_texture(
+                TextureId(0),
+                SpriteId(0),
+                0.0,
+                0.0,
+                100.0,
+                100.0,
+                100.0,
+                100.0,
+            );
         });
 
         let mut angle = 0.0;

@@ -1,15 +1,24 @@
-use super::fill_state::*;
-use super::layer_handle::*;
-use super::render_entity::*;
-use super::stroke_settings::*;
-use super::render_entity_details::*;
-
-use flo_render as render;
-use flo_canvas as canvas;
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
 
 use lyon::path;
 use lyon::tessellation;
-use lyon::tessellation::{VertexBuffers, BuffersBuilder, Side, StrokeVertex, StrokeOptions, FillVertex, FillOptions, FillRule};
+use lyon::tessellation::{
+    BuffersBuilder, FillOptions, FillRule, FillVertex, Side, StrokeOptions, StrokeVertex,
+    VertexBuffers,
+};
+
+use flo_canvas as canvas;
+use flo_render as render;
+
+use super::fill_state::*;
+use super::layer_handle::*;
+use super::render_entity::*;
+use super::render_entity_details::*;
+use super::stroke_settings::*;
 
 /// The minimum tolerance to use when rendering fills/strokes
 const MIN_TOLERANCE: f32 = 0.0001;
@@ -83,20 +92,56 @@ impl CanvasWorker {
     ///
     /// Processes a single tessellation job (returning a vertex buffer entity)
     ///
-    pub fn process_job(&mut self, job: CanvasJob) -> (LayerEntityRef, RenderEntity, RenderEntityDetails) {
+    pub fn process_job(
+        &mut self,
+        job: CanvasJob,
+    ) -> (LayerEntityRef, RenderEntity, RenderEntityDetails) {
         use self::CanvasJob::*;
 
         match job {
-            Fill { path, fill_rule, color, scale_factor, transform, entity } => self.fill(path, fill_rule, color.flat_color(), scale_factor, transform, entity),
-            Clip { path, fill_rule, color, scale_factor, transform, entity } => self.clip(path, fill_rule, color, scale_factor, transform, entity),
-            Stroke { path, stroke_options, scale_factor, transform, entity } => self.stroke(path, stroke_options, scale_factor, transform, entity),
+            Fill {
+                path,
+                fill_rule,
+                color,
+                scale_factor,
+                transform,
+                entity,
+            } => self.fill(
+                path,
+                fill_rule,
+                color.flat_color(),
+                scale_factor,
+                transform,
+                entity,
+            ),
+            Clip {
+                path,
+                fill_rule,
+                color,
+                scale_factor,
+                transform,
+                entity,
+            } => self.clip(path, fill_rule, color, scale_factor, transform, entity),
+            Stroke {
+                path,
+                stroke_options,
+                scale_factor,
+                transform,
+                entity,
+            } => self.stroke(path, stroke_options, scale_factor, transform, entity),
         }
     }
 
     ///
     /// Fills a path and returns the resulting render geometry
     ///
-    fn fill_geometry(&mut self, path: path::Path, fill_rule: FillRule, render::Rgba8(color): render::Rgba8, scale_factor: f64) -> VertexBuffers<render::Vertex2D, u16> {
+    fn fill_geometry(
+        &mut self,
+        path: path::Path,
+        fill_rule: FillRule,
+        render::Rgba8(color): render::Rgba8,
+        scale_factor: f64,
+    ) -> VertexBuffers<render::Vertex2D, u16> {
         // Create the tessellator and geometry
         let mut tessellator = tessellation::FillTessellator::new();
         let mut geometry = VertexBuffers::new();
@@ -109,14 +154,19 @@ impl CanvasWorker {
         fill_options.tolerance = f32::max(MIN_TOLERANCE, fill_options.tolerance);
 
         // Tessellate the current path
-        tessellator.tessellate_path(&path, &fill_options,
-                                    &mut BuffersBuilder::new(&mut geometry, move |vertex: FillVertex| {
-                                        render::Vertex2D {
-                                            pos: vertex.position().to_array(),
-                                            tex_coord: [0.0, 0.0],
-                                            color: color,
-                                        }
-                                    })).unwrap();
+        tessellator
+            .tessellate_path(
+                &path,
+                &fill_options,
+                &mut BuffersBuilder::new(&mut geometry, move |vertex: FillVertex| {
+                    render::Vertex2D {
+                        pos: vertex.position().to_array(),
+                        tex_coord: [0.0, 0.0],
+                        color: color,
+                    }
+                }),
+            )
+            .unwrap();
 
         geometry
     }
@@ -124,21 +174,45 @@ impl CanvasWorker {
     ///
     /// Fills the current path and returns the resulting render entity
     ///
-    fn fill(&mut self, path: path::Path, fill_rule: FillRule, render::Rgba8(color): render::Rgba8, scale_factor: f64, transform: canvas::Transform2D, entity: LayerEntityRef) -> (LayerEntityRef, RenderEntity, RenderEntityDetails) {
+    fn fill(
+        &mut self,
+        path: path::Path,
+        fill_rule: FillRule,
+        render::Rgba8(color): render::Rgba8,
+        scale_factor: f64,
+        transform: canvas::Transform2D,
+        entity: LayerEntityRef,
+    ) -> (LayerEntityRef, RenderEntity, RenderEntityDetails) {
         let geometry = self.fill_geometry(path, fill_rule, render::Rgba8(color), scale_factor);
         let details = RenderEntityDetails::from_vertices(&geometry.vertices, &transform);
 
-        (entity, RenderEntity::VertexBuffer(geometry, VertexBufferIntent::Draw), details)
+        (
+            entity,
+            RenderEntity::VertexBuffer(geometry, VertexBufferIntent::Draw),
+            details,
+        )
     }
 
     ///
     /// Fills the current path and returns the resulting render entity
     ///
-    fn clip(&mut self, path: path::Path, fill_rule: FillRule, render::Rgba8(color): render::Rgba8, scale_factor: f64, transform: canvas::Transform2D, entity: LayerEntityRef) -> (LayerEntityRef, RenderEntity, RenderEntityDetails) {
+    fn clip(
+        &mut self,
+        path: path::Path,
+        fill_rule: FillRule,
+        render::Rgba8(color): render::Rgba8,
+        scale_factor: f64,
+        transform: canvas::Transform2D,
+        entity: LayerEntityRef,
+    ) -> (LayerEntityRef, RenderEntity, RenderEntityDetails) {
         let geometry = self.fill_geometry(path, fill_rule, render::Rgba8(color), scale_factor);
         let details = RenderEntityDetails::from_vertices(&geometry.vertices, &transform);
 
-        (entity, RenderEntity::VertexBuffer(geometry, VertexBufferIntent::Clip), details)
+        (
+            entity,
+            RenderEntity::VertexBuffer(geometry, VertexBufferIntent::Clip),
+            details,
+        )
     }
 
     ///
@@ -151,13 +225,13 @@ impl CanvasWorker {
         stroke_options.end_cap = match stroke_settings.cap {
             canvas::LineCap::Butt => tessellation::LineCap::Butt,
             canvas::LineCap::Square => tessellation::LineCap::Square,
-            canvas::LineCap::Round => tessellation::LineCap::Round
+            canvas::LineCap::Round => tessellation::LineCap::Round,
         };
         stroke_options.start_cap = stroke_options.end_cap;
         stroke_options.line_join = match stroke_settings.join {
             canvas::LineJoin::Miter => tessellation::LineJoin::Miter,
             canvas::LineJoin::Bevel => tessellation::LineJoin::Bevel,
-            canvas::LineJoin::Round => tessellation::LineJoin::Round
+            canvas::LineJoin::Round => tessellation::LineJoin::Round,
         };
 
         stroke_options
@@ -166,7 +240,12 @@ impl CanvasWorker {
     ///
     /// Generates the geometry for a stroke
     ///
-    fn stroke_geometry(&mut self, path: path::Path, stroke_options: StrokeSettings, scale_factor: f64) -> VertexBuffers<render::Vertex2D, u16> {
+    fn stroke_geometry(
+        &mut self,
+        path: path::Path,
+        stroke_options: StrokeSettings,
+        scale_factor: f64,
+    ) -> VertexBuffers<render::Vertex2D, u16> {
         // Create the tessellator and geometry
         let mut tessellator = tessellation::StrokeTessellator::new();
         let mut geometry = VertexBuffers::new();
@@ -180,20 +259,25 @@ impl CanvasWorker {
 
         // Stroke the path
         // TODO: 'TooManyVertices'
-        tessellator.tessellate_path(&path, &stroke_options,
-                                    &mut BuffersBuilder::new(&mut geometry, move |point: StrokeVertex| {
-                                        let advancement = point.advancement();
-                                        let side = match point.side() {
-                                            Side::Negative => 0.0,
-                                            Side::Positive => 1.0
-                                        };
+        tessellator
+            .tessellate_path(
+                &path,
+                &stroke_options,
+                &mut BuffersBuilder::new(&mut geometry, move |point: StrokeVertex| {
+                    let advancement = point.advancement();
+                    let side = match point.side() {
+                        Side::Negative => 0.0,
+                        Side::Positive => 1.0,
+                    };
 
-                                        render::Vertex2D {
-                                            pos: point.position().to_array(),
-                                            tex_coord: [advancement, side],
-                                            color: color,
-                                        }
-                                    })).unwrap();
+                    render::Vertex2D {
+                        pos: point.position().to_array(),
+                        tex_coord: [advancement, side],
+                        color: color,
+                    }
+                }),
+            )
+            .unwrap();
 
         geometry
     }
@@ -201,10 +285,21 @@ impl CanvasWorker {
     ///
     /// Strokes a path and returns the resulting render entity
     ///
-    fn stroke(&mut self, path: path::Path, stroke_options: StrokeSettings, scale_factor: f64, transform: canvas::Transform2D, entity: LayerEntityRef) -> (LayerEntityRef, RenderEntity, RenderEntityDetails) {
+    fn stroke(
+        &mut self,
+        path: path::Path,
+        stroke_options: StrokeSettings,
+        scale_factor: f64,
+        transform: canvas::Transform2D,
+        entity: LayerEntityRef,
+    ) -> (LayerEntityRef, RenderEntity, RenderEntityDetails) {
         let geometry = self.stroke_geometry(path, stroke_options, scale_factor);
         let details = RenderEntityDetails::from_vertices(&geometry.vertices, &transform);
 
-        (entity, RenderEntity::VertexBuffer(geometry, VertexBufferIntent::Draw), details)
+        (
+            entity,
+            RenderEntity::VertexBuffer(geometry, VertexBufferIntent::Draw),
+            details,
+        )
     }
 }

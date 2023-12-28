@@ -1,13 +1,19 @@
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
 use std::thread;
 use std::time::Duration;
 
-use flo_curves::bezier::path::*;
 use futures::executor;
 use futures::prelude::*;
 use futures::stream;
 
-use flo_draw::*;
+use flo_curves::bezier::path::*;
 use flo_draw::canvas::*;
+use flo_draw::*;
 
 ///
 /// Draws FlowBetween's mascot with extra processing to add shading effects and a drop shadow

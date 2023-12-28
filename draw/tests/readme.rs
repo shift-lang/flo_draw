@@ -1,3 +1,9 @@
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
 use std::str;
 
 ///
@@ -15,9 +21,12 @@ fn starts_with_version_number_toml() {
     let major_version = env!("CARGO_PKG_VERSION_MAJOR");
     let minor_version = env!("CARGO_PKG_VERSION_MINOR");
 
-    let expected = format!("```toml
+    let expected = format!(
+        "```toml
 flo_draw = \"{}.{}\"
-```", major_version, minor_version);
+```",
+        major_version, minor_version
+    );
 
     println!("{}", expected);
     assert!(readme().starts_with(&expected));

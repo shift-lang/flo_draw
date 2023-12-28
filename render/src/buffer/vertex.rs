@@ -1,3 +1,9 @@
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
 ///
 /// 2D vertex representation
 ///
@@ -28,7 +34,12 @@ impl Vertex2D {
         Vertex2D {
             pos: self.pos,
             tex_coord: self.tex_coord,
-            color: [(r * 255.0) as _, (g * 255.0) as _, (b * 255.0) as _, (a * 255.0) as _],
+            color: [
+                (r * 255.0) as _,
+                (g * 255.0) as _,
+                (b * 255.0) as _,
+                (a * 255.0) as _,
+            ],
         }
     }
 

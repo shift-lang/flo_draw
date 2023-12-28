@@ -1,3 +1,11 @@
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
+use winit::dpi::PhysicalPosition;
+
 ///
 /// A unique identifier assigned to a specific pointer on the system (a device that has a mouse and touch input might be tracking
 /// multiple pointer devices)
@@ -59,36 +67,16 @@ pub struct PointerState {
 
     /// If the view is displaying scaled content, this is the location of the pointer in the coordinate scheme of that content
     pub location_in_canvas: Option<(f64, f64)>,
-
-    /// The buttons that are currently pressed down
-    pub buttons: Vec<Button>,
-
-    /// If the pointer device supports pressure, the pressure the user is applying (from 0.0 to 1.0)
-    pub pressure: Option<f64>,
-
-    /// tilt in degrees relative to the normal to the surface of the screen along the X and Y axes (values from -90 to 90)
-    pub tilt: Option<(f64, f64)>,
-
-    /// If the device supports detecting rotation around its own axis, this is amount of rotation in degrees (values from -180 to 180)
-    pub rotation: Option<f64>,
-
-    /// If the device has a 'flow rate' adjustment (emulating an airbrush, for example) this is the value of that (from 0.0 to 1.0).
-    pub flow_rate: Option<f64>,
 }
 
 impl PointerState {
     ///
     /// Creates a pointer state in the default state
     ///
-    pub fn new() -> PointerState {
+    pub fn new(point: PhysicalPosition<f64>) -> PointerState {
         PointerState {
-            location_in_window: (0.0, 0.0),
+            location_in_window: (point.x, point.y),
             location_in_canvas: None,
-            buttons: vec![],
-            pressure: None,
-            tilt: None,
-            rotation: None,
-            flow_rate: None,
         }
     }
 }

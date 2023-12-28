@@ -1,17 +1,24 @@
-use crate::edgeplan::*;
-
-use flo_canvas as canvas;
-use smallvec::*;
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
 
 use std::sync::*;
+
+use smallvec::*;
+
+use flo_canvas as canvas;
+
+use crate::edgeplan::*;
 
 ///
 /// A clipping region, defined by an edge description
 ///
 #[derive(Clone)]
 pub struct ClipRegion<TEdge>
-    where
-        TEdge: EdgeDescriptor,
+where
+    TEdge: EdgeDescriptor,
 {
     /// The edges that make up the clip region
     region: Vec<TEdge>,
@@ -25,9 +32,9 @@ pub struct ClipRegion<TEdge>
 ///
 #[derive(Clone)]
 pub struct ClippedShapeEdge<TEdge, TRegionEdge>
-    where
-        TEdge: Clone + EdgeDescriptor,
-        TRegionEdge: Clone + EdgeDescriptor,
+where
+    TEdge: Clone + EdgeDescriptor,
+    TRegionEdge: Clone + EdgeDescriptor,
 {
     /// The ID of the shape
     shape_id: ShapeId,
@@ -43,8 +50,8 @@ pub struct ClippedShapeEdge<TEdge, TRegionEdge>
 }
 
 impl<TEdge> ClipRegion<TEdge>
-    where
-        TEdge: 'static + EdgeDescriptor,
+where
+    TEdge: 'static + EdgeDescriptor,
 {
     ///
     /// Creates a new clipping region
@@ -69,10 +76,7 @@ impl<TEdge> ClipRegion<TEdge>
 
         let bounds = ((min_x, min_y), (max_x, max_y));
 
-        ClipRegion {
-            region,
-            bounds,
-        }
+        ClipRegion { region, bounds }
     }
 
     ///
@@ -80,10 +84,14 @@ impl<TEdge> ClipRegion<TEdge>
     ///
     pub fn to_object(self) -> ClipRegion<Arc<dyn EdgeDescriptor>> {
         ClipRegion {
-            region: self.region.into_iter().map(|edge| {
-                let edge: Arc<dyn EdgeDescriptor> = Arc::new(edge);
-                edge
-            }).collect(),
+            region: self
+                .region
+                .into_iter()
+                .map(|edge| {
+                    let edge: Arc<dyn EdgeDescriptor> = Arc::new(edge);
+                    edge
+                })
+                .collect(),
             bounds: self.bounds,
         }
     }
@@ -93,36 +101,41 @@ impl<TEdge> ClipRegion<TEdge>
     ///
     fn transform(&self, transform: &canvas::Transform2D) -> ClipRegion<Arc<dyn EdgeDescriptor>> {
         // Transform the edges in the region
-        let region = self.region.iter()
+        let region = self
+            .region
+            .iter()
             .map(|edge| edge.transform(transform))
             .collect::<Vec<_>>();
 
         // Recompute the bounding box
-        let bounds = region.iter()
-            .fold(((f64::MAX, f64::MAX), (f64::MIN, f64::MIN)), |((xa1, ya1), (xa2, ya2)), edge| {
+        let bounds = region.iter().fold(
+            ((f64::MAX, f64::MAX), (f64::MIN, f64::MIN)),
+            |((xa1, ya1), (xa2, ya2)), edge| {
                 let ((xb1, yb1), (xb2, yb2)) = edge.bounding_box();
 
                 ((xa1.min(xb1), ya1.min(yb1)), (xa2.max(xb2), ya2.max(yb2)))
-            });
+            },
+        );
 
-        ClipRegion {
-            region,
-            bounds,
-        }
+        ClipRegion { region, bounds }
     }
 }
 
 impl<TEdge, TRegionEdge> ClippedShapeEdge<TEdge, TRegionEdge>
-    where
-        TEdge: Clone + EdgeDescriptor,
-        TRegionEdge: Clone + EdgeDescriptor,
+where
+    TEdge: Clone + EdgeDescriptor,
+    TRegionEdge: Clone + EdgeDescriptor,
 {
     ///
     /// Creates a new shape with a clipping region
     ///
     /// For the clipping algorithm to work properly, we need a complete closed shape and not just individual edges.
     ///
-    pub fn new(shape_id: ShapeId, region: Arc<ClipRegion<TRegionEdge>>, shape_edges: Vec<TEdge>) -> Self {
+    pub fn new(
+        shape_id: ShapeId,
+        region: Arc<ClipRegion<TRegionEdge>>,
+        shape_edges: Vec<TEdge>,
+    ) -> Self {
         // The clip region bounds will be larger or the same as the bounds for the resulting edge
         ClippedShapeEdge {
             shape_bounds: region.bounds,
@@ -134,9 +147,9 @@ impl<TEdge, TRegionEdge> ClippedShapeEdge<TEdge, TRegionEdge>
 }
 
 impl<TEdge, TRegionEdge> EdgeDescriptor for ClippedShapeEdge<TEdge, TRegionEdge>
-    where
-        TEdge: 'static + Clone + EdgeDescriptor,
-        TRegionEdge: 'static + Clone + EdgeDescriptor,
+where
+    TEdge: 'static + Clone + EdgeDescriptor,
+    TRegionEdge: 'static + Clone + EdgeDescriptor,
 {
     fn clone_as_object(&self) -> Arc<dyn EdgeDescriptor> {
         Arc::new(self.clone())
@@ -144,7 +157,9 @@ impl<TEdge, TRegionEdge> EdgeDescriptor for ClippedShapeEdge<TEdge, TRegionEdge>
 
     fn prepare_to_render(&mut self) {
         // Prepare the edges for rendering
-        self.shape_edges.iter_mut().for_each(|edge| edge.prepare_to_render());
+        self.shape_edges
+            .iter_mut()
+            .for_each(|edge| edge.prepare_to_render());
 
         // Calculate the bounds of the shape region from the edges
         let mut min_x = f64::MAX;
@@ -163,7 +178,10 @@ impl<TEdge, TRegionEdge> EdgeDescriptor for ClippedShapeEdge<TEdge, TRegionEdge>
 
         // The shape bounds are constrained by the clipping region bounds
         let ((clip_minx, clip_miny), (clip_maxx, clip_maxy)) = self.region.bounds;
-        self.shape_bounds = ((min_x.max(clip_minx), min_y.max(clip_miny)), (max_x.min(clip_maxx), max_y.min(clip_maxy)));
+        self.shape_bounds = (
+            (min_x.max(clip_minx), min_y.max(clip_miny)),
+            (max_x.min(clip_maxx), max_y.min(clip_maxy)),
+        );
     }
 
     #[inline]
@@ -178,7 +196,11 @@ impl<TEdge, TRegionEdge> EdgeDescriptor for ClippedShapeEdge<TEdge, TRegionEdge>
     fn transform(&self, transform: &canvas::Transform2D) -> Arc<dyn EdgeDescriptor> {
         // TODO: if the region is shared we really should continue to share it amongst all the transformed shapes
         let region = Arc::new(self.region.transform(transform));
-        let shape_edges = self.shape_edges.iter().map(|edge| edge.transform(transform)).collect();
+        let shape_edges = self
+            .shape_edges
+            .iter()
+            .map(|edge| edge.transform(transform))
+            .collect();
 
         let mut new_edge = ClippedShapeEdge {
             shape_id: self.shape_id,
@@ -191,7 +213,11 @@ impl<TEdge, TRegionEdge> EdgeDescriptor for ClippedShapeEdge<TEdge, TRegionEdge>
         Arc::new(new_edge)
     }
 
-    fn intercepts(&self, y_positions: &[f64], output: &mut [smallvec::SmallVec<[EdgeDescriptorIntercept; 2]>]) {
+    fn intercepts(
+        &self,
+        y_positions: &[f64],
+        output: &mut [smallvec::SmallVec<[EdgeDescriptorIntercept; 2]>],
+    ) {
         // Collect the clipping range for these y positions
         // TODO: often we'll clip against multiple shapes for the same set of y coordinates, so a way to cache these results would speed things up
         // TODO: need to use unique subpath IDs when returning different edges
@@ -246,7 +272,13 @@ impl<TEdge, TRegionEdge> EdgeDescriptor for ClippedShapeEdge<TEdge, TRegionEdge>
                     // Update the 'inside' part of the clipping rectangle
                     let was_inside = clip_inside != 0;
                     clip_inside = match clip_next.direction {
-                        EdgeInterceptDirection::Toggle => if clip_inside == 0 { 1 } else { 0 },
+                        EdgeInterceptDirection::Toggle => {
+                            if clip_inside == 0 {
+                                1
+                            } else {
+                                0
+                            }
+                        }
                         EdgeInterceptDirection::DirectionIn => clip_inside + 1,
                         EdgeInterceptDirection::DirectionOut => clip_inside - 1,
                     };
@@ -254,7 +286,11 @@ impl<TEdge, TRegionEdge> EdgeDescriptor for ClippedShapeEdge<TEdge, TRegionEdge>
 
                     // Enter/leave the shape if we're inside it already
                     if shape_inside != 0 && was_inside != is_inside {
-                        output.push(EdgeDescriptorIntercept { direction: EdgeInterceptDirection::Toggle, x_pos: clip_next.x_pos, position: intercept.position })
+                        output.push(EdgeDescriptorIntercept {
+                            direction: EdgeInterceptDirection::Toggle,
+                            x_pos: clip_next.x_pos,
+                            position: intercept.position,
+                        })
                     }
 
                     // Move to the next clip intercept
@@ -269,7 +305,13 @@ impl<TEdge, TRegionEdge> EdgeDescriptor for ClippedShapeEdge<TEdge, TRegionEdge>
                 // Update whether or not we're inside the shape
                 let was_inside = shape_inside != 0;
                 shape_inside = match shape_dir {
-                    EdgeInterceptDirection::Toggle => if shape_inside == 0 { 1 } else { 0 },
+                    EdgeInterceptDirection::Toggle => {
+                        if shape_inside == 0 {
+                            1
+                        } else {
+                            0
+                        }
+                    }
                     EdgeInterceptDirection::DirectionIn => shape_inside + 1,
                     EdgeInterceptDirection::DirectionOut => shape_inside - 1,
                 };
@@ -277,7 +319,11 @@ impl<TEdge, TRegionEdge> EdgeDescriptor for ClippedShapeEdge<TEdge, TRegionEdge>
 
                 // clip_next is the closest following clip region to the current shape, so clip_inside can be used to determine if this point is inside the shape
                 if clip_inside != 0 && was_inside != is_inside {
-                    output.push(EdgeDescriptorIntercept { direction: EdgeInterceptDirection::Toggle, x_pos: *shape_pos, position: intercept.position });
+                    output.push(EdgeDescriptorIntercept {
+                        direction: EdgeInterceptDirection::Toggle,
+                        x_pos: *shape_pos,
+                        position: intercept.position,
+                    });
                 }
             }
         }
@@ -285,6 +331,12 @@ impl<TEdge, TRegionEdge> EdgeDescriptor for ClippedShapeEdge<TEdge, TRegionEdge>
 
     fn description(&self) -> String {
         use itertools::*;
-        format!("Clipped edge: {}", self.shape_edges.iter().map(|edge| edge.description()).join(", "))
+        format!(
+            "Clipped edge: {}",
+            self.shape_edges
+                .iter()
+                .map(|edge| edge.description())
+                .join(", ")
+        )
     }
 }

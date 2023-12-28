@@ -1,8 +1,14 @@
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
 use flo_curves::arc::*;
-use flo_curves::bezier::*;
 use flo_curves::bezier::path::*;
 use flo_curves::bezier::rasterize::*;
 use flo_curves::bezier::vectorize::*;
+use flo_curves::bezier::*;
 
 #[test]
 fn trace_half_circle_sampled() {
@@ -26,11 +32,20 @@ fn trace_half_circle_sampled() {
 
             let distance = point.distance_to(&Coord2(251.0, 251.0));
 
-            debug_assert!((distance - (radius / 2.0)) < 2.0, "Point #{} at distance {:?}", num_points, distance);
+            debug_assert!(
+                (distance - (radius / 2.0)) < 2.0,
+                "Point #{} at distance {:?}",
+                num_points,
+                distance
+            );
         }
     }
 
-    debug_assert!(traced_circle[0].to_curves::<Curve<_>>().len() < 32, "Result has {} curves", traced_circle[0].to_curves::<Curve<_>>().len());
+    debug_assert!(
+        traced_circle[0].to_curves::<Curve<_>>().len() < 32,
+        "Result has {} curves",
+        traced_circle[0].to_curves::<Curve<_>>().len()
+    );
 }
 
 #[test]
@@ -55,11 +70,20 @@ fn trace_half_circle() {
 
             let distance = point.distance_to(&Coord2(251.0, 251.0));
 
-            debug_assert!((distance - (radius / 2.0)) < 0.3, "Point #{} at distance {:?}", num_points, distance);
+            debug_assert!(
+                (distance - (radius / 2.0)) < 0.3,
+                "Point #{} at distance {:?}",
+                num_points,
+                distance
+            );
         }
     }
 
-    debug_assert!(traced_circle[0].to_curves::<Curve<_>>().len() < 32, "Result has {} curves", traced_circle[0].to_curves::<Curve<_>>().len());
+    debug_assert!(
+        traced_circle[0].to_curves::<Curve<_>>().len() < 32,
+        "Result has {} curves",
+        traced_circle[0].to_curves::<Curve<_>>().len()
+    );
 }
 
 #[test]
@@ -84,11 +108,20 @@ fn trace_half_circle_offset() {
 
             let distance = point.distance_to(&Coord2(251.3, 251.4));
 
-            debug_assert!((distance - (radius / 2.0)) < 0.3, "Point #{} at distance {:?}", num_points, distance);
+            debug_assert!(
+                (distance - (radius / 2.0)) < 0.3,
+                "Point #{} at distance {:?}",
+                num_points,
+                distance
+            );
         }
     }
 
-    debug_assert!(traced_circle[0].to_curves::<Curve<_>>().len() < 32, "Result has {} curves", traced_circle[0].to_curves::<Curve<_>>().len());
+    debug_assert!(
+        traced_circle[0].to_curves::<Curve<_>>().len() < 32,
+        "Result has {} curves",
+        traced_circle[0].to_curves::<Curve<_>>().len()
+    );
 }
 
 #[test]
@@ -113,11 +146,20 @@ fn trace_third_circle() {
 
             let distance = point.distance_to(&Coord2(500.0 / 3.0 + 1.0, 500.0 / 3.0 + 1.0));
 
-            debug_assert!((distance - (radius / 3.0)) < 1.0, "Point #{} at distance {:?}", num_points, distance);
+            debug_assert!(
+                (distance - (radius / 3.0)) < 1.0,
+                "Point #{} at distance {:?}",
+                num_points,
+                distance
+            );
         }
     }
 
-    debug_assert!(traced_circle[0].to_curves::<Curve<_>>().len() < 32, "Result has {} curves", traced_circle[0].to_curves::<Curve<_>>().len());
+    debug_assert!(
+        traced_circle[0].to_curves::<Curve<_>>().len() < 32,
+        "Result has {} curves",
+        traced_circle[0].to_curves::<Curve<_>>().len()
+    );
 }
 
 #[test]
@@ -142,9 +184,18 @@ fn trace_circle_and_a_half() {
 
             let distance = point.distance_to(&Coord2(751.0, 751.0));
 
-            debug_assert!((distance - (radius * 1.5)) < 1.0, "Point #{} at distance {:?}", num_points, distance);
+            debug_assert!(
+                (distance - (radius * 1.5)) < 1.0,
+                "Point #{} at distance {:?}",
+                num_points,
+                distance
+            );
         }
     }
 
-    debug_assert!(traced_circle[0].to_curves::<Curve<_>>().len() < 32, "Result has {} curves", traced_circle[0].to_curves::<Curve<_>>().len());
+    debug_assert!(
+        traced_circle[0].to_curves::<Curve<_>>().len() < 32,
+        "Result has {} curves",
+        traced_circle[0].to_curves::<Curve<_>>().len()
+    );
 }

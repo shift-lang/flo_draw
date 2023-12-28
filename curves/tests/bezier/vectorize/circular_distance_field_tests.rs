@@ -1,20 +1,34 @@
-use flo_curves::bezier::*;
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
 use flo_curves::bezier::path::*;
 use flo_curves::bezier::vectorize::*;
+use flo_curves::bezier::*;
 
 use itertools::*;
 
-use std::collections::{HashMap};
+use std::collections::HashMap;
 
 fn draw<TContour: SampledContour>(contour: &TContour) {
-    let bitmap = (0..(contour.contour_size().0 * contour.contour_size().1)).into_iter()
-        .map(|pos| (pos % contour.contour_size().1, pos / contour.contour_size().1))
+    let bitmap = (0..(contour.contour_size().0 * contour.contour_size().1))
+        .into_iter()
+        .map(|pos| {
+            (
+                pos % contour.contour_size().1,
+                pos / contour.contour_size().1,
+            )
+        })
         .map(|(x, y)| contour_point_is_inside(&contour, ContourPosition(x, y)))
         .collect::<Vec<_>>();
 
     for p in 0..bitmap.len() {
         print!("{}", if bitmap[p] { '#' } else { '.' });
-        if ((p + 1) % contour.contour_size().1) == 0 { println!() };
+        if ((p + 1) % contour.contour_size().1) == 0 {
+            println!()
+        };
     }
     println!();
 }
@@ -27,7 +41,11 @@ fn check_contour_against_bitmap<TContour: SampledContour>(contour: TContour, dra
     let bitmap = (0..size.height())
         .flat_map(|y| {
             let mut pixels = vec![false; size.width()];
-            for fill_x in contour.rounded_intercepts_on_line(y as _).into_iter().flatten() {
+            for fill_x in contour
+                .rounded_intercepts_on_line(y as _)
+                .into_iter()
+                .flatten()
+            {
                 pixels[fill_x] = true;
             }
             pixels
@@ -45,10 +63,29 @@ fn check_contour_against_bitmap<TContour: SampledContour>(contour: TContour, dra
     let contour_edges = contour.edge_cell_iterator().collect::<Vec<_>>();
 
     // Should generate identical results
-    let edges_for_y_bitmap = bitmap_edges.iter().cloned().group_by(|(pos, _)| pos.1).into_iter().map(|(ypos, group)| (ypos, group.count())).collect::<HashMap<_, _>>();
-    let edges_for_y_contour = contour_edges.iter().cloned().group_by(|(pos, _)| pos.1).into_iter().map(|(ypos, group)| (ypos, group.count())).collect::<HashMap<_, _>>();
+    let edges_for_y_bitmap = bitmap_edges
+        .iter()
+        .cloned()
+        .group_by(|(pos, _)| pos.1)
+        .into_iter()
+        .map(|(ypos, group)| (ypos, group.count()))
+        .collect::<HashMap<_, _>>();
+    let edges_for_y_contour = contour_edges
+        .iter()
+        .cloned()
+        .group_by(|(pos, _)| pos.1)
+        .into_iter()
+        .map(|(ypos, group)| (ypos, group.count()))
+        .collect::<HashMap<_, _>>();
 
-    assert!(edges_for_y_bitmap.len() == edges_for_y_contour.len(), "Returned different number of lines (bitmap has {} vs contour with {})\n{:?}\n\n{:?}", edges_for_y_bitmap.len(), edges_for_y_contour.len(), bitmap_edges, contour_edges);
+    assert!(
+        edges_for_y_bitmap.len() == edges_for_y_contour.len(),
+        "Returned different number of lines (bitmap has {} vs contour with {})\n{:?}\n\n{:?}",
+        edges_for_y_bitmap.len(),
+        edges_for_y_contour.len(),
+        bitmap_edges,
+        contour_edges
+    );
     assert!(contour_edges.len() == bitmap_edges.len(), "Returned different number of edges ({} vs {}). Edges counts were: \n  {}\n\nBitmap edges were \n  {}\n\nContour edges were \n  {}",
             bitmap_edges.len(),
             contour_edges.len(),
@@ -56,11 +93,21 @@ fn check_contour_against_bitmap<TContour: SampledContour>(contour: TContour, dra
             bitmap_edges.iter().map(|edge| format!("{:?}", edge)).collect::<Vec<_>>().join("\n  "),
             contour_edges.iter().map(|edge| format!("{:?}", edge)).collect::<Vec<_>>().join("\n  "));
 
-    assert!(contour_edges == bitmap_edges, "Edges were \n  {}",
-            bitmap_edges.iter().zip(contour_edges.iter())
-                .map(|(bitmap_edge, contour_edge)| format!("({:?}) {:?}    {:?}", bitmap_edge == contour_edge, bitmap_edge, contour_edge))
-                .collect::<Vec<_>>()
-                .join("\n  "));
+    assert!(
+        contour_edges == bitmap_edges,
+        "Edges were \n  {}",
+        bitmap_edges
+            .iter()
+            .zip(contour_edges.iter())
+            .map(|(bitmap_edge, contour_edge)| format!(
+                "({:?}) {:?}    {:?}",
+                bitmap_edge == contour_edge,
+                bitmap_edge,
+                contour_edge
+            ))
+            .collect::<Vec<_>>()
+            .join("\n  ")
+    );
 }
 
 fn check_intercepts<TContour: SampledContour>(contour: &TContour) {
@@ -89,24 +136,46 @@ fn check_intercepts<TContour: SampledContour>(contour: &TContour) {
 fn center_is_inside() {
     let circle_field = CircularDistanceField::with_radius(300.0);
 
-    assert!(circle_field.distance_at_point(ContourPosition(301, 301)) < 0.0, "Distance at center is {:?}", circle_field.distance_at_point(ContourPosition(301, 301)));
-    assert!((circle_field.distance_at_point(ContourPosition(301, 301)) + 300.0).abs() < 1.0, "Distance at center is {:?}", circle_field.distance_at_point(ContourPosition(301, 301)));
+    assert!(
+        circle_field.distance_at_point(ContourPosition(301, 301)) < 0.0,
+        "Distance at center is {:?}",
+        circle_field.distance_at_point(ContourPosition(301, 301))
+    );
+    assert!(
+        (circle_field.distance_at_point(ContourPosition(301, 301)) + 300.0).abs() < 1.0,
+        "Distance at center is {:?}",
+        circle_field.distance_at_point(ContourPosition(301, 301))
+    );
 }
 
 #[test]
 fn reference_vs_copy_iterator() {
     let circle_1 = CircularDistanceField::with_radius(10.0);
 
-    let reference_edges = (&circle_1.as_contour()).edge_cell_iterator().collect::<Vec<_>>();
-    let copy_edges = circle_1.as_contour().edge_cell_iterator().collect::<Vec<_>>();
+    let reference_edges = (&circle_1.as_contour())
+        .edge_cell_iterator()
+        .collect::<Vec<_>>();
+    let copy_edges = circle_1
+        .as_contour()
+        .edge_cell_iterator()
+        .collect::<Vec<_>>();
 
-    assert!(copy_edges == reference_edges, "Edges don't match: {:?} != {:?}", copy_edges, reference_edges);
+    assert!(
+        copy_edges == reference_edges,
+        "Edges don't match: {:?} != {:?}",
+        copy_edges,
+        reference_edges
+    );
 }
 
 #[test]
 fn distance_is_radius_at_center() {
     let circle = CircularDistanceField::with_radius(10.0);
-    assert!((circle.distance_at_point(ContourPosition(11, 11)) - -10.0).abs() < 0.1, "{}", circle.distance_at_point(ContourPosition(11, 11)));
+    assert!(
+        (circle.distance_at_point(ContourPosition(11, 11)) - -10.0).abs() < 0.1,
+        "{}",
+        circle.distance_at_point(ContourPosition(11, 11))
+    );
 }
 
 #[test]
@@ -135,7 +204,8 @@ fn teeny_circle_offset_2() {
 
 #[test]
 fn teeny_circle_offset_3() {
-    let contour = CircularDistanceField::with_radius(0.97).with_center_offset(0.8248857133384501, 0.9733020710633487);
+    let contour = CircularDistanceField::with_radius(0.97)
+        .with_center_offset(0.8248857133384501, 0.9733020710633487);
     check_contour_against_bitmap(&contour, true);
 }
 
@@ -143,7 +213,11 @@ fn teeny_circle_offset_3() {
 fn teeny_circle_offset_4() {
     let contour = CircularDistanceField::with_radius(2.5).with_center_offset(0.3, 0.4);
 
-    println!("{:?} {:?}", contour.intercepts_on_line(2.0), contour.rounded_intercepts_on_line(2.0));
+    println!(
+        "{:?} {:?}",
+        contour.intercepts_on_line(2.0),
+        contour.rounded_intercepts_on_line(2.0)
+    );
 
     check_contour_against_bitmap(&contour, true);
 }
@@ -152,7 +226,11 @@ fn teeny_circle_offset_4() {
 fn teeny_circle_offset_5() {
     let contour = CircularDistanceField::with_radius(4.5).with_center_offset(0.3, 0.4);
 
-    println!("{:?} {:?}", contour.intercepts_on_line(10.0), contour.rounded_intercepts_on_line(10.0));
+    println!(
+        "{:?} {:?}",
+        contour.intercepts_on_line(10.0),
+        contour.rounded_intercepts_on_line(10.0)
+    );
 
     check_contour_against_bitmap(&contour, true);
 }
@@ -160,7 +238,11 @@ fn teeny_circle_offset_5() {
 #[test]
 fn medium_circle_1() {
     let contour = CircularDistanceField::with_radius(32.0);
-    println!("{:?} {:?}", contour.intercepts_on_line(1.0), contour.rounded_intercepts_on_line(1.0));
+    println!(
+        "{:?} {:?}",
+        contour.intercepts_on_line(1.0),
+        contour.rounded_intercepts_on_line(1.0)
+    );
 
     check_contour_against_bitmap(&contour, false);
 }
@@ -199,7 +281,11 @@ fn big_circle() {
 fn even_radius_circular_contour() {
     let contour = CircularDistanceField::with_radius(16.0);
 
-    assert!(contour.contour_size().width() == 35, "{:?}", contour.contour_size());
+    assert!(
+        contour.contour_size().width() == 35,
+        "{:?}",
+        contour.contour_size()
+    );
 
     check_contour_against_bitmap(&contour, true);
 }
@@ -209,7 +295,11 @@ fn offset_even_radius_circular_contour_same_offset() {
     let contour = CircularDistanceField::with_radius(16.0).with_center_offset(0.3, 0.3);
 
     check_contour_against_bitmap(&contour, true);
-    assert!(contour.contour_size().width() == 35, "{:?}", contour.contour_size());
+    assert!(
+        contour.contour_size().width() == 35,
+        "{:?}",
+        contour.contour_size()
+    );
 }
 
 #[test]
@@ -217,14 +307,22 @@ fn offset_even_radius_circular_contour() {
     let contour = CircularDistanceField::with_radius(16.0).with_center_offset(0.3, 0.4);
 
     check_contour_against_bitmap(&contour, true);
-    assert!(contour.contour_size().width() == 35, "{:?}", contour.contour_size());
+    assert!(
+        contour.contour_size().width() == 35,
+        "{:?}",
+        contour.contour_size()
+    );
 }
 
 #[test]
 fn odd_radius_circular_contour() {
     let contour = CircularDistanceField::with_radius(15.0);
 
-    assert!(contour.contour_size().width() == 33, "{:?}", contour.contour_size());
+    assert!(
+        contour.contour_size().width() == 33,
+        "{:?}",
+        contour.contour_size()
+    );
 
     check_contour_against_bitmap(&contour, true);
 }
@@ -234,7 +332,11 @@ fn offset_odd_radius_circular_contour() {
     let contour = CircularDistanceField::with_radius(15.0).with_center_offset(0.3, 0.4);
 
     check_contour_against_bitmap(&contour, true);
-    assert!(contour.contour_size().width() == 33, "{:?}", contour.contour_size());
+    assert!(
+        contour.contour_size().width() == 33,
+        "{:?}",
+        contour.contour_size()
+    );
 }
 
 #[test]
@@ -291,7 +393,8 @@ fn many_circles_varying_offsets() {
         let radius = (radius as f64) / 10.0;
         let offset_x = (radius * 0.1).sin().abs();
         let offset_y = (radius * 0.3).cos().abs();
-        let contour = CircularDistanceField::with_radius(radius).with_center_offset(offset_x, offset_y);
+        let contour =
+            CircularDistanceField::with_radius(radius).with_center_offset(offset_x, offset_y);
 
         println!("{:?} {:?} {:?}", radius, offset_x, offset_y);
         check_contour_against_bitmap(&contour, false);
@@ -305,7 +408,8 @@ fn many_circles_small_increments_varying_offsets() {
         let radius = (radius as f64) / 100.0;
         let offset_x = radius.sin().abs();
         let offset_y = (radius * 3.0).cos().abs();
-        let contour = CircularDistanceField::with_radius(radius).with_center_offset(offset_x, offset_y);
+        let contour =
+            CircularDistanceField::with_radius(radius).with_center_offset(offset_x, offset_y);
 
         println!("{:?} {:?} {:?}", radius, offset_x, offset_y);
         check_contour_against_bitmap(&contour, false);
@@ -342,7 +446,12 @@ fn circle_path_from_contours() {
     }
 
     // The error here is semi-random due to the hash table used to store the edge graph
-    assert!(max_error <= 1.5, "Max error {:?} > 1.5. Path generated was {:?}", max_error, circle);
+    assert!(
+        max_error <= 1.5,
+        "Max error {:?} > 1.5. Path generated was {:?}",
+        max_error,
+        circle
+    );
 }
 
 #[test]
@@ -359,7 +468,11 @@ fn circle_path_from_intercepts() {
 
     // Should contain a single path
     assert!(circle.len() == 1, "{:?}", circle);
-    assert!(circle[0].to_curves::<Curve<_>>().len() < 24, "Path has {} curves", circle[0].to_curves::<Curve<_>>().len());
+    assert!(
+        circle[0].to_curves::<Curve<_>>().len() < 24,
+        "Path has {} curves",
+        circle[0].to_curves::<Curve<_>>().len()
+    );
 
     // Allow 0.1px of error (distance fields provide much better estimates of where the edge really is)
     let mut max_error = 0.0;
@@ -377,7 +490,12 @@ fn circle_path_from_intercepts() {
     }
 
     // The error here is semi-random due to the hash table used to store the edge graph
-    assert!(max_error <= 0.1, "Max error {:?} > 0.1. Path generated was {:?}", max_error, circle);
+    assert!(
+        max_error <= 0.1,
+        "Max error {:?} > 0.1. Path generated was {:?}",
+        max_error,
+        circle
+    );
 }
 
 #[test]
@@ -394,7 +512,11 @@ fn circle_path_from_distance_field_1() {
 
     // Should contain a single path
     assert!(circle.len() == 1, "{:?}", circle);
-    assert!(circle[0].to_curves::<Curve<_>>().len() < 12, "Path has {} curves", circle[0].to_curves::<Curve<_>>().len());
+    assert!(
+        circle[0].to_curves::<Curve<_>>().len() < 12,
+        "Path has {} curves",
+        circle[0].to_curves::<Curve<_>>().len()
+    );
 
     // Allow 0.1px of error (distance fields provide much better estimates of where the edge really is)
     let mut max_error = 0.0;
@@ -412,7 +534,12 @@ fn circle_path_from_distance_field_1() {
     }
 
     // The error here is semi-random due to the hash table used to store the edge graph
-    assert!(max_error <= 0.2, "Max error {:?} > 0.2. Path generated was {:?}", max_error, circle);
+    assert!(
+        max_error <= 0.2,
+        "Max error {:?} > 0.2. Path generated was {:?}",
+        max_error,
+        circle
+    );
 }
 
 #[test]
@@ -429,7 +556,11 @@ fn circle_path_from_distance_field_2() {
 
     // Should contain a single path
     assert!(circle.len() == 1, "{:?}", circle);
-    assert!(circle[0].to_curves::<Curve<_>>().len() < 20, "Path has {} curves", circle[0].to_curves::<Curve<_>>().len());
+    assert!(
+        circle[0].to_curves::<Curve<_>>().len() < 20,
+        "Path has {} curves",
+        circle[0].to_curves::<Curve<_>>().len()
+    );
 
     // Allow 0.1px of error (distance fields provide much better estimates of where the edge really is)
     let mut max_error = 0.0;
@@ -447,7 +578,12 @@ fn circle_path_from_distance_field_2() {
     }
 
     // The error here is semi-random due to the hash table used to store the edge graph
-    assert!(max_error <= 0.2, "Max error {:?} > 0.2. Path generated was {:?}", max_error, circle);
+    assert!(
+        max_error <= 0.2,
+        "Max error {:?} > 0.2. Path generated was {:?}",
+        max_error,
+        circle
+    );
 }
 
 #[test]
@@ -455,7 +591,8 @@ fn circle_path_from_distance_field_offset() {
     // Create a contour containing a circle in the middle, using the circular distance field
     let radius = 30.0;
     let offset = 0.3;
-    let distance_field = CircularDistanceField::with_radius(radius).with_center_offset(offset, offset);
+    let distance_field =
+        CircularDistanceField::with_radius(radius).with_center_offset(offset, offset);
 
     draw(&CircularDistanceField::with_radius(radius));
     check_contour_against_bitmap(&distance_field, true);
@@ -484,5 +621,10 @@ fn circle_path_from_distance_field_offset() {
     }
 
     // The error here is semi-random due to the hash table used to store the edge graph
-    assert!(max_error <= 0.2, "Max error {:?} > 0.2. Path generated was {:?}", max_error, circle);
+    assert!(
+        max_error <= 0.2,
+        "Max error {:?} > 0.2. Path generated was {:?}",
+        max_error,
+        circle
+    );
 }

@@ -1,17 +1,23 @@
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
 use std::f64;
 use std::thread;
 use std::time::{Duration, Instant};
 
-use flo_curves::*;
-use flo_curves::bezier::*;
-use flo_curves::bezier::path::*;
 use futures::executor;
 use futures::prelude::*;
 use futures::stream;
 use rayon::iter::*;
 
-use flo_draw::*;
+use flo_curves::bezier::path::*;
+use flo_curves::bezier::*;
+use flo_curves::*;
 use flo_draw::canvas::*;
+use flo_draw::*;
 
 ///
 /// Demonstrates capturing the paths for a complicated rendering and distorting them with a ripple pattern
@@ -19,7 +25,9 @@ use flo_draw::canvas::*;
 pub fn main() {
     with_2d_graphics(|| {
         // Decode the mascot rendering
-        let mascot = decode_drawing(MASCOT.chars()).collect::<Result<Vec<Draw>, _>>().unwrap();
+        let mascot = decode_drawing(MASCOT.chars())
+            .collect::<Result<Vec<Draw>, _>>()
+            .unwrap();
 
         // Create a window
         let canvas = create_drawing_window("Wibbling mascot");
@@ -27,7 +35,8 @@ pub fn main() {
         // Convert the mascot to a set of paths (note we skip the setup steps here so the paths are not affected by the initial transformation matrix)
         let render_mascot = stream::iter(mascot.into_iter().skip(4));
         let mascot_paths = drawing_to_attributed_paths::<SimpleBezierPath, _>(render_mascot);
-        let mascot_paths = executor::block_on(async move { mascot_paths.collect::<Vec<_>>().await });
+        let mascot_paths =
+            executor::block_on(async move { mascot_paths.collect::<Vec<_>>().await });
 
         // Draw the mascot with a moving distortion
         let start_time = Instant::now();
@@ -39,18 +48,41 @@ pub fn main() {
             let amplitude = 12.0;
 
             // Distort each of the paths in turn
-            let distorted_mascot = mascot_paths.par_iter()
-                .map(|(attributes, path_set)| (attributes, path_set.iter()
-                    .map(move |path: &SimpleBezierPath| distort_path::<_, _, SimpleBezierPath>(path, |point: Coord2, _curve, _t| {
-                        let distance = point.magnitude();
-                        let ripple = (since_start / (f64::consts::PI * 500_000_000.0)) * 10.0;
+            let distorted_mascot = mascot_paths
+                .par_iter()
+                .map(|(attributes, path_set)| {
+                    (
+                        attributes,
+                        path_set
+                            .iter()
+                            .map(move |path: &SimpleBezierPath| {
+                                distort_path::<_, _, SimpleBezierPath>(
+                                    path,
+                                    |point: Coord2, _curve, _t| {
+                                        let distance = point.magnitude();
+                                        let ripple = (since_start
+                                            / (f64::consts::PI * 500_000_000.0))
+                                            * 10.0;
 
-                        let offset_x = (distance / (f64::consts::PI * 5.0) + ripple).sin() * amplitude * 0.5;
-                        let offset_y = (distance / (f64::consts::PI * 4.0) + ripple).cos() * amplitude * 0.5;
+                                        let offset_x =
+                                            (distance / (f64::consts::PI * 5.0) + ripple).sin()
+                                                * amplitude
+                                                * 0.5;
+                                        let offset_y =
+                                            (distance / (f64::consts::PI * 4.0) + ripple).cos()
+                                                * amplitude
+                                                * 0.5;
 
-                        Coord2(point.x() + offset_x, point.y() + offset_y)
-                    }, 2.0, 1.0).unwrap())
-                    .collect::<Vec<_>>()))
+                                        Coord2(point.x() + offset_x, point.y() + offset_y)
+                                    },
+                                    2.0,
+                                    1.0,
+                                )
+                                .unwrap()
+                            })
+                            .collect::<Vec<_>>(),
+                    )
+                })
                 .collect::<Vec<_>>();
 
             // Render the current frame

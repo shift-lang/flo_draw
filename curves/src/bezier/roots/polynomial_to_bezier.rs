@@ -1,6 +1,12 @@
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
 use crate::geo::*;
 
-use std::convert::{TryInto};
+use std::convert::TryInto;
 
 ///
 /// Generates the control polygon corresponding to a polynomial
@@ -8,8 +14,8 @@ use std::convert::{TryInto};
 /// The polynomial has the form `c[0] + c[1]*x + c[2]*x^2 + c[3]*x^3 ...` where `c` is the list of coefficints
 ///
 pub fn polynomial_to_bezier<TPoint, const N: usize>(coefficients: [f64; N]) -> [TPoint; N]
-    where
-        TPoint: Coordinate + Coordinate2D,
+where
+    TPoint: Coordinate + Coordinate2D,
 {
     // See "A bezier curve-based root-finder", Philip J Schneider, Graphics Gems
     let mut coefficients = coefficients;
@@ -27,10 +33,15 @@ pub fn polynomial_to_bezier<TPoint, const N: usize>(coefficients: [f64; N]) -> [
     }
 
     // Convert to points (range is 0..1)
-    let coefficients = coefficients.iter().enumerate().map(|(x, y)| {
-        let x = (x as f64) / ((N - 1) as f64);
-        TPoint::from_components(&[x, *y])
-    }).collect::<Vec<_>>().try_into();
+    let coefficients = coefficients
+        .iter()
+        .enumerate()
+        .map(|(x, y)| {
+            let x = (x as f64) / ((N - 1) as f64);
+            TPoint::from_components(&[x, *y])
+        })
+        .collect::<Vec<_>>()
+        .try_into();
 
     if let Ok(coefficients) = coefficients {
         coefficients
@@ -55,10 +66,50 @@ mod test {
         let point2 = de_casteljau_n(0.2, bezier.clone().into());
         let point1 = de_casteljau_n(0.1, bezier.clone().into());
 
-        assert!(point1.y().abs() < 0.1, "{:?} {:?} {:?} {:?} {:?}", point1, point2, point3, point4, point5);
-        assert!(point2.y().abs() < 0.1, "{:?} {:?} {:?} {:?} {:?}", point1, point2, point3, point4, point5);
-        assert!(point3.y().abs() < 0.1, "{:?} {:?} {:?} {:?} {:?}", point1, point2, point3, point4, point5);
-        assert!(point4.y().abs() < 0.1, "{:?} {:?} {:?} {:?} {:?}", point1, point2, point3, point4, point5);
-        assert!(point5.y().abs() < 0.1, "{:?} {:?} {:?} {:?} {:?}", point1, point2, point3, point4, point5);
+        assert!(
+            point1.y().abs() < 0.1,
+            "{:?} {:?} {:?} {:?} {:?}",
+            point1,
+            point2,
+            point3,
+            point4,
+            point5
+        );
+        assert!(
+            point2.y().abs() < 0.1,
+            "{:?} {:?} {:?} {:?} {:?}",
+            point1,
+            point2,
+            point3,
+            point4,
+            point5
+        );
+        assert!(
+            point3.y().abs() < 0.1,
+            "{:?} {:?} {:?} {:?} {:?}",
+            point1,
+            point2,
+            point3,
+            point4,
+            point5
+        );
+        assert!(
+            point4.y().abs() < 0.1,
+            "{:?} {:?} {:?} {:?} {:?}",
+            point1,
+            point2,
+            point3,
+            point4,
+            point5
+        );
+        assert!(
+            point5.y().abs() < 0.1,
+            "{:?} {:?} {:?} {:?} {:?}",
+            point1,
+            point2,
+            point3,
+            point4,
+            point5
+        );
     }
 }

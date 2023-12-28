@@ -1,11 +1,16 @@
-use crate::*;
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
+use std::sync::*;
 
 use flo_rope::*;
-
 use futures::executor;
 use futures::prelude::*;
 
-use std::sync::*;
+use crate::*;
 
 #[test]
 fn mutable_rope_sends_changes_to_stream() {
@@ -136,7 +141,8 @@ fn watch_computed_rope() {
     // Create a length binding and compute a rope from it
     let length = bind(0);
     let length_copy = length.clone();
-    let rope = RopeBinding::<_, ()>::computed(move || (0..length_copy.get()).into_iter().map(|idx| idx));
+    let rope =
+        RopeBinding::<_, ()>::computed(move || (0..length_copy.get()).into_iter().map(|idx| idx));
 
     // Follow a the rope changes so we can sync up with the changes
     let change_count = bind(0);
@@ -173,7 +179,8 @@ fn computed_rope() {
     // Create a length binding and compute a rope from it
     let length = bind(0);
     let length_copy = length.clone();
-    let rope = RopeBinding::<_, ()>::computed(move || (0..length_copy.get()).into_iter().map(|idx| idx));
+    let rope =
+        RopeBinding::<_, ()>::computed(move || (0..length_copy.get()).into_iter().map(|idx| idx));
 
     // Follow a the rope changes so we can sync up with the changes
     let mut follow_rope = rope.follow_changes();
@@ -205,7 +212,9 @@ fn computed_rope_using_diffs_1() {
     // Create a length binding and compute a rope from it
     let length = bind(0);
     let length_copy = length.clone();
-    let rope = RopeBinding::<_, ()>::computed_difference(move || (0..length_copy.get()).into_iter().map(|idx| idx));
+    let rope = RopeBinding::<_, ()>::computed_difference(move || {
+        (0..length_copy.get()).into_iter().map(|idx| idx)
+    });
 
     // Follow a the rope changes so we can sync up with the changes
     let mut follow_rope = rope.follow_changes();
@@ -237,7 +246,9 @@ fn computed_rope_using_diffs_2() {
     // Create a length binding and compute a rope from it
     let length = bind(0);
     let length_copy = length.clone();
-    let rope = RopeBinding::<_, ()>::computed_difference(move || (0..length_copy.get()).into_iter().map(|idx| idx));
+    let rope = RopeBinding::<_, ()>::computed_difference(move || {
+        (0..length_copy.get()).into_iter().map(|idx| idx)
+    });
 
     // Follow a the rope changes so we can sync up with the changes
     let mut follow_rope = rope.follow_changes();
@@ -321,7 +332,9 @@ fn bind_rope_length_to_computed() {
 
     let is_changed = Arc::new(Mutex::new(false));
     let is_changed_copy = is_changed.clone();
-    rope_length.when_changed(notify(move || *is_changed_copy.lock().unwrap() = true)).keep_alive();
+    rope_length
+        .when_changed(notify(move || *is_changed_copy.lock().unwrap() = true))
+        .keep_alive();
 
     // Rope length should update to 4
     let val = vec![1, 1, 1, 1];
@@ -352,7 +365,9 @@ fn bind_rope_mut_length_to_computed() {
 
     let is_changed = Arc::new(Mutex::new(false));
     let is_changed_copy = is_changed.clone();
-    rope_length.when_changed(notify(move || *is_changed_copy.lock().unwrap() = true)).keep_alive();
+    rope_length
+        .when_changed(notify(move || *is_changed_copy.lock().unwrap() = true))
+        .keep_alive();
 
     // Rope length should update to 4
     let val = vec![1, 1, 1, 1];
@@ -384,7 +399,9 @@ fn bind_rope_read_cells_to_computed() {
 
     let is_changed = Arc::new(Mutex::new(false));
     let is_changed_copy = is_changed.clone();
-    rope_cells.when_changed(notify(move || *is_changed_copy.lock().unwrap() = true)).keep_alive();
+    rope_cells
+        .when_changed(notify(move || *is_changed_copy.lock().unwrap() = true))
+        .keep_alive();
 
     // Update the cells
     let val = vec![1, 1, 1, 1];
@@ -414,7 +431,9 @@ fn bind_rope_mut_read_cells_to_computed() {
 
     let is_changed = Arc::new(Mutex::new(false));
     let is_changed_copy = is_changed.clone();
-    rope_cells.when_changed(notify(move || *is_changed_copy.lock().unwrap() = true)).keep_alive();
+    rope_cells
+        .when_changed(notify(move || *is_changed_copy.lock().unwrap() = true))
+        .keep_alive();
 
     // Update the cells
     let val = vec![1, 1, 1, 1];
@@ -445,7 +464,9 @@ fn following_rope_generates_when_changed() {
 
     let is_changed = Arc::new(Mutex::new(false));
     let is_changed_copy = is_changed.clone();
-    rope_cells.when_changed(notify(move || *is_changed_copy.lock().unwrap() = true)).keep_alive();
+    rope_cells
+        .when_changed(notify(move || *is_changed_copy.lock().unwrap() = true))
+        .keep_alive();
 
     // Update the cells
     let val = vec![1, 1, 1, 1];

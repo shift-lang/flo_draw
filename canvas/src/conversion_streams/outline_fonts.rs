@@ -1,3 +1,9 @@
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
 use crate::draw::*;
 use crate::font::*;
 use crate::namespace::*;
@@ -103,9 +109,9 @@ impl<'a> ttf_parser::OutlineBuilder for FontOutliner<'a> {
 ///
 pub fn drawing_with_text_as_paths<InStream>(
     draw_stream: InStream,
-) -> impl Send + Unpin + Stream<Item=Draw>
-    where
-        InStream: 'static + Send + Unpin + Stream<Item=Draw>,
+) -> impl Send + Unpin + Stream<Item = Draw>
+where
+    InStream: 'static + Send + Unpin + Stream<Item = Draw>,
 {
     generator_stream(move |yield_value| async move {
         // Set up

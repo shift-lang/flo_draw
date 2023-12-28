@@ -1,8 +1,14 @@
-use super::curve::*;
-use super::intersection::*;
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
+use super::super::consts::*;
 use super::super::geo::*;
 use super::super::line::*;
-use super::super::consts::*;
+use super::curve::*;
+use super::intersection::*;
 
 use std::f64;
 
@@ -80,7 +86,11 @@ pub enum CurveFeatures {
 /// curve but only a single free point (w4). This will return 'None' for the degenerate cases: where two points overlap or
 /// where the points are collinear.
 ///
-fn canonical_curve_transform<Point: Coordinate + Coordinate2D>(w1: &Point, w2: &Point, w3: &Point) -> Option<(f64, f64, f64, f64, f64, f64)> {
+fn canonical_curve_transform<Point: Coordinate + Coordinate2D>(
+    w1: &Point,
+    w2: &Point,
+    w3: &Point,
+) -> Option<(f64, f64, f64, f64, f64, f64)> {
     // Fetch the coordinates
     let (x0, y0) = (w1.x(), w1.y());
     let (x1, y1) = (w2.x(), w2.y());
@@ -89,11 +99,11 @@ fn canonical_curve_transform<Point: Coordinate + Coordinate2D>(w1: &Point, w2: &
     let a_divisor = (y2 - y1) * (x0 - x1) - (x2 - x1) * (y0 - y1);
     if a_divisor.abs() > SMALL_DIVISOR {
         // Transform is:
-        // 
+        //
         // [ a, b, c ]   [ x ]
         // [ d, e, f ] . [ y ]
         // [ 0, 0, 1 ]   [ 1 ]
-        // 
+        //
         // This will move w1 to 0,0, w2 to 0, 1 and w3 to 1, 1, which will form our canonical curve that we use for the classification algorithm
         let a = (-(y0 - y1)) / a_divisor;
         let b = (-(x0 - x1)) / ((x2 - x1) * (y0 - y1) - (y2 - y1) * (x0 - x1));
@@ -115,7 +125,12 @@ fn canonical_curve_transform<Point: Coordinate + Coordinate2D>(w1: &Point, w2: &
 /// This is the curve such that w1 = (0.0), w2 = (1, 0) and w3 = (1, 1), if such a curve exists. The return value is the point w4
 /// for this curve.
 ///
-fn to_canonical_curve<Point: Coordinate + Coordinate2D>(w1: &Point, w2: &Point, w3: &Point, w4: &Point) -> Option<Point> {
+fn to_canonical_curve<Point: Coordinate + Coordinate2D>(
+    w1: &Point,
+    w2: &Point,
+    w3: &Point,
+    w4: &Point,
+) -> Option<Point> {
     // Retrieve the affine transform for the curve
     if let Some((a, b, c, d, e, f)) = canonical_curve_transform(w1, w2, w3) {
         // Calculate the free point w4 based on the transform
@@ -189,8 +204,13 @@ fn characterize_from_canonical_point(b4: (f64, f64)) -> CurveCategory {
 /// Determines the characteristics of a particular bezier curve: whether or not it is an arch, or changes directions
 /// (has inflection points), or self-intersects (has a loop)
 ///
-pub fn characterize_cubic_bezier<Point: Coordinate + Coordinate2D>(w1: &Point, w2: &Point, w3: &Point, w4: &Point) -> CurveCategory {
-    // b4 is the end point of an equivalent curve with the other control points fixed at (0, 0), (0, 1) and (1, 1) 
+pub fn characterize_cubic_bezier<Point: Coordinate + Coordinate2D>(
+    w1: &Point,
+    w2: &Point,
+    w3: &Point,
+    w4: &Point,
+) -> CurveCategory {
+    // b4 is the end point of an equivalent curve with the other control points fixed at (0, 0), (0, 1) and (1, 1)
     let b4 = to_canonical_curve(w1, w2, w3, w4);
 
     if let Some(b4) = b4 {
@@ -302,7 +322,7 @@ impl Into<CurveFeatures> for InflectionPoints {
         match self {
             InflectionPoints::Zero => CurveFeatures::Arch,
             InflectionPoints::One(t) => CurveFeatures::SingleInflectionPoint(t),
-            InflectionPoints::Two(t1, t2) => CurveFeatures::DoubleInflectionPoint(t1, t2)
+            InflectionPoints::Two(t1, t2) => CurveFeatures::DoubleInflectionPoint(t1, t2),
         }
     }
 }
@@ -310,21 +330,31 @@ impl Into<CurveFeatures> for InflectionPoints {
 ///
 /// Returns the features from a curve where we have discovered the canonical point
 ///
-fn features_from_canonical_point<Point: Coordinate + Coordinate2D>(x: f64, y: f64, w1: &Point, w2: &Point, w3: &Point, w4: &Point, accuracy: f64) -> CurveFeatures {
+fn features_from_canonical_point<Point: Coordinate + Coordinate2D>(
+    x: f64,
+    y: f64,
+    w1: &Point,
+    w2: &Point,
+    w3: &Point,
+    w4: &Point,
+    accuracy: f64,
+) -> CurveFeatures {
     match characterize_from_canonical_point((x, y)) {
         CurveCategory::Arch => CurveFeatures::Arch,
         CurveCategory::Linear => CurveFeatures::Linear,
         CurveCategory::Cusp => CurveFeatures::Cusp,
         CurveCategory::Parabolic => CurveFeatures::Parabolic,
         CurveCategory::Point => CurveFeatures::Point,
-        CurveCategory::DoubleInflectionPoint |
-        CurveCategory::SingleInflectionPoint => find_inflection_points((x, y)).into(),
+        CurveCategory::DoubleInflectionPoint | CurveCategory::SingleInflectionPoint => {
+            find_inflection_points((x, y)).into()
+        }
         CurveCategory::Loop => {
             let curve = Curve::from_points(*w1, (*w2, *w3), *w4);
             let loop_pos = find_self_intersection_point(&curve, accuracy);
 
             // TODO: if we can't find the loop_pos, we could probably find a cusp position instead
-            loop_pos.map(|(t1, t2)| CurveFeatures::Loop(t1, t2))
+            loop_pos
+                .map(|(t1, t2)| CurveFeatures::Loop(t1, t2))
                 .unwrap_or(CurveFeatures::Arch)
         }
     }
@@ -334,8 +364,14 @@ fn features_from_canonical_point<Point: Coordinate + Coordinate2D>(x: f64, y: f6
 /// Determines the characteristics of a paritcular bezier curve: whether or not it is an arch, or changes directions
 /// (has inflection points), or self-intersects (has a loop)
 ///
-pub fn features_for_cubic_bezier<Point: Coordinate + Coordinate2D>(w1: &Point, w2: &Point, w3: &Point, w4: &Point, accuracy: f64) -> CurveFeatures {
-    // b4 is the end point of an equivalent curve with the other control points fixed at (0, 0), (0, 1) and (1, 1) 
+pub fn features_for_cubic_bezier<Point: Coordinate + Coordinate2D>(
+    w1: &Point,
+    w2: &Point,
+    w3: &Point,
+    w4: &Point,
+    accuracy: f64,
+) -> CurveFeatures {
+    // b4 is the end point of an equivalent curve with the other control points fixed at (0, 0), (0, 1) and (1, 1)
     let b4 = to_canonical_curve(w1, w2, w3, w4);
 
     if let Some(b4) = b4 {
@@ -385,10 +421,14 @@ pub fn features_for_cubic_bezier<Point: Coordinate + Coordinate2D>(w1: &Point, w
 
                 // Reverse the curve coordinates for the features
                 match features_from_canonical_point(x, y, w1, w2, w3, w4, accuracy) {
-                    CurveFeatures::SingleInflectionPoint(t) => CurveFeatures::SingleInflectionPoint(1.0 - t),
-                    CurveFeatures::DoubleInflectionPoint(t1, t2) => CurveFeatures::DoubleInflectionPoint(1.0 - t1, 1.0 - t2),
+                    CurveFeatures::SingleInflectionPoint(t) => {
+                        CurveFeatures::SingleInflectionPoint(1.0 - t)
+                    }
+                    CurveFeatures::DoubleInflectionPoint(t1, t2) => {
+                        CurveFeatures::DoubleInflectionPoint(1.0 - t1, 1.0 - t2)
+                    }
                     CurveFeatures::Loop(t1, t2) => CurveFeatures::Loop(1.0 - t1, 1.0 - t2),
-                    other => other
+                    other => other,
                 }
             } else {
                 // w1, w2 and w3 are co-linear and w2, w3 and w4 are co-linear, so all of w1, w2, w3 and w4 must be along the same line
@@ -400,12 +440,12 @@ pub fn features_for_cubic_bezier<Point: Coordinate + Coordinate2D>(w1: &Point, w
 
 ///
 /// Discovers the 'character' of a particular bezier curve, returning a value indicating what kinds of features
-/// it has (for example, whether it has a loop or a cusp) 
+/// it has (for example, whether it has a loop or a cusp)
 ///
 #[inline]
 pub fn characterize_curve<C: BezierCurve>(curve: &C) -> CurveCategory
-    where
-        C::Point: Coordinate + Coordinate2D,
+where
+    C::Point: Coordinate + Coordinate2D,
 {
     let start_point = curve.start_point();
     let (cp1, cp2) = curve.control_points();
@@ -419,8 +459,8 @@ pub fn characterize_curve<C: BezierCurve>(curve: &C) -> CurveCategory
 ///
 #[inline]
 pub fn features_for_curve<C: BezierCurve>(curve: &C, accuracy: f64) -> CurveFeatures
-    where
-        C::Point: Coordinate + Coordinate2D,
+where
+    C::Point: Coordinate + Coordinate2D,
 {
     let start_point = curve.start_point();
     let (cp1, cp2) = curve.control_points();
@@ -479,9 +519,11 @@ mod test {
         match features_for_cubic_bezier(&w1, &w2, &w3, &w4, 0.01) {
             CurveFeatures::Loop(t1, t2) => {
                 let curve = Curve::from_points(w1, (w2, w3), w4);
-                assert!(curve.point_at_pos(t1).is_near_to(&curve.point_at_pos(t2), 0.01));
+                assert!(curve
+                    .point_at_pos(t1)
+                    .is_near_to(&curve.point_at_pos(t2), 0.01));
             }
-            _ => assert!(false)
+            _ => assert!(false),
         }
     }
 
@@ -572,10 +614,18 @@ mod test {
         let w3 = Coord2(73.0, 221.0);
         let w4 = Coord2(249.0, 136.0);
 
-        assert!(characterize_cubic_bezier(&w1, &w2, &w3, &w4) == CurveCategory::SingleInflectionPoint);
+        assert!(
+            characterize_cubic_bezier(&w1, &w2, &w3, &w4) == CurveCategory::SingleInflectionPoint
+        );
     }
 
-    fn is_inflection_point<Point: Coordinate + Coordinate2D>(w1: &Point, w2: &Point, w3: &Point, w4: &Point, t: f64) -> bool {
+    fn is_inflection_point<Point: Coordinate + Coordinate2D>(
+        w1: &Point,
+        w2: &Point,
+        w3: &Point,
+        w4: &Point,
+        t: f64,
+    ) -> bool {
         let a = 3.0 * (w2.x() - w1.x());
         let b = 3.0 * (w3.x() - w2.x());
         let c = 3.0 * (w4.x() - w3.x());
@@ -608,7 +658,7 @@ mod test {
             CurveFeatures::SingleInflectionPoint(t) => {
                 assert!(is_inflection_point(&w1, &w2, &w3, &w4, t));
             }
-            _ => assert!(false)
+            _ => assert!(false),
         }
     }
 
@@ -639,7 +689,9 @@ mod test {
         let w3 = Coord2(108.0, 233.0);
         let w4 = Coord2(329.0, 129.0);
 
-        assert!(characterize_cubic_bezier(&w1, &w2, &w3, &w4) == CurveCategory::DoubleInflectionPoint);
+        assert!(
+            characterize_cubic_bezier(&w1, &w2, &w3, &w4) == CurveCategory::DoubleInflectionPoint
+        );
     }
 
     #[test]
@@ -654,7 +706,7 @@ mod test {
                 assert!(is_inflection_point(&w1, &w2, &w3, &w4, t1));
                 assert!(is_inflection_point(&w1, &w2, &w3, &w4, t2));
             }
-            _ => assert!(false)
+            _ => assert!(false),
         }
     }
 
@@ -725,7 +777,9 @@ mod test {
         let w3 = Coord2(72.0, 172.0);
         let w4 = Coord2(128.0, 162.0);
 
-        assert!(characterize_cubic_bezier(&w1, &w2, &w3, &w4) == CurveCategory::DoubleInflectionPoint);
+        assert!(
+            characterize_cubic_bezier(&w1, &w2, &w3, &w4) == CurveCategory::DoubleInflectionPoint
+        );
     }
 
     #[test]
@@ -740,7 +794,7 @@ mod test {
                 assert!(is_inflection_point(&w1, &w2, &w3, &w4, t1));
                 assert!(is_inflection_point(&w1, &w2, &w3, &w4, t2));
             }
-            _ => assert!(false)
+            _ => assert!(false),
         }
     }
 
@@ -751,6 +805,8 @@ mod test {
         let w3 = Coord2(290.0, 200.0);
         let w4 = Coord2(290.0, 95.0);
 
-        assert!(characterize_cubic_bezier(&w1, &w2, &w3, &w4) == CurveCategory::SingleInflectionPoint);
+        assert!(
+            characterize_cubic_bezier(&w1, &w2, &w3, &w4) == CurveCategory::SingleInflectionPoint
+        );
     }
 }

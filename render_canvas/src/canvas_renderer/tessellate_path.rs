@@ -1,3 +1,16 @@
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
+use std::mem;
+
+use flo_stream::*;
+
+use flo_canvas as canvas;
+use flo_render as render;
+
 use crate::fill_state::*;
 use crate::render_entity::*;
 use crate::renderer_worker::*;
@@ -5,19 +18,18 @@ use crate::renderer_worker::*;
 use super::canvas_renderer::*;
 use super::tessellate_build_path::*;
 
-use flo_stream::*;
-use flo_canvas as canvas;
-use flo_render as render;
-
-use std::mem;
-
 const BATCH_SIZE: usize = 20;
 
 impl CanvasRenderer {
     ///
     /// Fill the current path
     ///
-    pub(super) async fn tes_fill(&mut self, path_state: &mut PathState, job_publisher: &mut SinglePublisher<Vec<CanvasJob>>, pending_jobs: &mut Vec<CanvasJob>) {
+    pub(super) async fn tes_fill(
+        &mut self,
+        path_state: &mut PathState,
+        job_publisher: &mut SinglePublisher<Vec<CanvasJob>>,
+        pending_jobs: &mut Vec<CanvasJob>,
+    ) {
         // Update the active path if the builder exists
         path_state.build();
 
@@ -50,22 +62,50 @@ impl CanvasRenderer {
                             layer.render_order.push(RenderEntity::SetFlatColor);
                         }
 
-                        FillState::Texture(render_texture, _canvas_texture, matrix, repeat, alpha) => {
+                        FillState::Texture(
+                            render_texture,
+                            _canvas_texture,
+                            matrix,
+                            repeat,
+                            alpha,
+                        ) => {
                             // Increase the usage count for this texture
-                            core.used_textures.get_mut(&render_texture)
+                            core.used_textures
+                                .get_mut(&render_texture)
                                 .map(|usage_count| *usage_count += 1);
 
                             // Add to the layer
-                            core.layer(layer_id).render_order.push(RenderEntity::SetFillTexture(render_texture, matrix, repeat, alpha));
+                            core.layer(layer_id)
+                                .render_order
+                                .push(RenderEntity::SetFillTexture(
+                                    render_texture,
+                                    matrix,
+                                    repeat,
+                                    alpha,
+                                ));
                         }
 
-                        FillState::LinearGradient(gradient_texture, _canvas_texture, matrix, repeat, alpha) => {
+                        FillState::LinearGradient(
+                            gradient_texture,
+                            _canvas_texture,
+                            matrix,
+                            repeat,
+                            alpha,
+                        ) => {
                             // Increase the usage count for the texture
-                            core.used_textures.get_mut(&gradient_texture)
+                            core.used_textures
+                                .get_mut(&gradient_texture)
                                 .map(|usage_count| *usage_count += 1);
 
                             // Add to the layer
-                            core.layer(layer_id).render_order.push(RenderEntity::SetFillGradient(gradient_texture, matrix, repeat, alpha));
+                            core.layer(layer_id)
+                                .render_order
+                                .push(RenderEntity::SetFillGradient(
+                                    gradient_texture,
+                                    matrix,
+                                    repeat,
+                                    alpha,
+                                ));
                         }
                     }
 
@@ -86,13 +126,26 @@ impl CanvasRenderer {
                 let entity_index = layer.render_order.len();
                 let transform = layer.state.current_matrix;
 
-                layer.render_order.push(RenderEntity::Tessellating(entity_id));
+                layer
+                    .render_order
+                    .push(RenderEntity::Tessellating(entity_id));
                 layer.state.modification_count += 1;
 
-                let entity = LayerEntityRef { layer_id, entity_index, entity_id };
+                let entity = LayerEntityRef {
+                    layer_id,
+                    entity_index,
+                    entity_id,
+                };
 
                 // Create the canvas job
-                CanvasJob::Fill { path, fill_rule, color, scale_factor, transform, entity }
+                CanvasJob::Fill {
+                    path,
+                    fill_rule,
+                    color,
+                    scale_factor,
+                    transform,
+                    entity,
+                }
             });
 
             pending_jobs.push(job);
@@ -108,7 +161,12 @@ impl CanvasRenderer {
     ///
     /// Draw a line around the current path
     ///
-    pub(super) async fn tes_stroke(&mut self, path_state: &mut PathState, job_publisher: &mut SinglePublisher<Vec<CanvasJob>>, pending_jobs: &mut Vec<CanvasJob>) {
+    pub(super) async fn tes_stroke(
+        &mut self,
+        path_state: &mut PathState,
+        job_publisher: &mut SinglePublisher<Vec<CanvasJob>>,
+        pending_jobs: &mut Vec<CanvasJob>,
+    ) {
         // Update the active path if the builder exists
         path_state.build();
 
@@ -137,16 +195,17 @@ impl CanvasRenderer {
 
                 // Reset the fill state to 'flat colour' if needed
                 match fill_state {
-                    FillState::None |
-                    FillState::Color(_) => {}
-                    _ => { layer.render_order.push(RenderEntity::SetFlatColor) }
+                    FillState::None | FillState::Color(_) => {}
+                    _ => layer.render_order.push(RenderEntity::SetFlatColor),
                 }
 
                 *fill_state = FillState::None;
 
                 // Apply the dash pattern, if it's different
                 if *dash_pattern != layer.state.stroke_settings.dash_pattern {
-                    layer.render_order.push(RenderEntity::SetDashPattern(layer.state.stroke_settings.dash_pattern.clone()));
+                    layer.render_order.push(RenderEntity::SetDashPattern(
+                        layer.state.stroke_settings.dash_pattern.clone(),
+                    ));
                     *dash_pattern = layer.state.stroke_settings.dash_pattern.clone();
                 }
 
@@ -158,15 +217,32 @@ impl CanvasRenderer {
 
                 // When drawing to the erase layer (DesintationOut blend mode), all colour components are alpha components
                 let color = stroke_options.stroke_color;
-                stroke_options.stroke_color = if layer.state.blend_mode == canvas::BlendMode::DestinationOut { render::Rgba8([color.0[3], color.0[3], color.0[3], color.0[3]]) } else { color };
+                stroke_options.stroke_color =
+                    if layer.state.blend_mode == canvas::BlendMode::DestinationOut {
+                        render::Rgba8([color.0[3], color.0[3], color.0[3], color.0[3]])
+                    } else {
+                        color
+                    };
 
-                layer.render_order.push(RenderEntity::Tessellating(entity_id));
+                layer
+                    .render_order
+                    .push(RenderEntity::Tessellating(entity_id));
                 layer.state.modification_count += 1;
 
-                let entity = LayerEntityRef { layer_id, entity_index, entity_id };
+                let entity = LayerEntityRef {
+                    layer_id,
+                    entity_index,
+                    entity_id,
+                };
 
                 // Create the canvas job
-                CanvasJob::Stroke { path, stroke_options, scale_factor, transform, entity }
+                CanvasJob::Stroke {
+                    path,
+                    stroke_options,
+                    scale_factor,
+                    transform,
+                    entity,
+                }
             });
 
             pending_jobs.push(job);
@@ -182,7 +258,12 @@ impl CanvasRenderer {
     ///
     /// Clip to the currently set path
     ///
-    pub(super) async fn tes_clip(&mut self, path_state: &mut PathState, job_publisher: &mut SinglePublisher<Vec<CanvasJob>>, pending_jobs: &mut Vec<CanvasJob>) {
+    pub(super) async fn tes_clip(
+        &mut self,
+        path_state: &mut PathState,
+        job_publisher: &mut SinglePublisher<Vec<CanvasJob>>,
+        pending_jobs: &mut Vec<CanvasJob>,
+    ) {
         // Update the active path if the builder exists
         path_state.build();
 
@@ -210,12 +291,25 @@ impl CanvasRenderer {
                 let transform = *active_transform;
 
                 // Update the clipping path and enable clipping
-                layer.render_order.push(RenderEntity::Tessellating(entity_id));
+                layer
+                    .render_order
+                    .push(RenderEntity::Tessellating(entity_id));
 
-                let entity = LayerEntityRef { layer_id, entity_index, entity_id };
+                let entity = LayerEntityRef {
+                    layer_id,
+                    entity_index,
+                    entity_id,
+                };
 
                 // Create the canvas job
-                CanvasJob::Clip { path, fill_rule, color, scale_factor, transform, entity }
+                CanvasJob::Clip {
+                    path,
+                    fill_rule,
+                    color,
+                    scale_factor,
+                    transform,
+                    entity,
+                }
             });
 
             pending_jobs.push(job);

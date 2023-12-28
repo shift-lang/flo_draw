@@ -1,3 +1,9 @@
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
 //!
 //! # Desync
 //!
@@ -10,7 +16,7 @@
 //!
 //! If only the `sync()` operation is used, this is roughly equivalent to a standard `Mutex`, except
 //! with much stronger guarantees about which thread gets the data first. The other operation,
-//! `desync()` effectively replaces the need to spawn threads and move data around in order to 
+//! `desync()` effectively replaces the need to spawn threads and move data around in order to
 //! add concurrency to a program.
 //!
 //! Desync also provides equivalent methods for async code: `future_sync()` will perform an operation
@@ -76,7 +82,7 @@
 //! to perform operations asynchronously, this provides a useful way to immediately parallelize
 //! long-running operations.
 //!
-//! The `future_sync()` action returns a boxed Future that can be used with other libraries that use them. It's 
+//! The `future_sync()` action returns a boxed Future that can be used with other libraries that use them. It's
 //! conceptually the same as `sync`, except that it doesn't wait for the operation to complete:
 //!
 //! ```
@@ -114,7 +120,7 @@
 //!
 //! `pipe()` is quite useful as a way to provide asynchronous access to synchronous code: it can be used
 //! to create a channel to send requests to an asynchronous target and retrieve results back via its
-//! output. (Unlike this 'traditional' method, the actual scheduling and channel maintenance does not 
+//! output. (Unlike this 'traditional' method, the actual scheduling and channel maintenance does not
 //! need to be explicitly implemented)
 //!
 
@@ -127,10 +133,10 @@ extern crate futures;
 #[cfg(not(target_arch = "wasm32"))]
 extern crate num_cpus;
 
-pub mod scheduler;
 pub mod desync;
 pub mod pipe;
+pub mod scheduler;
 
-pub use self::scheduler::{TrySyncError};
 pub use self::desync::*;
 pub use self::pipe::*;
+pub use self::scheduler::TrySyncError;

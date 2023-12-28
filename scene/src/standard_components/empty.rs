@@ -1,3 +1,9 @@
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
 use std::sync::*;
 
 use futures::prelude::*;
@@ -22,13 +28,18 @@ pub enum EmptyRequest {
 /// Creates a new empty entity. These are entities that perform no actions themselves, other
 /// than a request to stop the entity. They can be useful as places to store properties.
 ///
-pub fn empty_entity(entity_id: EntityId, context: &Arc<SceneContext>) -> Result<impl EntityChannel<Message=EmptyRequest>, CreateEntityError> {
+pub fn empty_entity(
+    entity_id: EntityId,
+    context: &Arc<SceneContext>,
+) -> Result<impl EntityChannel<Message = EmptyRequest>, CreateEntityError> {
     context.create_entity(entity_id, move |_, mut messages| async move {
         while let Some(msg) = messages.next().await {
             let msg: EmptyRequest = msg;
 
             match msg {
-                EmptyRequest::Stop => { break; }
+                EmptyRequest::Stop => {
+                    break;
+                }
             }
         }
     })

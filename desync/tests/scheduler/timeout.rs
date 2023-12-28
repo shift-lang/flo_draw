@@ -1,8 +1,14 @@
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
 extern crate desync;
 
+use std::sync::mpsc::*;
 use std::thread;
 use std::time::*;
-use std::sync::mpsc::*;
 
 use desync::scheduler::*;
 
@@ -44,7 +50,8 @@ pub fn timeout<TFn: 'static + Send + FnOnce() -> ()>(action: TFn, millis: u64) {
             if done.is_err() {
                 tx2.send(ThreadState::Timeout).ok();
             }
-        }).expect("Create timeout timer thread");
+        })
+        .expect("Create timeout timer thread");
 
     match rx.recv().expect("Receive timeout status") {
         ThreadState::Ok => {

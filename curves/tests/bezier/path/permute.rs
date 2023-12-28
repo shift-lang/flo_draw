@@ -1,7 +1,13 @@
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
 use super::checks::*;
 
-use flo_curves::geo::*;
 use flo_curves::bezier::path::*;
+use flo_curves::geo::*;
 
 ///
 /// Creates a permutation of a path, by rotating and optionally reversing the points
@@ -27,16 +33,34 @@ pub fn path_permutation(path: Vec<Coord2>, start_offset: usize, forward: bool) -
 
 #[test]
 fn permutation_matches_original() {
-    let path = vec![Coord2(206.0, 391.0), Coord2(206.0, 63.0), Coord2(281.0, 66.0), Coord2(281.0, 320.0), Coord2(649.0, 320.0), Coord2(649.0, 63.0), Coord2(734.0, 63.0), Coord2(734.0, 391.0)];
+    let path = vec![
+        Coord2(206.0, 391.0),
+        Coord2(206.0, 63.0),
+        Coord2(281.0, 66.0),
+        Coord2(281.0, 320.0),
+        Coord2(649.0, 320.0),
+        Coord2(649.0, 63.0),
+        Coord2(734.0, 63.0),
+        Coord2(734.0, 391.0),
+    ];
     let base_path = path_permutation(path.clone(), 0, true);
 
     for forward in [true, false] {
         for permutation in 0..path.len() {
-            println!("Forward: {:?}, permutation: {}/{}", forward, permutation, path.len());
+            println!(
+                "Forward: {:?}, permutation: {}/{}",
+                forward,
+                permutation,
+                path.len()
+            );
 
             let permuted = path_permutation(path.clone(), permutation, forward);
 
-            assert!(path_has_points_in_order(permuted, base_path.1.iter().cloned().collect(), 0.1));
+            assert!(path_has_points_in_order(
+                permuted,
+                base_path.1.iter().cloned().collect(),
+                0.1
+            ));
         }
     }
 }

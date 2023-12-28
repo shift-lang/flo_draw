@@ -1,3 +1,9 @@
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
 use criterion::{criterion_group, criterion_main, Criterion};
 
 use flo_curves::geo::*;
@@ -141,22 +147,37 @@ fn circle_space() -> Space1D<(Coord2, Coord2)> {
         Coord2(1341.8376618407356, 921.8376618407356),
     ];
 
-    Space1D::from_data(points.into_iter()
-        .tuple_windows()
-        .map(|(start, end)| {
-            ((start.y().min(end.y())..(start.y().max(end.y()))), (start, end))
-        }))
+    Space1D::from_data(points.into_iter().tuple_windows().map(|(start, end)| {
+        (
+            (start.y().min(end.y())..(start.y().max(end.y()))),
+            (start, end),
+        )
+    }))
 }
 
 fn criterion_benchmark(c: &mut Criterion) {
-    use std::hint::{black_box};
+    use std::hint::black_box;
 
     let circle_space = circle_space();
 
-    c.bench_function("look_up_data", |b| b.iter(|| black_box(circle_space.data_at_point(500.0).collect::<Vec<_>>())));
-    c.bench_function("look_up_all_data_in_frame", |b| b.iter(|| (0..1080).for_each(|y| { black_box(circle_space.data_at_point(y as _).collect::<Vec<_>>()); })));
-    c.bench_function("look_up_all_data_in_frame_using_region", |b| b.iter(|| { black_box(circle_space.data_in_region(0.0..1080.0).collect::<Vec<_>>()); }));
-    c.bench_function("all_regions", |b| b.iter(|| black_box(circle_space.all_regions().collect::<Vec<_>>())));
+    c.bench_function("look_up_data", |b| {
+        b.iter(|| black_box(circle_space.data_at_point(500.0).collect::<Vec<_>>()))
+    });
+    c.bench_function("look_up_all_data_in_frame", |b| {
+        b.iter(|| {
+            (0..1080).for_each(|y| {
+                black_box(circle_space.data_at_point(y as _).collect::<Vec<_>>());
+            })
+        })
+    });
+    c.bench_function("look_up_all_data_in_frame_using_region", |b| {
+        b.iter(|| {
+            black_box(circle_space.data_in_region(0.0..1080.0).collect::<Vec<_>>());
+        })
+    });
+    c.bench_function("all_regions", |b| {
+        b.iter(|| black_box(circle_space.all_regions().collect::<Vec<_>>()))
+    });
 }
 
 criterion_group!(benches, criterion_benchmark);

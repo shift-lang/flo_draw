@@ -1,3 +1,9 @@
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
 //!
 //! # Traits for basic geometric definitions
 //!
@@ -10,24 +16,24 @@
 //! library.
 //!
 
-mod geo;
-mod sweep;
-mod has_bounds;
-mod coordinate;
+mod bounding_box;
 mod coord1;
 mod coord2;
 mod coord3;
+mod coordinate;
 mod coordinate_ext;
-mod bounding_box;
+mod geo;
+mod has_bounds;
 mod space1;
+mod sweep;
 
-pub use self::geo::*;
-pub use self::sweep::*;
+pub use self::bounding_box::*;
 pub use self::coord1::*;
 pub use self::coord2::*;
 pub use self::coord3::*;
-pub use self::has_bounds::*;
 pub use self::coordinate::*;
-pub use self::bounding_box::*;
 pub use self::coordinate_ext::*;
+pub use self::geo::*;
+pub use self::has_bounds::*;
 pub use self::space1::*;
+pub use self::sweep::*;

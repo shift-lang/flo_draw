@@ -1,32 +1,38 @@
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
+use super::characteristics::*;
 use super::curve::*;
 use super::normal::*;
-use super::characteristics::*;
+use crate::bezier::CurveSection;
 use crate::geo::*;
 use crate::line::*;
-use crate::bezier::{CurveSection};
 
-use smallvec::*;
 use itertools::*;
+use smallvec::*;
 
 use std::cmp::*;
 
 // This is loosely based on the algorithm described at: https://pomax.github.io/bezierinfo/#offsetting,
 // with numerous changes to allow for variable-width offsets and consistent behaviour (in particular,
 // a much more reliable method of subdividing the curve)
-// 
+//
 // This algorithm works by subdividing the original curve into arches. We use the characteristics of the
 // curve to do this: by subdividing a curve at its inflection point, we turn it into a series of arches.
-// Arches have a focal point that the normal vectors along the curve roughly converge to, so we can 
-// scale around this point to generate an approximate offset curve (every point of the curve will move 
+// Arches have a focal point that the normal vectors along the curve roughly converge to, so we can
+// scale around this point to generate an approximate offset curve (every point of the curve will move
 // away from the focal point along its normal axis).
 //
 // As the focal point is approximate, using the start and end points to compute its location ensures that
-// the offset is exact at the start and end of the curve. 
+// the offset is exact at the start and end of the curve.
 //
 // Edge cases: curves with inflection points at the start or end, arches where the normal vectors at the
 // start and end are in parallel.
 //
-// Not all arches have normal vectors that converge (close to) a focal point. We can spot these quickly 
+// Not all arches have normal vectors that converge (close to) a focal point. We can spot these quickly
 // because the focal point of any two points is in general not equidistant from those two points: this
 // also results in uneven scaling of the start and end points.
 //
@@ -42,19 +48,31 @@ use std::cmp::*;
 /// This uses a scaling algorithm to compute the offset curve, which is fast but which can produce
 /// errors, especially if the initial and final offsets are very different from one another.
 ///
-/// See `offset_lms_sampling()` for a version of this that produces fewer errors, and the 
+/// See `offset_lms_sampling()` for a version of this that produces fewer errors, and the
 /// `DaubBrushDistanceField` for a more general way to generate 'thick' lines.
 ///
 pub fn offset_scaling<Curve>(curve: &Curve, initial_offset: f64, final_offset: f64) -> Vec<Curve>
-    where
-        Curve: BezierCurveFactory + NormalCurve,
-        Curve::Point: Normalize + Coordinate2D,
+where
+    Curve: BezierCurveFactory + NormalCurve,
+    Curve::Point: Normalize + Coordinate2D,
 {
     // Split at the location of any features the curve might have
     let sections: SmallVec<[_; 4]> = match features_for_curve(curve, 0.01) {
         CurveFeatures::DoubleInflectionPoint(t1, t2) => {
-            let t1 = if t1 > 0.9999 { 1.0 } else if t1 < 0.0001 { 0.0 } else { t1 };
-            let t2 = if t2 > 0.9999 { 1.0 } else if t2 < 0.0001 { 0.0 } else { t2 };
+            let t1 = if t1 > 0.9999 {
+                1.0
+            } else if t1 < 0.0001 {
+                0.0
+            } else {
+                t1
+            };
+            let t2 = if t2 > 0.9999 {
+                1.0
+            } else if t2 < 0.0001 {
+                0.0
+            } else {
+                t2
+            };
 
             if t2 > t1 {
                 smallvec![(0.0, t1), (t1, t2), (t2, 1.0)]
@@ -64,8 +82,20 @@ pub fn offset_scaling<Curve>(curve: &Curve, initial_offset: f64, final_offset: f
         }
 
         CurveFeatures::Loop(t1, t3) => {
-            let t1 = if t1 > 0.9999 { 1.0 } else if t1 < 0.0001 { 0.0 } else { t1 };
-            let t3 = if t3 > 0.9999 { 1.0 } else if t3 < 0.0001 { 0.0 } else { t3 };
+            let t1 = if t1 > 0.9999 {
+                1.0
+            } else if t1 < 0.0001 {
+                0.0
+            } else {
+                t1
+            };
+            let t3 = if t3 > 0.9999 {
+                1.0
+            } else if t3 < 0.0001 {
+                0.0
+            } else {
+                t3
+            };
             let t2 = (t1 + t3) / 2.0;
 
             if t3 > t1 {
@@ -83,9 +113,12 @@ pub fn offset_scaling<Curve>(curve: &Curve, initial_offset: f64, final_offset: f
             }
         }
 
-        _ => { smallvec![(0.0, 1.0)] }
+        _ => {
+            smallvec![(0.0, 1.0)]
+        }
     };
-    let sections = sections.into_iter()
+    let sections = sections
+        .into_iter()
         .filter(|(t1, t2)| t1 != t2)
         .map(|(t1, t2)| curve.section(t1, t2))
         .collect::<SmallVec<[_; 8]>>();
@@ -93,11 +126,15 @@ pub fn offset_scaling<Curve>(curve: &Curve, initial_offset: f64, final_offset: f
     // Offset the set of curves that we retrieved
     let offset_distance = final_offset - initial_offset;
 
-    sections.into_iter()
+    sections
+        .into_iter()
         .flat_map(|section| {
             // Compute the offsets for this section (TODO: use the curve length, not the t values)
             let (t1, t2) = section.original_curve_t_values();
-            let (offset1, offset2) = (t1 * offset_distance + initial_offset, t2 * offset_distance + initial_offset);
+            let (offset1, offset2) = (
+                t1 * offset_distance + initial_offset,
+                t2 * offset_distance + initial_offset,
+            );
 
             subdivide_offset(&section, offset1, offset2, 0)
         })
@@ -107,11 +144,16 @@ pub fn offset_scaling<Curve>(curve: &Curve, initial_offset: f64, final_offset: f
 ///
 /// Attempts a simple offset of a curve, and subdivides it if the midpoint is too far away from the expected distance
 ///
-fn subdivide_offset<CurveIn, CurveOut>(curve: &CurveSection<'_, CurveIn>, initial_offset: f64, final_offset: f64, depth: usize) -> SmallVec<[CurveOut; 2]>
-    where
-        CurveIn: NormalCurve + BezierCurve,
-        CurveOut: BezierCurveFactory<Point=CurveIn::Point>,
-        CurveIn::Point: Coordinate2D + Normalize,
+fn subdivide_offset<CurveIn, CurveOut>(
+    curve: &CurveSection<'_, CurveIn>,
+    initial_offset: f64,
+    final_offset: f64,
+    depth: usize,
+) -> SmallVec<[CurveOut; 2]>
+where
+    CurveIn: NormalCurve + BezierCurve,
+    CurveOut: BezierCurveFactory<Point = CurveIn::Point>,
+    CurveIn::Point: Coordinate2D + Normalize,
 {
     const MAX_DEPTH: usize = 5;
 
@@ -126,7 +168,8 @@ fn subdivide_offset<CurveIn, CurveOut>(curve: &CurveSection<'_, CurveIn>, initia
     let normal_end = normal_end.to_unit_vector();
 
     // If we can we want to scale the control points around the intersection of the normals
-    let intersect_point = ray_intersects_ray(&(start, start + normal_start), &(end, end + normal_end));
+    let intersect_point =
+        ray_intersects_ray(&(start, start + normal_start), &(end, end + normal_end));
 
     if intersect_point.is_none() {
         if characterize_curve(curve) != CurveCategory::Linear && depth < MAX_DEPTH {
@@ -140,9 +183,7 @@ fn subdivide_offset<CurveIn, CurveOut>(curve: &CurveSection<'_, CurveIn>, initia
             let left_offset = subdivide_offset(&left_curve, initial_offset, mid_offset, depth + 1);
             let right_offset = subdivide_offset(&right_curve, mid_offset, final_offset, depth + 1);
 
-            return left_offset.into_iter()
-                .chain(right_offset)
-                .collect();
+            return left_offset.into_iter().chain(right_offset).collect();
         }
     }
 
@@ -168,12 +209,12 @@ fn subdivide_offset<CurveIn, CurveOut>(curve: &CurveSection<'_, CurveIn>, initia
                 let left_curve = curve.subsection(0.0, divide_point);
                 let right_curve = curve.subsection(divide_point, 1.0);
 
-                let left_offset = subdivide_offset(&left_curve, initial_offset, mid_offset, depth + 1);
-                let right_offset = subdivide_offset(&right_curve, mid_offset, final_offset, depth + 1);
+                let left_offset =
+                    subdivide_offset(&left_curve, initial_offset, mid_offset, depth + 1);
+                let right_offset =
+                    subdivide_offset(&right_curve, mid_offset, final_offset, depth + 1);
 
-                left_offset.into_iter()
-                    .chain(right_offset)
-                    .collect()
+                left_offset.into_iter().chain(right_offset).collect()
             } else {
                 let mut extremities = extremities;
                 extremities.insert(0, 0.0);
@@ -194,11 +235,24 @@ fn subdivide_offset<CurveIn, CurveOut>(curve: &CurveSection<'_, CurveIn>, initia
             }
         } else {
             // Event intersection point
-            smallvec![offset_by_scaling(curve, initial_offset, final_offset, intersect_point, normal_start, normal_end)]
+            smallvec![offset_by_scaling(
+                curve,
+                initial_offset,
+                final_offset,
+                intersect_point,
+                normal_start,
+                normal_end
+            )]
         }
     } else {
         // No intersection point
-        smallvec![offset_by_moving(curve, initial_offset, final_offset, normal_start, normal_end)]
+        smallvec![offset_by_moving(
+            curve,
+            initial_offset,
+            final_offset,
+            normal_start,
+            normal_end
+        )]
     }
 }
 
@@ -206,11 +260,18 @@ fn subdivide_offset<CurveIn, CurveOut>(curve: &CurveSection<'_, CurveIn>, initia
 /// Offsets a curve by scaling around a central point
 ///
 #[inline]
-fn offset_by_scaling<CurveIn, CurveOut>(curve: &CurveIn, initial_offset: f64, final_offset: f64, intersect_point: CurveIn::Point, unit_normal_start: CurveIn::Point, unit_normal_end: CurveIn::Point) -> CurveOut
-    where
-        CurveIn: NormalCurve + BezierCurve,
-        CurveOut: BezierCurveFactory<Point=CurveIn::Point>,
-        CurveIn::Point: Coordinate2D + Normalize,
+fn offset_by_scaling<CurveIn, CurveOut>(
+    curve: &CurveIn,
+    initial_offset: f64,
+    final_offset: f64,
+    intersect_point: CurveIn::Point,
+    unit_normal_start: CurveIn::Point,
+    unit_normal_end: CurveIn::Point,
+) -> CurveOut
+where
+    CurveIn: NormalCurve + BezierCurve,
+    CurveOut: BezierCurveFactory<Point = CurveIn::Point>,
+    CurveIn::Point: Coordinate2D + Normalize,
 {
     let start = curve.start_point();
     let end = curve.end_point();
@@ -220,7 +281,8 @@ fn offset_by_scaling<CurveIn, CurveOut>(curve: &CurveIn, initial_offset: f64, fi
     let new_start = start + (unit_normal_start * initial_offset);
     let new_end = end + (unit_normal_end * final_offset);
 
-    let start_scale = (intersect_point.distance_to(&new_start)) / (intersect_point.distance_to(&start));
+    let start_scale =
+        (intersect_point.distance_to(&new_start)) / (intersect_point.distance_to(&start));
     let end_scale = (intersect_point.distance_to(&new_end)) / (intersect_point.distance_to(&end));
 
     // When the scale is changing, the control points are effectively 1/3rd and 2/3rds of the way along the curve
@@ -237,11 +299,17 @@ fn offset_by_scaling<CurveIn, CurveOut>(curve: &CurveIn, initial_offset: f64, fi
 /// Given a curve where the start and end normals do not intersect at a point, calculates the offset (by moving the start and end points along the normal)
 ///
 #[inline]
-fn offset_by_moving<CurveIn, CurveOut>(curve: &CurveIn, initial_offset: f64, final_offset: f64, unit_normal_start: CurveIn::Point, unit_normal_end: CurveIn::Point) -> CurveOut
-    where
-        CurveIn: NormalCurve + BezierCurve,
-        CurveOut: BezierCurveFactory<Point=CurveIn::Point>,
-        CurveIn::Point: Coordinate2D + Normalize,
+fn offset_by_moving<CurveIn, CurveOut>(
+    curve: &CurveIn,
+    initial_offset: f64,
+    final_offset: f64,
+    unit_normal_start: CurveIn::Point,
+    unit_normal_end: CurveIn::Point,
+) -> CurveOut
+where
+    CurveIn: NormalCurve + BezierCurve,
+    CurveOut: BezierCurveFactory<Point = CurveIn::Point>,
+    CurveIn::Point: Coordinate2D + Normalize,
 {
     let start = curve.start_point();
     let end = curve.end_point();

@@ -1,3 +1,9 @@
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
 use std::any::TypeId;
 use std::collections::{HashMap, HashSet};
 use std::sync::*;
@@ -21,7 +27,7 @@ pub struct EntityChannelType {
 }
 
 ///
-/// Requests that can be made for the entity registry 
+/// Requests that can be made for the entity registry
 ///
 #[derive(Debug)]
 pub enum EntityRegistryRequest {
@@ -68,7 +74,7 @@ pub(crate) enum InternalRegistryRequest {
     TrackEntities(BoxedEntityChannel<'static, EntityUpdate>),
 
     ///
-    /// Opens an entity update channel (of type `EntityChannel<EntityUpdate, ()>`) to the specified entity and sends updates to indicate when any entity that can 
+    /// Opens an entity update channel (of type `EntityChannel<EntityUpdate, ()>`) to the specified entity and sends updates to indicate when any entity that can
     /// accept a channel of this type is created or destroyed
     ///
     TrackEntitiesWithType(BoxedEntityChannel<'static, EntityUpdate>, EntityChannelType),
@@ -87,7 +93,7 @@ pub(crate) enum InternalRegistryRequest {
     CreatedEntity(EntityId, TypeId),
 
     ///
-    /// Send from the scene 
+    /// Send from the scene
     ///
     DestroyedEntity(EntityId),
 
@@ -100,9 +106,15 @@ pub(crate) enum InternalRegistryRequest {
 impl From<EntityRegistryRequest> for InternalRegistryRequest {
     fn from(req: EntityRegistryRequest) -> InternalRegistryRequest {
         match req {
-            EntityRegistryRequest::GetEntities(channel) => InternalRegistryRequest::GetEntities(channel),
-            EntityRegistryRequest::TrackEntities(channel) => InternalRegistryRequest::TrackEntities(channel),
-            EntityRegistryRequest::TrackEntitiesWithType(channel, channel_type) => InternalRegistryRequest::TrackEntitiesWithType(channel, channel_type),
+            EntityRegistryRequest::GetEntities(channel) => {
+                InternalRegistryRequest::GetEntities(channel)
+            }
+            EntityRegistryRequest::TrackEntities(channel) => {
+                InternalRegistryRequest::TrackEntities(channel)
+            }
+            EntityRegistryRequest::TrackEntitiesWithType(channel, channel_type) => {
+                InternalRegistryRequest::TrackEntitiesWithType(channel, channel_type)
+            }
         }
     }
 }
@@ -123,17 +135,15 @@ impl EntityChannelType {
     /// Creates a new entity channel type from a pair of type IDs representing the message type
     ///
     pub fn new(message_type: TypeId) -> EntityChannelType {
-        EntityChannelType {
-            message_type,
-        }
+        EntityChannelType { message_type }
     }
 
     ///
     /// Creates a new entity channel type from a message type
     ///
     pub fn of<MessageType>() -> EntityChannelType
-        where
-            MessageType: 'static,
+    where
+        MessageType: 'static,
     {
         Self::new(TypeId::of::<MessageType>())
     }
@@ -143,9 +153,17 @@ impl RegistryState {
     ///
     /// Returns true if an entity that has a channel type will convert from the given match type
     ///
-    fn can_convert_type(&self, channel_type: &EntityChannelType, match_type: &EntityChannelType) -> bool {
+    fn can_convert_type(
+        &self,
+        channel_type: &EntityChannelType,
+        match_type: &EntityChannelType,
+    ) -> bool {
         let message_match = channel_type.message_type == match_type.message_type
-            || self.convert_message.get(&match_type.message_type).map(|types| types.contains(&channel_type.message_type)).unwrap_or(false);
+            || self
+                .convert_message
+                .get(&match_type.message_type)
+                .map(|types| types.contains(&channel_type.message_type))
+                .unwrap_or(false);
 
         message_match
     }
@@ -164,7 +182,9 @@ pub fn create_entity_registry_entity(context: &Arc<SceneContext>) -> Result<(), 
     };
 
     let mut trackers: Vec<Option<BoxedEntityChannel<'static, EntityUpdate>>> = vec![];
-    let mut typed_trackers: Vec<Option<(EntityChannelType, BoxedEntityChannel<'static, EntityUpdate>)>> = vec![];
+    let mut typed_trackers: Vec<
+        Option<(EntityChannelType, BoxedEntityChannel<'static, EntityUpdate>)>,
+    > = vec![];
 
     // Create the entity registry (it's just a stream entity)
     context.create_entity(ENTITY_REGISTRY, move |_context, mut requests| async move {
@@ -206,7 +226,9 @@ pub fn create_entity_registry_entity(context: &Arc<SceneContext>) -> Result<(), 
                     let message_type = message_type;
 
                     // Add to the list of entities
-                    state.entities.insert(entity_id, EntityChannelType::new(message_type));
+                    state
+                        .entities
+                        .insert(entity_id, EntityChannelType::new(message_type));
 
                     // Inform the trackers
                     let mut futures = vec![];
@@ -248,7 +270,8 @@ pub fn create_entity_registry_entity(context: &Arc<SceneContext>) -> Result<(), 
                         for maybe_tracker in trackers.iter_mut() {
                             if let Some(tracker) = maybe_tracker {
                                 // Send that a new entity has been destroyed to the tracker
-                                futures.push(tracker.send(EntityUpdate::DestroyedEntity(entity_id)));
+                                futures
+                                    .push(tracker.send(EntityUpdate::DestroyedEntity(entity_id)));
                             }
                         }
 
@@ -256,7 +279,9 @@ pub fn create_entity_registry_entity(context: &Arc<SceneContext>) -> Result<(), 
                             if let Some((match_type, tracker)) = maybe_tracker {
                                 if state.can_convert_type(&entity_type, match_type) {
                                     // Send that a new entity has been destroyed to the tracker
-                                    futures.push(tracker.send(EntityUpdate::DestroyedEntity(entity_id)));
+                                    futures.push(
+                                        tracker.send(EntityUpdate::DestroyedEntity(entity_id)),
+                                    );
                                 }
                             }
                         }
@@ -273,7 +298,11 @@ pub fn create_entity_registry_entity(context: &Arc<SceneContext>) -> Result<(), 
 
                 ConvertMessage(source_type, target_type) => {
                     // Store that something that accepts 'source_type' can also accept 'target_type'
-                    state.convert_message.entry(target_type).or_insert_with(|| HashSet::new()).insert(source_type);
+                    state
+                        .convert_message
+                        .entry(target_type)
+                        .or_insert_with(|| HashSet::new())
+                        .insert(source_type);
                 }
 
                 TrackEntities(channel) => {
@@ -301,7 +330,9 @@ pub fn create_entity_registry_entity(context: &Arc<SceneContext>) -> Result<(), 
                     let mut futures = vec![];
                     for (existing_entity_id, existing_type) in state.entities.iter() {
                         if state.can_convert_type(existing_type, &channel_type) {
-                            futures.push(channel.send(EntityUpdate::CreatedEntity(*existing_entity_id)));
+                            futures.push(
+                                channel.send(EntityUpdate::CreatedEntity(*existing_entity_id)),
+                            );
                         }
                     }
 

@@ -1,5 +1,11 @@
-use super::line::*;
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
 use super::super::geo::*;
+use super::line::*;
 
 ///
 /// The coefficients for a line
@@ -19,15 +25,15 @@ impl Into<(f64, f64, f64)> for LineCoefficients {
 
 ///
 /// For a two-dimensional line, computes the coefficients of the line equation ax+by+c=0
-/// These coefficients are not normalized, which is slightly more efficient than computing the normalized form. 
+/// These coefficients are not normalized, which is slightly more efficient than computing the normalized form.
 ///
 /// This will return (0,0,0) for a line where the start and end point are the same.
 ///
 pub fn line_coefficients_2d_unnormalized<L: Line + ?Sized>(line: &L) -> LineCoefficients
-    where
-        L::Point: Coordinate + Coordinate2D,
+where
+    L::Point: Coordinate + Coordinate2D,
 {
-    // Compute the offset 
+    // Compute the offset
     let (from, to) = line.points();
     let offset = to - from;
 
@@ -63,15 +69,15 @@ pub fn line_coefficients_2d_unnormalized<L: Line + ?Sized>(line: &L) -> LineCoef
 }
 
 ///
-/// For a two-dimensional line, computes the coefficients of the line equation ax+by+c=0, such that 
+/// For a two-dimensional line, computes the coefficients of the line equation ax+by+c=0, such that
 /// a^2+b^2 = 1. This normalized form means that `a*x + b*y + c` will return the distance that the
 /// point `x`, `y` is from the line.
 ///
 /// This will return (0,0,0) for a line where the start and end point are the same.
 ///
 pub fn line_coefficients_2d<L: Line + ?Sized>(line: &L) -> LineCoefficients
-    where
-        L::Point: Coordinate + Coordinate2D,
+where
+    L::Point: Coordinate + Coordinate2D,
 {
     let LineCoefficients(a, b, c) = line_coefficients_2d_unnormalized(line);
 
@@ -96,8 +102,8 @@ impl LineCoefficients {
     ///
     #[inline]
     pub fn distance_to<Point>(&self, p: &Point) -> f64
-        where
-            Point: Coordinate2D,
+    where
+        Point: Coordinate2D,
     {
         let LineCoefficients(a, b, c) = self;
 
@@ -109,8 +115,8 @@ impl LineCoefficients {
     ///
     #[inline]
     pub fn to_perpendicular_line<Point>(&self, pass_through: &Point) -> LineCoefficients
-        where
-            Point: Coordinate2D,
+    where
+        Point: Coordinate2D,
     {
         let LineCoefficients(a, b, _c) = self;
 
@@ -126,8 +132,8 @@ impl LineCoefficients {
     ///
     #[inline]
     pub fn nearest_point<Point>(&self, p: &Point) -> Point
-        where
-            Point: Coordinate + Coordinate2D,
+    where
+        Point: Coordinate + Coordinate2D,
     {
         let x = p.x();
         let y = p.y();

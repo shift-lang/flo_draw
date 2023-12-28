@@ -1,13 +1,19 @@
-use super::scanline_intercept::*;
-use super::scanline_transform::*;
-use super::scanline_plan::*;
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
 use super::scan_planner::*;
+use super::scanline_intercept::*;
+use super::scanline_plan::*;
+use super::scanline_transform::*;
 
 use crate::edgeplan::*;
 use crate::pixel::*;
 
-use std::marker::{PhantomData};
-use std::ops::{Range};
+use std::marker::PhantomData;
+use std::ops::Range;
 use std::sync::*;
 
 ///
@@ -18,14 +24,19 @@ pub struct PixelScanPlanner<TEdge> {
 }
 
 impl<TEdge> PixelScanPlanner<TEdge>
-    where
-        TEdge: EdgeDescriptor,
+where
+    TEdge: EdgeDescriptor,
 {
     ///
     /// Plans out a scanline using the PixelScanPlanner (this scan planner does not perform any anti-aliasing)
     ///
     #[inline]
-    pub fn plan(edge_plan: &EdgePlan<TEdge>, transform: &ScanlineTransform, y_positions: &[f64], x_range: Range<f64>) -> Vec<(f64, ScanlinePlan)> {
+    pub fn plan(
+        edge_plan: &EdgePlan<TEdge>,
+        transform: &ScanlineTransform,
+        y_positions: &[f64],
+        x_range: Range<f64>,
+    ) -> Vec<(f64, ScanlinePlan)> {
         // Create a planner and the result vec
         let planner = Self::default();
         let mut scanlines = vec![(0.0, ScanlinePlan::default()); y_positions.len()];
@@ -38,8 +49,8 @@ impl<TEdge> PixelScanPlanner<TEdge>
 }
 
 impl<TEdge> Default for PixelScanPlanner<TEdge>
-    where
-        TEdge: EdgeDescriptor,
+where
+    TEdge: EdgeDescriptor,
 {
     #[inline]
     fn default() -> Self {
@@ -48,19 +59,27 @@ impl<TEdge> Default for PixelScanPlanner<TEdge>
 }
 
 impl<TEdge> ScanPlanner for PixelScanPlanner<TEdge>
-    where
-        TEdge: EdgeDescriptor,
+where
+    TEdge: EdgeDescriptor,
 {
     type Edge = TEdge;
 
-    fn plan_scanlines(&self, edge_plan: &EdgePlan<Self::Edge>, transform: &ScanlineTransform, y_positions: &[f64], x_range: Range<f64>, scanlines: &mut [(f64, ScanlinePlan)]) {
+    fn plan_scanlines(
+        &self,
+        edge_plan: &EdgePlan<Self::Edge>,
+        transform: &ScanlineTransform,
+        y_positions: &[f64],
+        x_range: Range<f64>,
+        scanlines: &mut [(f64, ScanlinePlan)],
+    ) {
         // Must be enough scanlines supplied for filling the scanline array
         if scanlines.len() < y_positions.len() {
             panic!("The number of scanline suppled ({}) is less than the number of y positions to fill them ({})", scanlines.len(), y_positions.len());
         }
 
         // Map the x-range from the source coordinates to pixel coordinates
-        let x_range = transform.source_x_to_pixels(x_range.start)..transform.source_x_to_pixels(x_range.end);
+        let x_range =
+            transform.source_x_to_pixels(x_range.start)..transform.source_x_to_pixels(x_range.end);
 
         // Ask the edge plan to compute the intercepts on the current scanline
         let mut ordered_intercepts = vec![vec![]; y_positions.len()];
@@ -77,7 +96,11 @@ impl<TEdge> ScanPlanner for PixelScanPlanner<TEdge>
             let mut ordered_intercepts = ordered_intercepts.into_iter();
 
             // Initial program/position comes from the earliest intercept position
-            let mut current_intercept = if let Some(intercept) = ordered_intercepts.next() { intercept } else { continue; };
+            let mut current_intercept = if let Some(intercept) = ordered_intercepts.next() {
+                intercept
+            } else {
+                continue;
+            };
 
             // Trace programs but don't generate fragments until we get an intercept
             let mut active_shapes = ScanlineInterceptState::new();
@@ -89,7 +112,11 @@ impl<TEdge> ScanPlanner for PixelScanPlanner<TEdge>
                 active_shapes.add_intercept(&current_intercept, transform, shape_descriptor);
 
                 // Move to the next intercept (or stop if no intercepts actually fall within the x-range)
-                current_intercept = if let Some(intercept) = ordered_intercepts.next() { intercept } else { continue 'next_line; };
+                current_intercept = if let Some(intercept) = ordered_intercepts.next() {
+                    intercept
+                } else {
+                    continue 'next_line;
+                };
             }
 
             // Update all of the existing shapes to have a start position at the left-hand side of the screen
@@ -109,7 +136,11 @@ impl<TEdge> ScanPlanner for PixelScanPlanner<TEdge>
                 let next_x = transform.source_x_to_pixels(current_intercept.x_pos);
 
                 // The end of the current range is the 'next_x' coordinate
-                let next_x = if next_x > x_range.end { x_range.end } else { next_x };
+                let next_x = if next_x > x_range.end {
+                    x_range.end
+                } else {
+                    next_x
+                };
                 let stack_depth = active_shapes.len();
 
                 // We use the z-index of the current shape to determine if it's in front of or behind the current line
@@ -127,7 +158,12 @@ impl<TEdge> ScanPlanner for PixelScanPlanner<TEdge>
                         let intercept = active_shapes.get(shape).unwrap();
                         let shape_descriptor = intercept.shape_descriptor();
 
-                        program_stack.extend(shape_descriptor.programs.iter().map(|program| PixelProgramPlan::Run(*program)));
+                        program_stack.extend(
+                            shape_descriptor
+                                .programs
+                                .iter()
+                                .map(|program| PixelProgramPlan::Run(*program)),
+                        );
 
                         if intercept.is_opaque() {
                             is_opaque = true;
@@ -137,7 +173,11 @@ impl<TEdge> ScanPlanner for PixelScanPlanner<TEdge>
 
                     if !program_stack.is_empty() {
                         // Create the stack for these programs
-                        let stack = ScanSpanStack::with_reversed_programs(x_range, is_opaque, &program_stack);
+                        let stack = ScanSpanStack::with_reversed_programs(
+                            x_range,
+                            is_opaque,
+                            &program_stack,
+                        );
 
                         // Add the stack to the scanplan
                         scanplan.push(stack);
@@ -157,7 +197,11 @@ impl<TEdge> ScanPlanner for PixelScanPlanner<TEdge>
                 }
 
                 // Get ready to process the next intercept in the stack
-                current_intercept = if let Some(next_intercept) = ordered_intercepts.next() { next_intercept } else { break; };
+                current_intercept = if let Some(next_intercept) = ordered_intercepts.next() {
+                    next_intercept
+                } else {
+                    break;
+                };
             }
 
             // Populate the scanline
@@ -168,7 +212,9 @@ impl<TEdge> ScanPlanner for PixelScanPlanner<TEdge>
 
             #[cfg(not(debug_assertions))]
             {
-                unsafe { scanline.fill_from_ordered_stacks_prechecked(scanplan); }
+                unsafe {
+                    scanline.fill_from_ordered_stacks_prechecked(scanplan);
+                }
             }
         }
     }

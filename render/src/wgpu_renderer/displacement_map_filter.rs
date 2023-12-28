@@ -1,5 +1,11 @@
-use super::texture::*;
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
 use super::pipeline::*;
+use super::texture::*;
 use super::to_buffer::*;
 
 use crate::buffer::*;
@@ -13,7 +19,14 @@ use std::sync::*;
 ///
 /// Runs tha displacement map filter against a texture
 ///
-pub(crate) fn displacement_map(device: &wgpu::Device, encoder: &mut wgpu::CommandEncoder, displacement_pipeline: &Pipeline, source_texture: &WgpuTexture, displacement_texture: &WgpuTexture, scale_factors: (f32, f32)) -> WgpuTexture {
+pub(crate) fn displacement_map(
+    device: &wgpu::Device,
+    encoder: &mut wgpu::CommandEncoder,
+    displacement_pipeline: &Pipeline,
+    source_texture: &WgpuTexture,
+    displacement_texture: &WgpuTexture,
+    scale_factors: (f32, f32),
+) -> WgpuTexture {
     // Set up buffers
     let vertices = vec![
         Vertex2D::with_pos(-1.0, -1.0),
@@ -22,7 +35,8 @@ pub(crate) fn displacement_map(device: &wgpu::Device, encoder: &mut wgpu::Comman
         Vertex2D::with_pos(-1.0, -1.0),
         Vertex2D::with_pos(1.0, -1.0),
         Vertex2D::with_pos(1.0, 1.0),
-    ].to_buffer(device, wgpu::BufferUsages::VERTEX);
+    ]
+    .to_buffer(device, wgpu::BufferUsages::VERTEX);
 
     // Create a target texture
     let mut target_descriptor = source_texture.descriptor.clone();
@@ -46,8 +60,12 @@ pub(crate) fn displacement_map(device: &wgpu::Device, encoder: &mut wgpu::Comman
     });
 
     // Bind the resources
-    let source_view = source_texture.texture.create_view(&wgpu::TextureViewDescriptor::default());
-    let displacement_view = displacement_texture.texture.create_view(&wgpu::TextureViewDescriptor::default());
+    let source_view = source_texture
+        .texture
+        .create_view(&wgpu::TextureViewDescriptor::default());
+    let displacement_view = displacement_texture
+        .texture
+        .create_view(&wgpu::TextureViewDescriptor::default());
     let layout = &*displacement_pipeline.displacement_map_layout;
     let scale_buffer = vec![scale_factors.0, scale_factors.1];
     let scale_buffer = scale_buffer.to_buffer(device, wgpu::BufferUsages::UNIFORM);
@@ -84,13 +102,19 @@ pub(crate) fn displacement_map(device: &wgpu::Device, encoder: &mut wgpu::Comman
     // Run a render pass to apply the filter
     {
         let target_view = target_texture.create_view(&wgpu::TextureViewDescriptor::default());
-        let color_attachments = vec![
-            Some(wgpu::RenderPassColorAttachment {
-                view: &target_view,
-                resolve_target: None,
-                ops: wgpu::Operations { load: wgpu::LoadOp::Clear(wgpu::Color { r: 0.0, g: 0.0, b: 0.0, a: 0.0 }), store: wgpu::StoreOp::Store },
-            })
-        ];
+        let color_attachments = vec![Some(wgpu::RenderPassColorAttachment {
+            view: &target_view,
+            resolve_target: None,
+            ops: wgpu::Operations {
+                load: wgpu::LoadOp::Clear(wgpu::Color {
+                    r: 0.0,
+                    g: 0.0,
+                    b: 0.0,
+                    a: 0.0,
+                }),
+                store: wgpu::StoreOp::Store,
+            },
+        })];
         let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
             label: Some("displacement_map"),
             depth_stencil_attachment: None,

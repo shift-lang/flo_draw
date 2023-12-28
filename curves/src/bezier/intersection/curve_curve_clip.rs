@@ -1,8 +1,14 @@
-use super::fat_line::*;
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
 use super::curve_line::*;
-use crate::geo::*;
-use crate::bezier::*;
+use super::fat_line::*;
 use crate::bezier::solve::*;
+use crate::bezier::*;
+use crate::geo::*;
 
 use smallvec::*;
 
@@ -28,16 +34,21 @@ fn curve_hull_length_sq<C: BezierCurve>(curve: &CurveSection<'_, C>) -> f64 {
 ///
 /// Given a line representing a linear section of a curve, finds the intersection with a curved section and returns the t values
 ///
-fn intersections_with_linear_section<'a, C: BezierCurve>(linear_section: &CurveSection<'a, C>, curved_section: &CurveSection<'a, C>, accuracy: f64) -> SmallVec<[(f64, f64); 4]>
-    where
-        C::Point: 'a + Coordinate2D,
+fn intersections_with_linear_section<'a, C: BezierCurve>(
+    linear_section: &CurveSection<'a, C>,
+    curved_section: &CurveSection<'a, C>,
+    accuracy: f64,
+) -> SmallVec<[(f64, f64); 4]>
+where
+    C::Point: 'a + Coordinate2D,
 {
     // Treat the linear section as a ray based on the start and the end point and find where on the curved section the ray intersects the linear section
     let ray = (linear_section.start_point(), linear_section.end_point());
     let ray_intersections = curve_intersects_ray(curved_section, &ray);
 
     // Attempt to find where the 't' value is for each ray intersection against the linear section
-    let curve_intersections = ray_intersections.iter()
+    let curve_intersections = ray_intersections
+        .iter()
         .filter_map(|(curved_t, _ray_t, pos)| {
             let linear_t = solve_curve_for_t_along_axis(linear_section, pos, accuracy);
 
@@ -48,9 +59,13 @@ fn intersections_with_linear_section<'a, C: BezierCurve>(linear_section: &CurveS
     // Rarely: the linear section might be very short and the solver might miss that it's essentially a point
     if curve_intersections.is_empty() && !ray_intersections.is_empty() {
         // If the linear section seems short
-        if linear_section.point_at_pos(0.0).is_near_to(&linear_section.point_at_pos(1.0), 0.1) {
+        if linear_section
+            .point_at_pos(0.0)
+            .is_near_to(&linear_section.point_at_pos(1.0), 0.1)
+        {
             let midpoint = linear_section.point_at_pos(0.5);
-            let curve_intersections = ray_intersections.iter()
+            let curve_intersections = ray_intersections
+                .iter()
                 .filter_map(|(curved_t, _ray_t, pos)| {
                     if pos.is_near_to(&midpoint, CLOSE_ENOUGH) {
                         Some((0.5, *curved_t))
@@ -81,9 +96,12 @@ enum ClipResult {
 /// Performs the fat-line clipping algorithm on two curves, returning the t values if they overlap
 ///
 #[inline]
-fn clip<'a, C: BezierCurve>(curve_to_clip: &CurveSection<'a, C>, curve_to_clip_against: &CurveSection<'a, C>) -> ClipResult
-    where
-        C::Point: 'a + Coordinate2D,
+fn clip<'a, C: BezierCurve>(
+    curve_to_clip: &CurveSection<'a, C>,
+    curve_to_clip_against: &CurveSection<'a, C>,
+) -> ClipResult
+where
+    C::Point: 'a + Coordinate2D,
 {
     // Clip against the fat line
     let fat_line = FatLine::from_curve(curve_to_clip_against);
@@ -120,17 +138,28 @@ fn clip<'a, C: BezierCurve>(curve_to_clip: &CurveSection<'a, C>, curve_to_clip_a
 
     // t1 and t2 must not match (exact matches produce an invalid curve)
     match clip_t {
-        ClipResult::Some((t1, t2)) => if t1 == t2 { ClipResult::Some(((t1 - 0.005).max(0.0), (t2 + 0.005).min(1.0))) } else { ClipResult::Some((t1, t2)) }
-        other => other
+        ClipResult::Some((t1, t2)) => {
+            if t1 == t2 {
+                ClipResult::Some(((t1 - 0.005).max(0.0), (t2 + 0.005).min(1.0)))
+            } else {
+                ClipResult::Some((t1, t2))
+            }
+        }
+        other => other,
     }
 }
 
 ///
 /// Given a set of intersections found on a left and right curve, joins them in a way that eliminates duplicates
 ///
-fn join_subsections<C: BezierCurve>(curve1: &CurveSection<'_, C>, left: SmallVec<[(f64, f64); 8]>, right: SmallVec<[(f64, f64); 8]>, accuracy_squared: f64) -> SmallVec<[(f64, f64); 8]>
-    where
-        C::Point: Coordinate2D,
+fn join_subsections<C: BezierCurve>(
+    curve1: &CurveSection<'_, C>,
+    left: SmallVec<[(f64, f64); 8]>,
+    right: SmallVec<[(f64, f64); 8]>,
+    accuracy_squared: f64,
+) -> SmallVec<[(f64, f64); 8]>
+where
+    C::Point: Coordinate2D,
 {
     if left.is_empty() {
         // No further work to do
@@ -178,9 +207,14 @@ fn join_subsections<C: BezierCurve>(curve1: &CurveSection<'_, C>, left: SmallVec
 ///
 /// Determines the points at which two curves intersect using the Bezier clipping algorithm
 ///
-fn curve_intersects_curve_clip_inner<'a, C: BezierCurve>(curve1: CurveSection<'a, C>, curve2: CurveSection<'a, C>, accuracy: f64, accuracy_squared: f64) -> SmallVec<[(f64, f64); 8]>
-    where
-        C::Point: 'a + Coordinate2D,
+fn curve_intersects_curve_clip_inner<'a, C: BezierCurve>(
+    curve1: CurveSection<'a, C>,
+    curve2: CurveSection<'a, C>,
+    accuracy: f64,
+    accuracy_squared: f64,
+) -> SmallVec<[(f64, f64); 8]>
+where
+    C::Point: 'a + Coordinate2D,
 {
     // Overlapping curves should be treated separately (the clipping algorithm will just match all of the points)
     let overlaps = overlapping_region(&curve1, &curve2);
@@ -209,8 +243,12 @@ fn curve_intersects_curve_clip_inner<'a, C: BezierCurve>(curve1: CurveSection<'a
     let mut curve2_last_len = curve_hull_length_sq(&curve2);
 
     // Edge case: 0-length curves have no match
-    if curve1_last_len == 0.0 { return smallvec![]; }
-    if curve2_last_len == 0.0 { return smallvec![]; }
+    if curve1_last_len == 0.0 {
+        return smallvec![];
+    }
+    if curve2_last_len == 0.0 {
+        return smallvec![];
+    }
 
     // Iterate to refine the match
     loop {
@@ -218,7 +256,9 @@ fn curve_intersects_curve_clip_inner<'a, C: BezierCurve>(curve1: CurveSection<'a
             // Clip curve2 against curve1
             let clip_t = clip(&curve2, &curve1);
             let clip_t = match clip_t {
-                ClipResult::None => { return smallvec![]; }
+                ClipResult::None => {
+                    return smallvec![];
+                }
                 ClipResult::Some(clip_t) => clip_t,
                 ClipResult::SecondCurveIsLinear => {
                     return intersections_with_linear_section(&curve1, &curve2, accuracy)
@@ -240,7 +280,9 @@ fn curve_intersects_curve_clip_inner<'a, C: BezierCurve>(curve1: CurveSection<'a
             // Clip curve1 against curve2
             let clip_t = clip(&curve1, &curve2);
             let clip_t = match clip_t {
-                ClipResult::None => { return smallvec![]; }
+                ClipResult::None => {
+                    return smallvec![];
+                }
                 ClipResult::Some(clip_t) => clip_t,
                 ClipResult::SecondCurveIsLinear => {
                     return intersections_with_linear_section(&curve2, &curve1, accuracy)
@@ -260,11 +302,14 @@ fn curve_intersects_curve_clip_inner<'a, C: BezierCurve>(curve1: CurveSection<'a
 
         if curve1_len <= accuracy_squared && curve2_len <= accuracy_squared {
             // Found a point to the required accuracy: return it, in coordinates relative to the original curve
-            if curve1.fast_bounding_box::<Bounds<_>>().overlaps(&curve2.fast_bounding_box::<Bounds<_>>()) {
+            if curve1
+                .fast_bounding_box::<Bounds<_>>()
+                .overlaps(&curve2.fast_bounding_box::<Bounds<_>>())
+            {
                 let (t_min1, t_max1) = curve1.original_curve_t_values();
                 let (t_min2, t_max2) = curve2.original_curve_t_values();
 
-                return smallvec![((t_min1+t_max1)*0.5, (t_min2+t_max2)*0.5)];
+                return smallvec![((t_min1 + t_max1) * 0.5, (t_min2 + t_max2) * 0.5)];
             } else {
                 // Clipping algorithm found a point, but the two curves do not actually overlap, so reject them
                 return smallvec![];
@@ -276,15 +321,31 @@ fn curve_intersects_curve_clip_inner<'a, C: BezierCurve>(curve1: CurveSection<'a
             if curve1_len / curve1_last_len > curve2_len / curve2_last_len {
                 // Curve1 shrunk less than curve2
                 let (left, right) = (curve1.subsection(0.0, 0.5), curve1.subsection(0.5, 1.0));
-                let left = curve_intersects_curve_clip_inner(left, curve2.clone(), accuracy, accuracy_squared);
-                let right = curve_intersects_curve_clip_inner(right, curve2, accuracy, accuracy_squared);
+                let left = curve_intersects_curve_clip_inner(
+                    left,
+                    curve2.clone(),
+                    accuracy,
+                    accuracy_squared,
+                );
+                let right =
+                    curve_intersects_curve_clip_inner(right, curve2, accuracy, accuracy_squared);
 
                 return join_subsections(&curve1, left, right, accuracy_squared);
             } else {
                 // Curve2 shrunk less than curve1
                 let (left, right) = (curve2.subsection(0.0, 0.5), curve2.subsection(0.5, 1.0));
-                let left = curve_intersects_curve_clip_inner(curve1.clone(), left, accuracy, accuracy_squared);
-                let right = curve_intersects_curve_clip_inner(curve1.clone(), right, accuracy, accuracy_squared);
+                let left = curve_intersects_curve_clip_inner(
+                    curve1.clone(),
+                    left,
+                    accuracy,
+                    accuracy_squared,
+                );
+                let right = curve_intersects_curve_clip_inner(
+                    curve1.clone(),
+                    right,
+                    accuracy,
+                    accuracy_squared,
+                );
 
                 return join_subsections(&curve1, left, right, accuracy_squared);
             }
@@ -300,9 +361,13 @@ fn curve_intersects_curve_clip_inner<'a, C: BezierCurve>(curve1: CurveSection<'a
 /// Determines the points at which two curves intersect using the Bezier clipping
 /// algorihtm
 ///
-pub fn curve_intersects_curve_clip<'a, C: BezierCurve>(curve1: &'a C, curve2: &'a C, accuracy: f64) -> SmallVec<[(f64, f64); 8]>
-    where
-        C::Point: 'a + Coordinate2D,
+pub fn curve_intersects_curve_clip<'a, C: BezierCurve>(
+    curve1: &'a C,
+    curve2: &'a C,
+    accuracy: f64,
+) -> SmallVec<[(f64, f64); 8]>
+where
+    C::Point: 'a + Coordinate2D,
 {
     // Start with the entire span of both curves
     let curve1 = curve1.section(0.0, 1.0);

@@ -1,3 +1,9 @@
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
 use std::f64;
 use std::time::*;
 
@@ -122,8 +128,8 @@ pub fn main() {
                     VectorEvent::DrawEvent(DrawEvent::KeyDown(_, Some(Key::KeyRight))) => {
                         game_state.ship.rotation = -(360.0) / 60.0;
                     }
-                    VectorEvent::DrawEvent(DrawEvent::KeyUp(_, Some(Key::KeyLeft))) |
-                    VectorEvent::DrawEvent(DrawEvent::KeyUp(_, Some(Key::KeyRight))) => {
+                    VectorEvent::DrawEvent(DrawEvent::KeyUp(_, Some(Key::KeyLeft)))
+                    | VectorEvent::DrawEvent(DrawEvent::KeyUp(_, Some(Key::KeyRight))) => {
                         game_state.ship.rotation = 0.0;
                     }
 
@@ -135,7 +141,14 @@ pub fn main() {
                     }
 
                     VectorEvent::DrawEvent(DrawEvent::KeyDown(_, Some(Key::KeySpace))) => {
-                        game_state.bullets.push(Bullet::new(bullet_sprite, game_state.ship.x, game_state.ship.y, game_state.ship.vel_x, game_state.ship.vel_y, game_state.ship.angle));
+                        game_state.bullets.push(Bullet::new(
+                            bullet_sprite,
+                            game_state.ship.x,
+                            game_state.ship.y,
+                            game_state.ship.vel_x,
+                            game_state.ship.vel_y,
+                            game_state.ship.angle,
+                        ));
                     }
 
                     _ => { /* Other events are ignored */ }
@@ -210,7 +223,10 @@ impl GameState {
     pub fn new(ship_sprite: SpriteId, roid_sprite: SpriteId) -> GameState {
         GameState {
             ship: Ship::new(ship_sprite),
-            roids: (0..20).into_iter().map(|_| Roid::new(roid_sprite)).collect(),
+            roids: (0..20)
+                .into_iter()
+                .map(|_| Roid::new(roid_sprite))
+                .collect(),
             bullets: vec![],
         }
     }
@@ -261,14 +277,23 @@ impl Ship {
         self.angle = self.angle % 360.0;
 
         // Clip to the play area
-        if self.x < 0.0 { self.x = 1000.0 };
-        if self.y < 0.0 { self.y = 1000.0 };
+        if self.x < 0.0 {
+            self.x = 1000.0
+        };
+        if self.y < 0.0 {
+            self.y = 1000.0
+        };
 
-        if self.x > 1000.0 { self.x = 0.0 };
-        if self.y > 1000.0 { self.y = 0.0 };
+        if self.x > 1000.0 {
+            self.x = 0.0
+        };
+        if self.y > 1000.0 {
+            self.y = 0.0
+        };
 
         // Apply thrust
-        let (acc_x, acc_y) = Transform2D::rotate_degrees(self.angle as _).transform_point(0.0, self.thrust as _);
+        let (acc_x, acc_y) =
+            Transform2D::rotate_degrees(self.angle as _).transform_point(0.0, self.thrust as _);
         self.vel_x += acc_x as f64;
         self.vel_y += acc_y as f64;
 
@@ -312,11 +337,19 @@ impl Roid {
         self.angle = self.angle % 360.0;
 
         // Clip to the play area
-        if self.x < 0.0 { self.x = 1000.0 };
-        if self.y < 0.0 { self.y = 1000.0 };
+        if self.x < 0.0 {
+            self.x = 1000.0
+        };
+        if self.y < 0.0 {
+            self.y = 1000.0
+        };
 
-        if self.x > 1000.0 { self.x = 0.0 };
-        if self.y > 1000.0 { self.y = 0.0 };
+        if self.x > 1000.0 {
+            self.x = 0.0
+        };
+        if self.y > 1000.0 {
+            self.y = 0.0
+        };
     }
 
     pub fn draw(&self, gc: &mut dyn GraphicsContext) {
@@ -331,7 +364,14 @@ impl Bullet {
     ///
     /// Creates a new bullet state
     ///
-    pub fn new(sprite: SpriteId, x: f64, y: f64, ship_vel_x: f64, ship_vel_y: f64, ship_angle: f64) -> Bullet {
+    pub fn new(
+        sprite: SpriteId,
+        x: f64,
+        y: f64,
+        ship_vel_x: f64,
+        ship_vel_y: f64,
+        ship_angle: f64,
+    ) -> Bullet {
         let transform = Transform2D::rotate_degrees(ship_angle as _);
         let (offset_x, offset_y) = transform.transform_point(0.0, 11.0);
         let (x, y) = (x + offset_x as f64, y + offset_y as f64);
@@ -359,11 +399,19 @@ impl Bullet {
         self.time_left -= 1;
 
         // Clip to the play area
-        if self.x < 0.0 { self.x = 1000.0 };
-        if self.y < 0.0 { self.y = 1000.0 };
+        if self.x < 0.0 {
+            self.x = 1000.0
+        };
+        if self.y < 0.0 {
+            self.y = 1000.0
+        };
 
-        if self.x > 1000.0 { self.x = 0.0 };
-        if self.y > 1000.0 { self.y = 0.0 };
+        if self.x > 1000.0 {
+            self.x = 0.0
+        };
+        if self.y > 1000.0 {
+            self.y = 0.0
+        };
     }
 
     pub fn draw(&self, gc: &mut dyn GraphicsContext) {
@@ -376,42 +424,45 @@ impl Bullet {
 ///
 /// A stream that generates a 'tick' event every time the game state should update
 ///
-fn tick_stream() -> impl Send + Unpin + Stream<Item=VectorEvent> {
-    generator_stream(|yield_value| async move {
-        // Set up the clock
-        let start_time = Instant::now();
-        let mut last_time = Duration::from_millis(0);
+fn tick_stream() -> impl Send + Unpin + Stream<Item = VectorEvent> {
+    generator_stream(|yield_value| {
+        async move {
+            // Set up the clock
+            let start_time = Instant::now();
+            let mut last_time = Duration::from_millis(0);
 
-        // We limit to a certain number of ticks per callback (in case the task is suspended or stuck for a prolonged period of time)
-        let max_ticks_per_call = 5;
+            // We limit to a certain number of ticks per callback (in case the task is suspended or stuck for a prolonged period of time)
+            let max_ticks_per_call = 5;
 
-        // Ticks are generated 60 times a second
-        let tick_length = Duration::from_nanos(1_000_000_000 / 60);
+            // Ticks are generated 60 times a second
+            let tick_length = Duration::from_nanos(1_000_000_000 / 60);
 
-        loop {
-            // Time that has elapsed since the last tick
-            let elapsed = start_time.elapsed() - last_time;
+            loop {
+                // Time that has elapsed since the last tick
+                let elapsed = start_time.elapsed() - last_time;
 
-            // Time remaining
-            let mut remaining = elapsed;
-            let mut num_ticks = 0;
-            while remaining >= tick_length {
-                if num_ticks < max_ticks_per_call {
-                    // Generate the tick
-                    yield_value(VectorEvent::Tick).await;
-                    num_ticks += 1;
+                // Time remaining
+                let mut remaining = elapsed;
+                let mut num_ticks = 0;
+                while remaining >= tick_length {
+                    if num_ticks < max_ticks_per_call {
+                        // Generate the tick
+                        yield_value(VectorEvent::Tick).await;
+                        num_ticks += 1;
+                    }
+
+                    // Remove from the remaining time, and update the last tick time
+                    remaining -= tick_length;
+                    last_time += tick_length;
                 }
 
-                // Remove from the remaining time, and update the last tick time
-                remaining -= tick_length;
-                last_time += tick_length;
+                // Wait for half a tick before generating more ticks
+                let next_time = tick_length - remaining;
+                let wait_time = Duration::min(tick_length / 2, next_time);
+
+                Delay::new(wait_time).await;
             }
-
-            // Wait for half a tick before generating more ticks
-            let next_time = tick_length - remaining;
-            let wait_time = Duration::min(tick_length / 2, next_time);
-
-            Delay::new(wait_time).await;
         }
-    }.boxed())
+        .boxed()
+    })
 }

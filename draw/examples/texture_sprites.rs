@@ -1,11 +1,17 @@
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
 use std::io;
 use std::thread;
 use std::time::Duration;
 
 use rand::*;
 
-use flo_draw::*;
 use flo_draw::canvas::*;
+use flo_draw::*;
 
 struct Ball {
     sprite_id: SpriteId,
@@ -40,10 +46,18 @@ impl Ball {
     ///
     pub fn update(&mut self) {
         // Collide with the edges of the screen
-        if self.x + self.dx + self.radius > 1000.0 && self.dx > 0.0 { self.dx = -self.dx; }
-        if self.y + self.dy + self.radius > 1000.0 && self.dy > 0.0 { self.dy = -self.dy; }
-        if self.x + self.dx - self.radius < 0.0 && self.dx < 0.0 { self.dx = -self.dx; }
-        if self.y + self.dy - self.radius < 0.0 && self.dy < 0.0 { self.dy = -self.dy; }
+        if self.x + self.dx + self.radius > 1000.0 && self.dx > 0.0 {
+            self.dx = -self.dx;
+        }
+        if self.y + self.dy + self.radius > 1000.0 && self.dy > 0.0 {
+            self.dy = -self.dy;
+        }
+        if self.x + self.dx - self.radius < 0.0 && self.dx < 0.0 {
+            self.dx = -self.dx;
+        }
+        if self.y + self.dy - self.radius < 0.0 && self.dy < 0.0 {
+            self.dy = -self.dy;
+        }
 
         // Gravity
         if self.y >= self.radius {
@@ -76,7 +90,9 @@ pub fn main() {
 
             // Set up the texture
             gc.set_texture_fill_alpha(TextureId(0), 0.75);
-            let (w, h) = gc.load_texture(TextureId(0), io::Cursor::new(flo_bytes)).unwrap();
+            let (w, h) = gc
+                .load_texture(TextureId(0), io::Cursor::new(flo_bytes))
+                .unwrap();
             flo_w = w;
             flo_h = h;
         });
@@ -99,7 +115,10 @@ pub fn main() {
         });
 
         // Generate some random balls
-        let mut balls = (0..256).into_iter().map(|_| Ball::random(SpriteId(0))).collect::<Vec<_>>();
+        let mut balls = (0..256)
+            .into_iter()
+            .map(|_| Ball::random(SpriteId(0)))
+            .collect::<Vec<_>>();
 
         // Animate them
         loop {

@@ -1,3 +1,9 @@
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
 use flo_render_software::pixel::*;
 
 use flo_canvas::*;
@@ -116,7 +122,12 @@ fn multiply_1() {
 #[test]
 fn multiply_2() {
     let col1 = U32LinearPixel::from_color(Color::Rgba(0.2, 0.4, 0.6, 1.0), 1.0);
-    let col2 = U32LinearPixel::from_components([65535u32.into(), 65535u32.into(), 65535u32.into(), 65535u32.into()]);
+    let col2 = U32LinearPixel::from_components([
+        65535u32.into(),
+        65535u32.into(),
+        65535u32.into(),
+        65535u32.into(),
+    ]);
 
     let col3 = col1 * col2;
     let back_as_color = col3.to_color(1.0);
@@ -164,7 +175,6 @@ fn source_over_2() {
     debug_assert!(b == 209, "b({}, {}, {}, {})", r, g, b, a);
     debug_assert!(a == 255, "a({}, {}, {}, {})", r, g, b, a);
 }
-
 
 #[test]
 fn source_over_3() {

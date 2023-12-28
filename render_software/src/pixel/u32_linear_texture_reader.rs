@@ -1,9 +1,15 @@
-use super::Pixel;
-use super::u32_linear::*;
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
+use once_cell::sync::Lazy;
+
 use super::rgba_texture::*;
 use super::texture_reader::*;
-
-use once_cell::sync::{Lazy};
+use super::u32_linear::*;
+use super::Pixel;
 
 ///
 /// Table that maps values with the 8 upper bits representing the alpha value and the 8 lower bits representing the colour value

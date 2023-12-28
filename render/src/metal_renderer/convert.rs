@@ -1,3 +1,9 @@
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
 use super::bindings::*;
 use crate::buffer::*;
 
@@ -25,7 +31,7 @@ impl From<Matrix> for matrix_float4x4 {
                     mem::transmute(src[1]),
                     mem::transmute(src[2]),
                     mem::transmute(src[3]),
-                ]
+                ],
             }
         }
     }

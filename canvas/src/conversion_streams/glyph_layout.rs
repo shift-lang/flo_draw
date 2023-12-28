@@ -1,3 +1,9 @@
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
 use crate::draw::*;
 use crate::font::*;
 use crate::font_line_layout::*;
@@ -18,9 +24,9 @@ use std::sync::*;
 ///
 pub fn drawing_with_laid_out_text<InStream>(
     draw_stream: InStream,
-) -> impl Send + Unpin + Stream<Item=Draw>
-    where
-        InStream: 'static + Send + Unpin + Stream<Item=Draw>,
+) -> impl Send + Unpin + Stream<Item = Draw>
+where
+    InStream: 'static + Send + Unpin + Stream<Item = Draw>,
 {
     generator_stream(move |yield_value| async move {
         let mut draw_stream = draw_stream;

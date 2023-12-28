@@ -1,3 +1,9 @@
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
 use super::drawing_request::*;
 use crate::*;
 
@@ -106,8 +112,8 @@ impl From<SpriteLayerRequest> for InternalSpriteLayerRequest {
 pub fn create_sprite_layer_entity(
     entity_id: EntityId,
     context: &Arc<SceneContext>,
-    canvas: impl 'static + EntityChannel<Message=DrawingRequest>,
-) -> Result<impl EntityChannel<Message=SpriteLayerRequest>, CreateEntityError> {
+    canvas: impl 'static + EntityChannel<Message = DrawingRequest>,
+) -> Result<impl EntityChannel<Message = SpriteLayerRequest>, CreateEntityError> {
     // Convert between the internal request and the external request type
     context.convert_message::<SpriteLayerRequest, InternalSpriteLayerRequest>()?;
 
@@ -119,15 +125,15 @@ pub fn create_sprite_layer_entity(
                 &context,
                 "SpriteDefinition",
             )
-                .flat_map(|msg| match msg {
-                    FollowAll::NewValue(entity_id, sprite_definition) => stream::iter(Some(
-                        InternalSpriteLayerRequest::SetSpriteDefinition(entity_id, sprite_definition),
-                    )),
-                    FollowAll::Destroyed(entity_id) => {
-                        stream::iter(Some(InternalSpriteLayerRequest::DeleteSprite(entity_id)))
-                    }
-                    FollowAll::Error(_) => stream::iter(None),
-                });
+            .flat_map(|msg| match msg {
+                FollowAll::NewValue(entity_id, sprite_definition) => stream::iter(Some(
+                    InternalSpriteLayerRequest::SetSpriteDefinition(entity_id, sprite_definition),
+                )),
+                FollowAll::Destroyed(entity_id) => {
+                    stream::iter(Some(InternalSpriteLayerRequest::DeleteSprite(entity_id)))
+                }
+                FollowAll::Error(_) => stream::iter(None),
+            });
 
             // Track sprite translations
             let sprite_transforms =

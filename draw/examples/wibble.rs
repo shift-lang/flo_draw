@@ -1,17 +1,23 @@
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
 use std::f64;
 use std::sync::*;
 use std::thread;
 use std::time::{Duration, Instant};
 
-use flo_curves::*;
-use flo_curves::bezier::*;
-use flo_curves::bezier::path::*;
 use futures::executor;
 use futures::prelude::*;
 use futures::stream;
 
-use flo_draw::*;
+use flo_curves::bezier::path::*;
+use flo_curves::bezier::*;
+use flo_curves::*;
 use flo_draw::canvas::*;
+use flo_draw::*;
 
 ///
 /// Demonstrates capturing the paths for text rendering, and then distorting them using flo_curves
@@ -54,18 +60,33 @@ pub fn main() {
             let amplitude = 12.0;
 
             // Distort each of the paths in turn
-            let distorted_text_paths = text_paths.iter()
-                .map(|path_set| path_set.iter()
-                    .map(move |path: &SimpleBezierPath| distort_path::<_, _, SimpleBezierPath>(path, |point: Coord2, _curve, _t| {
-                        let distance = point.magnitude();
-                        let ripple = (since_start / (f64::consts::PI * 500_000_000.0)) * 10.0;
+            let distorted_text_paths = text_paths.iter().map(|path_set| {
+                path_set
+                    .iter()
+                    .map(move |path: &SimpleBezierPath| {
+                        distort_path::<_, _, SimpleBezierPath>(
+                            path,
+                            |point: Coord2, _curve, _t| {
+                                let distance = point.magnitude();
+                                let ripple =
+                                    (since_start / (f64::consts::PI * 500_000_000.0)) * 10.0;
 
-                        let offset_x = (distance / (f64::consts::PI * 5.0) + ripple).sin() * amplitude * 0.5;
-                        let offset_y = (distance / (f64::consts::PI * 4.0) + ripple).cos() * amplitude * 0.5;
+                                let offset_x = (distance / (f64::consts::PI * 5.0) + ripple).sin()
+                                    * amplitude
+                                    * 0.5;
+                                let offset_y = (distance / (f64::consts::PI * 4.0) + ripple).cos()
+                                    * amplitude
+                                    * 0.5;
 
-                        Coord2(point.x() + offset_x, point.y() + offset_y)
-                    }, 1.0, 0.1).unwrap())
-                    .collect::<Vec<_>>());
+                                Coord2(point.x() + offset_x, point.y() + offset_y)
+                            },
+                            1.0,
+                            0.1,
+                        )
+                        .unwrap()
+                    })
+                    .collect::<Vec<_>>()
+            });
 
             // Render the current frame
             canvas.draw(|gc| {

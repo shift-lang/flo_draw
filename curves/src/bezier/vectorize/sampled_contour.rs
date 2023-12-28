@@ -1,9 +1,15 @@
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
 use super::intercept_scan_edge_iterator::*;
 use crate::geo::*;
 
 use smallvec::*;
 
-use std::ops::{Range};
+use std::ops::Range;
 
 ///
 /// The size of a bitmap contour (in the form width, height)
@@ -71,7 +77,9 @@ pub trait SampledContour: Sized {
     /// The position returned here is the position of the bottom-right corner of the cell containing the edge.
     ///
     #[inline]
-    fn edge_cell_iterator<'a>(&'a self) -> InterceptScanEdgeIterator<ContourInterceptsIterator<'a, Self>> {
+    fn edge_cell_iterator<'a>(
+        &'a self,
+    ) -> InterceptScanEdgeIterator<ContourInterceptsIterator<'a, Self>> {
         InterceptScanEdgeIterator::from_iterator(ContourInterceptsIterator::new(self))
     }
 
@@ -80,7 +88,8 @@ pub trait SampledContour: Sized {
     ///
     #[inline]
     fn rounded_intercepts_on_line(&self, y: f64) -> SmallVec<[Range<usize>; 4]> {
-        let intercepts = self.intercepts_on_line(y)
+        let intercepts = self
+            .intercepts_on_line(y)
             .into_iter()
             .map(|intercept| {
                 let min_x_ceil = intercept.start.ceil();
@@ -103,22 +112,30 @@ pub trait SampledContour: Sized {
 }
 
 impl<'a, T> SampledContour for &'a T
-    where
-        T: SampledContour,
+where
+    T: SampledContour,
 {
     #[inline]
-    fn contour_size(&self) -> ContourSize { (*self).contour_size() }
+    fn contour_size(&self) -> ContourSize {
+        (*self).contour_size()
+    }
     #[inline]
-    fn intercepts_on_line(&self, y: f64) -> SmallVec<[Range<f64>; 4]> { (*self).intercepts_on_line(y) }
+    fn intercepts_on_line(&self, y: f64) -> SmallVec<[Range<f64>; 4]> {
+        (*self).intercepts_on_line(y)
+    }
     #[inline]
-    fn rounded_intercepts_on_line(&self, y: f64) -> SmallVec<[Range<usize>; 4]> { (*self).rounded_intercepts_on_line(y) }
+    fn rounded_intercepts_on_line(&self, y: f64) -> SmallVec<[Range<usize>; 4]> {
+        (*self).rounded_intercepts_on_line(y)
+    }
 }
 
 ///
 /// Merges any intercepts that are adjacent or overlapping in the range
 ///
 #[inline]
-pub(crate) fn merge_overlapping_intercepts(intercepts: SmallVec<[Range<usize>; 4]>) -> SmallVec<[Range<usize>; 4]> {
+pub(crate) fn merge_overlapping_intercepts(
+    intercepts: SmallVec<[Range<usize>; 4]>,
+) -> SmallVec<[Range<usize>; 4]> {
     let mut intercepts = intercepts;
 
     let mut idx = 0;
@@ -191,28 +208,40 @@ impl ContourCell {
 
 impl ContourEdge {
     #[inline]
-    pub(crate) const fn top() -> ContourEdge { ContourEdge(1) }
+    pub(crate) const fn top() -> ContourEdge {
+        ContourEdge(1)
+    }
     #[inline]
-    pub(crate) const fn left() -> ContourEdge { ContourEdge(0) }
+    pub(crate) const fn left() -> ContourEdge {
+        ContourEdge(0)
+    }
     #[inline]
-    pub(crate) const fn bottom() -> ContourEdge { ContourEdge(3) }
+    pub(crate) const fn bottom() -> ContourEdge {
+        ContourEdge(3)
+    }
     // Assuming a 1x1 sample size
     #[inline]
-    pub(crate) const fn right() -> ContourEdge { ContourEdge(2) }   // Assuming a 1x1 sample size
+    pub(crate) const fn right() -> ContourEdge {
+        ContourEdge(2)
+    } // Assuming a 1x1 sample size
 
     #[inline]
-    pub(crate) const fn at_coordinates(self, size: ContourSize, pos: ContourPosition) -> ContourEdge {
+    pub(crate) const fn at_coordinates(
+        self,
+        size: ContourSize,
+        pos: ContourPosition,
+    ) -> ContourEdge {
         // Offset is calculated from the size and the position
         let edge_width = size.0 + 1;
         let offset = edge_width * pos.1 + pos.0;
 
         // This can either be the left or the right cell depending on the upper bit
         let offset = match self.0 {
-            0 => offset,            // left
-            1 => offset,            // top
-            2 => offset + 1,        // right
-            3 => offset + edge_width,   // bottom
-            _ => unreachable!()
+            0 => offset,              // left
+            1 => offset,              // top
+            2 => offset + 1,          // right
+            3 => offset + edge_width, // bottom
+            _ => unreachable!(),
         };
 
         // This can be the horizontal or vertical edge depending on the lower bit
@@ -260,8 +289,8 @@ impl ContourEdge {
     ///
     #[inline]
     pub fn to_coords<TCoord>(self, size: ContourSize) -> TCoord
-        where
-            TCoord: Coordinate + Coordinate2D,
+    where
+        TCoord: Coordinate + Coordinate2D,
     {
         let edge_width = size.0 + 1;
         let x = (self.0 >> 1) % edge_width;
@@ -279,18 +308,26 @@ impl ContourEdge {
 
 impl ContourPosition {
     #[inline]
-    pub fn x(&self) -> usize { self.0 }
+    pub fn x(&self) -> usize {
+        self.0
+    }
 
     #[inline]
-    pub fn y(&self) -> usize { self.1 }
+    pub fn y(&self) -> usize {
+        self.1
+    }
 }
 
 impl ContourSize {
     #[inline]
-    pub fn width(&self) -> usize { self.0 }
+    pub fn width(&self) -> usize {
+        self.0
+    }
 
     #[inline]
-    pub fn height(&self) -> usize { self.1 }
+    pub fn height(&self) -> usize {
+        self.1
+    }
 }
 
 ///
@@ -314,7 +351,7 @@ impl BoolSampledContour {
     #[inline]
     pub fn point_is_inside(&self, pos: ContourPosition) -> bool {
         // Position as an offset into the vector array, without bounds checking
-        let idx = pos.0 + (pos.1) * self.0.0;
+        let idx = pos.0 + (pos.1) * self.0 .0;
 
         self.1[idx]
     }
@@ -329,7 +366,7 @@ impl U8SampledContour {
     #[inline]
     fn point_is_inside(&self, pos: ContourPosition) -> bool {
         // Position as an offset into the vector array, without bounds checking
-        let idx = pos.0 + (pos.1) * self.0.0;
+        let idx = pos.0 + (pos.1) * self.0 .0;
 
         self.1[idx] != 0
     }
@@ -359,7 +396,9 @@ impl SampledContour for BoolSampledContour {
         for x in 0..width {
             // Transitioning from 'outside' to 'inside' sets a start position, and doing the opposite generates a range
             match (inside, self.point_is_inside(ContourPosition(x, y))) {
-                (None, true) => { inside = Some(x); }
+                (None, true) => {
+                    inside = Some(x);
+                }
                 (Some(start_x), false) => {
                     inside = None;
                     ranges.push((start_x as f64)..(x as f64));
@@ -400,7 +439,9 @@ impl SampledContour for U8SampledContour {
         for x in 0..width {
             // Transitioning from 'outside' to 'inside' sets a start position, and doing the opposite generates a range
             match (inside, self.point_is_inside(ContourPosition(x, y))) {
-                (None, true) => { inside = Some(x); }
+                (None, true) => {
+                    inside = Some(x);
+                }
                 (Some(start_x), false) => {
                     inside = None;
                     ranges.push((start_x as f64)..(x as f64));
@@ -464,8 +505,18 @@ mod test {
         let at_coord = left.at_coordinates(size, ContourPosition(7, 8));
         let (start, end) = at_coord.to_contour_coords(size);
 
-        assert!(start == ContourPosition(7, 8), "Start doesn't match {:?} {:?}", start, end);
-        assert!(end == ContourPosition(7, 9), "End doesn't match {:?} {:?}", start, end);
+        assert!(
+            start == ContourPosition(7, 8),
+            "Start doesn't match {:?} {:?}",
+            start,
+            end
+        );
+        assert!(
+            end == ContourPosition(7, 9),
+            "End doesn't match {:?} {:?}",
+            start,
+            end
+        );
     }
 
     #[test]
@@ -475,8 +526,18 @@ mod test {
         let at_coord = right.at_coordinates(size, ContourPosition(7, 8));
         let (start, end) = at_coord.to_contour_coords(size);
 
-        assert!(start == ContourPosition(8, 8), "Start doesn't match {:?} {:?}", start, end);
-        assert!(end == ContourPosition(8, 9), "End doesn't match {:?} {:?}", start, end);
+        assert!(
+            start == ContourPosition(8, 8),
+            "Start doesn't match {:?} {:?}",
+            start,
+            end
+        );
+        assert!(
+            end == ContourPosition(8, 9),
+            "End doesn't match {:?} {:?}",
+            start,
+            end
+        );
     }
 
     #[test]
@@ -486,8 +547,18 @@ mod test {
         let at_coord = top.at_coordinates(size, ContourPosition(7, 8));
         let (start, end) = at_coord.to_contour_coords(size);
 
-        assert!(start == ContourPosition(7, 8), "Start doesn't match {:?} {:?}", start, end);
-        assert!(end == ContourPosition(8, 8), "End doesn't match {:?} {:?}", start, end);
+        assert!(
+            start == ContourPosition(7, 8),
+            "Start doesn't match {:?} {:?}",
+            start,
+            end
+        );
+        assert!(
+            end == ContourPosition(8, 8),
+            "End doesn't match {:?} {:?}",
+            start,
+            end
+        );
     }
 
     #[test]
@@ -497,7 +568,17 @@ mod test {
         let at_coord = bottom.at_coordinates(size, ContourPosition(7, 8));
         let (start, end) = at_coord.to_contour_coords(size);
 
-        assert!(start == ContourPosition(7, 9), "Start doesn't match {:?} {:?}", start, end);
-        assert!(end == ContourPosition(8, 9), "End doesn't match {:?} {:?}", start, end);
+        assert!(
+            start == ContourPosition(7, 9),
+            "Start doesn't match {:?} {:?}",
+            start,
+            end
+        );
+        assert!(
+            end == ContourPosition(8, 9),
+            "End doesn't match {:?} {:?}",
+            start,
+            end
+        );
     }
 }

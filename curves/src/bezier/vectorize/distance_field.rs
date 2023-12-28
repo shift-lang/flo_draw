@@ -1,8 +1,14 @@
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
 use super::sampled_contour::*;
 
 use smallvec::*;
 
-use std::ops::{Range};
+use std::ops::Range;
 
 ///
 /// A distance field represents a sampling of how far certain discrete points are from an edge in an image.
@@ -34,17 +40,23 @@ pub trait SampledSignedDistanceField {
 }
 
 impl<'a, T> SampledSignedDistanceField for &'a T
-    where
-        T: SampledSignedDistanceField,
+where
+    T: SampledSignedDistanceField,
 {
     type Contour = T::Contour;
 
     #[inline]
-    fn field_size(&self) -> ContourSize { (*self).field_size() }
+    fn field_size(&self) -> ContourSize {
+        (*self).field_size()
+    }
     #[inline]
-    fn distance_at_point(&self, pos: ContourPosition) -> f64 { (*self).distance_at_point(pos) }
+    fn distance_at_point(&self, pos: ContourPosition) -> f64 {
+        (*self).distance_at_point(pos)
+    }
     #[inline]
-    fn as_contour<'b>(&'b self) -> &'b Self::Contour { (*self).as_contour() }
+    fn as_contour<'b>(&'b self) -> &'b Self::Contour {
+        (*self).as_contour()
+    }
 }
 
 ///
@@ -52,12 +64,12 @@ impl<'a, T> SampledSignedDistanceField for &'a T
 ///
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub struct ContourFromDistanceField<'a, TDistanceField>(pub &'a TDistanceField)
-    where
-        TDistanceField: SampledSignedDistanceField;
+where
+    TDistanceField: SampledSignedDistanceField;
 
 impl<'a, TDistanceField> ContourFromDistanceField<'a, TDistanceField>
-    where
-        TDistanceField: SampledSignedDistanceField,
+where
+    TDistanceField: SampledSignedDistanceField,
 {
     #[inline]
     fn point_is_inside(&self, pos: ContourPosition) -> bool {
@@ -66,8 +78,8 @@ impl<'a, TDistanceField> ContourFromDistanceField<'a, TDistanceField>
 }
 
 impl<'a, TDistanceField> SampledContour for ContourFromDistanceField<'a, TDistanceField>
-    where
-        TDistanceField: SampledSignedDistanceField,
+where
+    TDistanceField: SampledSignedDistanceField,
 {
     #[inline]
     fn contour_size(&self) -> ContourSize {
@@ -84,7 +96,9 @@ impl<'a, TDistanceField> SampledContour for ContourFromDistanceField<'a, TDistan
         for x in 0..width {
             // Transitioning from 'outside' to 'inside' sets a start position, and doing the opposite generates a range
             match (inside, self.point_is_inside(ContourPosition(x, y))) {
-                (None, true) => { inside = Some(x); }
+                (None, true) => {
+                    inside = Some(x);
+                }
                 (Some(start_x), false) => {
                     inside = None;
                     ranges.push((start_x as f64)..(x as f64));
@@ -138,8 +152,8 @@ impl SampledSignedDistanceField for F32SampledDistanceField {
 
     #[inline]
     fn distance_at_point(&self, pos: ContourPosition) -> f64 {
-        let width = self.0.0;
-        let height = self.0.1;
+        let width = self.0 .0;
+        let height = self.0 .1;
 
         if pos.0 < width && pos.1 < height {
             let pos = pos.0 + (pos.1 * width);
@@ -157,9 +171,13 @@ impl SampledSignedDistanceField for F32SampledDistanceField {
 
 impl SampledContour for F32SampledDistanceField {
     #[inline]
-    fn contour_size(&self) -> ContourSize { self.field_size() }
+    fn contour_size(&self) -> ContourSize {
+        self.field_size()
+    }
     #[inline]
-    fn intercepts_on_line(&self, y: f64) -> SmallVec<[Range<f64>; 4]> { ContourFromDistanceField(self).intercepts_on_line(y) }
+    fn intercepts_on_line(&self, y: f64) -> SmallVec<[Range<f64>; 4]> {
+        ContourFromDistanceField(self).intercepts_on_line(y)
+    }
 }
 
 impl SampledSignedDistanceField for F64SampledDistanceField {
@@ -172,8 +190,8 @@ impl SampledSignedDistanceField for F64SampledDistanceField {
 
     #[inline]
     fn distance_at_point(&self, pos: ContourPosition) -> f64 {
-        let width = self.0.0;
-        let height = self.0.1;
+        let width = self.0 .0;
+        let height = self.0 .1;
 
         if pos.0 < width && pos.1 < height {
             let pos = pos.0 + (pos.1 * width);
@@ -191,9 +209,13 @@ impl SampledSignedDistanceField for F64SampledDistanceField {
 
 impl SampledContour for F64SampledDistanceField {
     #[inline]
-    fn contour_size(&self) -> ContourSize { self.field_size() }
+    fn contour_size(&self) -> ContourSize {
+        self.field_size()
+    }
     #[inline]
-    fn intercepts_on_line(&self, y: f64) -> SmallVec<[Range<f64>; 4]> { ContourFromDistanceField(self).intercepts_on_line(y) }
+    fn intercepts_on_line(&self, y: f64) -> SmallVec<[Range<f64>; 4]> {
+        ContourFromDistanceField(self).intercepts_on_line(y)
+    }
 }
 
 impl SampledSignedDistanceField for U8SampledDistanceField {
@@ -206,7 +228,7 @@ impl SampledSignedDistanceField for U8SampledDistanceField {
 
     #[inline]
     fn distance_at_point(&self, pos: ContourPosition) -> f64 {
-        let width = self.0.0;
+        let width = self.0 .0;
         let pos = pos.0 + (pos.1 * width);
 
         (self.1[pos] as f64) - 127.0
@@ -220,8 +242,11 @@ impl SampledSignedDistanceField for U8SampledDistanceField {
 
 impl SampledContour for U8SampledDistanceField {
     #[inline]
-    fn contour_size(&self) -> ContourSize { self.field_size() }
+    fn contour_size(&self) -> ContourSize {
+        self.field_size()
+    }
     #[inline]
-    fn intercepts_on_line(&self, y: f64) -> SmallVec<[Range<f64>; 4]> { ContourFromDistanceField(self).intercepts_on_line(y) }
+    fn intercepts_on_line(&self, y: f64) -> SmallVec<[Range<f64>; 4]> {
+        ContourFromDistanceField(self).intercepts_on_line(y)
+    }
 }
-

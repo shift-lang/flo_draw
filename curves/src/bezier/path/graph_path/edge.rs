@@ -1,17 +1,29 @@
-use super::{GraphPath, GraphEdgeRef, GraphEdge, GraphPathEdge, GraphPathEdgeKind};
-use crate::bezier::curve::*;
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
+use super::{GraphEdge, GraphEdgeRef, GraphPath, GraphPathEdge, GraphPathEdgeKind};
 use crate::bezier::bounds::*;
+use crate::bezier::curve::*;
 use crate::geo::*;
 
-use std::fmt;
 use std::cell::*;
+use std::fmt;
 
 impl<Point: Coordinate, Label> GraphPathEdge<Point, Label> {
     ///
     /// Creates a new graph path edge
     ///
     #[inline]
-    pub(crate) fn new(kind: GraphPathEdgeKind, (cp1, cp2): (Point, Point), end_idx: usize, label: Label, following_edge_idx: usize) -> GraphPathEdge<Point, Label> {
+    pub(crate) fn new(
+        kind: GraphPathEdgeKind,
+        (cp1, cp2): (Point, Point),
+        end_idx: usize,
+        label: Label,
+        following_edge_idx: usize,
+    ) -> GraphPathEdge<Point, Label> {
         GraphPathEdge {
             label,
             kind,
@@ -37,7 +49,10 @@ impl<'a, Point: 'a, Label: 'a + Copy> GraphEdge<'a, Point, Label> {
     /// Creates a new graph edge (with an edge kind of 'exterior')
     ///
     #[inline]
-    pub(crate) fn new(graph: &'a GraphPath<Point, Label>, edge: GraphEdgeRef) -> GraphEdge<'a, Point, Label> {
+    pub(crate) fn new(
+        graph: &'a GraphPath<Point, Label>,
+        edge: GraphEdgeRef,
+    ) -> GraphEdge<'a, Point, Label> {
         test_assert!(edge.start_idx < graph.points.len());
         test_assert!(edge.edge_idx < graph.points[edge.start_idx].forward_edges.len());
 
@@ -144,7 +159,7 @@ impl<'a, Point: 'a + Coordinate, Label: 'a + Copy> BezierCurve for GraphEdge<'a,
     /// This will produce a bounding box that contains the curve but which may be larger than necessary
     ///
     #[inline]
-    fn fast_bounding_box<Bounds: BoundingBox<Point=Self::Point>>(&self) -> Bounds {
+    fn fast_bounding_box<Bounds: BoundingBox<Point = Self::Point>>(&self) -> Bounds {
         let edge = self.edge();
 
         let mut bbox = edge.bbox.borrow_mut();
@@ -175,7 +190,7 @@ impl<'a, Point: 'a + Coordinate, Label: 'a + Copy> BezierCurve for GraphEdge<'a,
     /// Computes the bounds of this bezier curve
     ///
     #[inline]
-    fn bounding_box<Bounds: BoundingBox<Point=Self::Point>>(&self) -> Bounds {
+    fn bounding_box<Bounds: BoundingBox<Point = Self::Point>>(&self) -> Bounds {
         let edge = self.edge();
 
         let start = self.graph.points[self.edge.start_idx].position;
@@ -190,13 +205,23 @@ impl<'a, Point: 'a + Coordinate, Label: 'a + Copy> BezierCurve for GraphEdge<'a,
 
 impl<'a, Point: 'a + Coordinate, Label: 'a + Copy> HasBoundingBox for GraphEdge<'a, Point, Label> {
     #[inline]
-    fn get_bounding_box<Bounds: BoundingBox<Point=Self::Point>>(&self) -> Bounds {
+    fn get_bounding_box<Bounds: BoundingBox<Point = Self::Point>>(&self) -> Bounds {
         self.fast_bounding_box()
     }
 }
 
 impl<'a, Point: fmt::Debug, Label: 'a + Copy> fmt::Debug for GraphEdge<'a, Point, Label> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{:?}: {:?} -> {:?} ({:?} -> {:?} ({:?}, {:?}))", self.kind(), self.edge.start_idx, self.edge().end_idx, self.graph.points[self.edge.start_idx].position, self.graph.points[self.edge().end_idx].position, self.edge().cp1, self.edge().cp2)
+        write!(
+            f,
+            "{:?}: {:?} -> {:?} ({:?} -> {:?} ({:?}, {:?}))",
+            self.kind(),
+            self.edge.start_idx,
+            self.edge().end_idx,
+            self.graph.points[self.edge.start_idx].position,
+            self.graph.points[self.edge().end_idx].position,
+            self.edge().cp1,
+            self.edge().cp2
+        )
     }
 }

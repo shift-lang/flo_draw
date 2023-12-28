@@ -1,8 +1,14 @@
-use flo_scene::*;
-use flo_scene::test::*;
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
 
-use futures::prelude::*;
+use flo_scene::test::*;
+use flo_scene::*;
+
 use futures::channel::mpsc;
+use futures::prelude::*;
 
 #[derive(Debug, PartialEq)]
 enum TestMessage {
@@ -42,20 +48,22 @@ fn convert_message_from_string() {
     let (string_send, string_recv) = mpsc::channel(10);
 
     // Create an entity that responds to TestMessages
-    scene.create_entity(entity_id, |_context, mut msg| async move {
-        let mut string_send = string_send;
+    scene
+        .create_entity(entity_id, |_context, mut msg| async move {
+            let mut string_send = string_send;
 
-        while let Some(msg) = msg.next().await {
-            let msg: TestMessage = msg;
+            while let Some(msg) = msg.next().await {
+                let msg: TestMessage = msg;
 
-            match &msg {
-                TestMessage::StringValue(str) => {
-                    let str = str.clone();
-                    string_send.try_send(str).unwrap();
+                match &msg {
+                    TestMessage::StringValue(str) => {
+                        let str = str.clone();
+                        string_send.try_send(str).unwrap();
+                    }
                 }
             }
-        }
-    }).unwrap();
+        })
+        .unwrap();
 
     // Allow test messages to be received as strings
     scene.convert_message::<i32, TestMessage>().unwrap();
@@ -63,23 +71,25 @@ fn convert_message_from_string() {
     scene.convert_message::<u64, TestMessage>().unwrap();
 
     // Create a test for this scene
-    scene.create_entity(TEST_ENTITY, move |_context, mut msg| async move {
-        let mut string_recv = string_recv;
+    scene
+        .create_entity(TEST_ENTITY, move |_context, mut msg| async move {
+            let mut string_recv = string_recv;
 
-        // Whenever a test is requested...
-        while let Some(msg) = msg.next().await {
-            let SceneTestRequest(mut msg) = msg;
+            // Whenever a test is requested...
+            while let Some(msg) = msg.next().await {
+                let SceneTestRequest(mut msg) = msg;
 
-            // Send 'Hello' as a string to the entity we just created (this is possible because of the call to scene.convert_message())
-            scene_send(entity_id, "Hello".to_string()).await.unwrap();
-            let response = string_recv.next().await;
+                // Send 'Hello' as a string to the entity we just created (this is possible because of the call to scene.convert_message())
+                scene_send(entity_id, "Hello".to_string()).await.unwrap();
+                let response = string_recv.next().await;
 
-            // Wait for the response
-            msg.send(
-                (response == Some("Hello".to_string())).into()
-            ).await.unwrap();
-        }
-    }).unwrap();
+                // Wait for the response
+                msg.send((response == Some("Hello".to_string())).into())
+                    .await
+                    .unwrap();
+            }
+        })
+        .unwrap();
 
     // Test the scene we just set up
     test_scene(scene);
@@ -92,20 +102,22 @@ fn convert_message_from_number() {
     let (string_send, string_recv) = mpsc::channel(10);
 
     // Create an entity that responds to TestMessages
-    scene.create_entity(entity_id, |_context, mut msg| async move {
-        let mut string_send = string_send;
+    scene
+        .create_entity(entity_id, |_context, mut msg| async move {
+            let mut string_send = string_send;
 
-        while let Some(msg) = msg.next().await {
-            let msg: TestMessage = msg;
+            while let Some(msg) = msg.next().await {
+                let msg: TestMessage = msg;
 
-            match &msg {
-                TestMessage::StringValue(str) => {
-                    let str = str.clone();
-                    string_send.try_send(str).unwrap();
+                match &msg {
+                    TestMessage::StringValue(str) => {
+                        let str = str.clone();
+                        string_send.try_send(str).unwrap();
+                    }
                 }
             }
-        }
-    }).unwrap();
+        })
+        .unwrap();
 
     // Allow test messages to be received as strings
     scene.convert_message::<i32, TestMessage>().unwrap();
@@ -113,23 +125,25 @@ fn convert_message_from_number() {
     scene.convert_message::<u64, TestMessage>().unwrap();
 
     // Create a test for this scene
-    scene.create_entity(TEST_ENTITY, move |_context, mut msg| async move {
-        let mut string_recv = string_recv;
+    scene
+        .create_entity(TEST_ENTITY, move |_context, mut msg| async move {
+            let mut string_recv = string_recv;
 
-        // Whenever a test is requested...
-        while let Some(msg) = msg.next().await {
-            let SceneTestRequest(mut msg) = msg;
+            // Whenever a test is requested...
+            while let Some(msg) = msg.next().await {
+                let SceneTestRequest(mut msg) = msg;
 
-            // Send 'Hello' as a string to the entity we just created (this is possible because of the call to scene.convert_message())
-            scene_send(entity_id, 42u64).await.unwrap();
-            let response = string_recv.next().await;
+                // Send 'Hello' as a string to the entity we just created (this is possible because of the call to scene.convert_message())
+                scene_send(entity_id, 42u64).await.unwrap();
+                let response = string_recv.next().await;
 
-            // Wait for the response
-            msg.send(
-                (response == Some("42".to_string())).into()
-            ).await.unwrap();
-        }
-    }).unwrap();
+                // Wait for the response
+                msg.send((response == Some("42".to_string())).into())
+                    .await
+                    .unwrap();
+            }
+        })
+        .unwrap();
 
     // Test the scene we just set up
     test_scene(scene);

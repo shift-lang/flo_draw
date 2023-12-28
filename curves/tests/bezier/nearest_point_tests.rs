@@ -1,12 +1,18 @@
-use flo_curves::*;
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
 use flo_curves::bezier::*;
 use flo_curves::line::*;
+use flo_curves::*;
 
-use std::ops::{Range};
+use std::ops::Range;
 
 fn nearest_t_value_iteration<C>(curve: &C, point: &C::Point) -> f64
-    where
-        C: BezierCurve,
+where
+    C: BezierCurve,
 {
     let mut min_distance = f64::MAX;
     let mut min_t = 0.0;
@@ -25,8 +31,8 @@ fn nearest_t_value_iteration<C>(curve: &C, point: &C::Point) -> f64
 }
 
 fn test_point_grid<C>(curve: &C, x_range: Range<f64>, y_range: Range<f64>, step: f64)
-    where
-        C: BezierCurve<Point=Coord2>,
+where
+    C: BezierCurve<Point = Coord2>,
 {
     // Iterate through the sample points
     let mut y = y_range.start;
@@ -43,7 +49,13 @@ fn test_point_grid<C>(curve: &C, x_range: Range<f64>, y_range: Range<f64>, step:
             let iter_to_point = Coord2(x, y).distance_to(&iter_nearest);
             let distance_diff = nearest.distance_to(&iter_nearest);
 
-            assert!(nearest_to_point <= iter_to_point, "Found {:?} but iteration found {:?} (distance between points {})", nearest, iter_nearest, distance_diff);
+            assert!(
+                nearest_to_point <= iter_to_point,
+                "Found {:?} but iteration found {:?} (distance between points {})",
+                nearest,
+                iter_nearest,
+                distance_diff
+            );
 
             x += step;
         }
@@ -53,8 +65,8 @@ fn test_point_grid<C>(curve: &C, x_range: Range<f64>, y_range: Range<f64>, step:
 }
 
 fn test_far_away_points<C>(curve: &C, nearest_point: impl Fn(&C, &C::Point) -> C::Point)
-    where
-        C: BezierCurve<Point=Coord2>,
+where
+    C: BezierCurve<Point = Coord2>,
 {
     // Generate the derivative coordinates
     let start = curve.start_point();
@@ -86,12 +98,28 @@ fn test_far_away_points<C>(curve: &C, nearest_point: impl Fn(&C, &C::Point) -> C
         if iter_nearest.distance_to(&nearest) >= 0.1 {
             // Log the t position and the distance between the curve, plus the distance between the point we found and the curve
             println!("t={:?} distance={:?} ({:?} {:?}) to_curve={:?} to_curve_iter={:?} nearest_t={:?} (should be {:?})", t, iter_nearest.distance_to(&nearest), nearest, iter_nearest, test_point.distance_to(&nearest), test_point.distance_to(&iter_nearest), nearest_t, iter_nearest_t);
-            println!("  t={:?} distance={:?} ({:?} {:?})", t - 0.01, iter_nearest.distance_to(&nearest_point(curve, &test_line.point_at_pos(t - 0.01))), nearest_point(curve, &test_line.point_at_pos(t - 0.01)), iter_nearest);
-            println!("  t={:?} distance={:?} ({:?} {:?})", t + 0.01, iter_nearest.distance_to(&nearest_point(curve, &test_line.point_at_pos(t + 0.01))), nearest_point(curve, &test_line.point_at_pos(t + 0.01)), iter_nearest);
+            println!(
+                "  t={:?} distance={:?} ({:?} {:?})",
+                t - 0.01,
+                iter_nearest.distance_to(&nearest_point(curve, &test_line.point_at_pos(t - 0.01))),
+                nearest_point(curve, &test_line.point_at_pos(t - 0.01)),
+                iter_nearest
+            );
+            println!(
+                "  t={:?} distance={:?} ({:?} {:?})",
+                t + 0.01,
+                iter_nearest.distance_to(&nearest_point(curve, &test_line.point_at_pos(t + 0.01))),
+                nearest_point(curve, &test_line.point_at_pos(t + 0.01)),
+                iter_nearest
+            );
 
             let tangent = tangent.to_unit_vector();
             let offset = (test_point - nearest).to_unit_vector();
-            println!("  tangent={:?} tangent_dot_offset={:?}", tangent, tangent.dot(&offset));
+            println!(
+                "  tangent={:?} tangent_dot_offset={:?}",
+                tangent,
+                tangent.dot(&offset)
+            );
 
             // With the exceptions of cusps, we should have found a point perpendicular to the curve
             assert!(tangent.dot(&offset).abs() < 0.001 || nearest_t <= 0.0 || nearest_t >= 1.0, "Not perpendicular (t={:?}, tangent dot offset={:?}, found distance={:?}, iteration distance={:?})", nearest_t, tangent.dot(&offset), nearest.distance_to(&test_point), iter_nearest.distance_to(&test_point));
@@ -125,7 +153,11 @@ fn nearest_point_on_straight_line_newton_raphson() {
 
 #[test]
 fn nearest_point_on_curve_newton_raphson_1() {
-    let curve = bezier::Curve::from_points(Coord2(10.0, 100.0), (Coord2(90.0, 30.0), Coord2(40.0, 140.0)), Coord2(220.0, 220.0));
+    let curve = bezier::Curve::from_points(
+        Coord2(10.0, 100.0),
+        (Coord2(90.0, 30.0), Coord2(40.0, 140.0)),
+        Coord2(220.0, 220.0),
+    );
     let point = Coord2(100.0, 130.0);
 
     let curve_near_t = nearest_point_on_curve_newton_raphson(&curve, &point);
@@ -140,7 +172,11 @@ fn nearest_point_on_curve_newton_raphson_1() {
 #[test]
 fn nearest_point_on_curve_newton_raphson_2() {
     // Point nearest to the start of the curve
-    let curve = bezier::Curve::from_points(Coord2(10.0, 100.0), (Coord2(90.0, 30.0), Coord2(40.0, 140.0)), Coord2(220.0, 220.0));
+    let curve = bezier::Curve::from_points(
+        Coord2(10.0, 100.0),
+        (Coord2(90.0, 30.0), Coord2(40.0, 140.0)),
+        Coord2(220.0, 220.0),
+    );
     let point = Coord2(-10.0, 100.0);
 
     let curve_near_t = nearest_point_on_curve_newton_raphson(&curve, &point);
@@ -154,8 +190,12 @@ fn nearest_point_on_curve_newton_raphson_2() {
 
 #[test]
 fn nearest_point_on_curve_newton_raphson_3() {
-    // Point nearest to the end of the curve 
-    let curve = bezier::Curve::from_points(Coord2(10.0, 100.0), (Coord2(90.0, 30.0), Coord2(40.0, 140.0)), Coord2(220.0, 220.0));
+    // Point nearest to the end of the curve
+    let curve = bezier::Curve::from_points(
+        Coord2(10.0, 100.0),
+        (Coord2(90.0, 30.0), Coord2(40.0, 140.0)),
+        Coord2(220.0, 220.0),
+    );
     let point = Coord2(240.0, 220.0);
 
     let curve_near_t = nearest_point_on_curve_newton_raphson(&curve, &point);
@@ -169,21 +209,37 @@ fn nearest_point_on_curve_newton_raphson_3() {
 
 #[test]
 fn nearest_point_on_curve_newton_raphson_4() {
-    let curve = bezier::Curve::from_points(Coord2(10.0, 100.0), (Coord2(90.0, 30.0), Coord2(40.0, 140.0)), Coord2(220.0, 220.0));
+    let curve = bezier::Curve::from_points(
+        Coord2(10.0, 100.0),
+        (Coord2(90.0, 30.0), Coord2(40.0, 140.0)),
+        Coord2(220.0, 220.0),
+    );
 
-    test_far_away_points(&curve, |c, p| c.point_at_pos(nearest_point_on_curve_newton_raphson(c, p)));
+    test_far_away_points(&curve, |c, p| {
+        c.point_at_pos(nearest_point_on_curve_newton_raphson(c, p))
+    });
 }
 
 #[test]
 fn nearest_point_on_curve_newton_raphson_5() {
-    let curve = bezier::Curve::from_points(Coord2(259.0, 322.0), (Coord2(272.0, 329.0), Coord2(297.0, 341.0)), Coord2(350.0, 397.0));
+    let curve = bezier::Curve::from_points(
+        Coord2(259.0, 322.0),
+        (Coord2(272.0, 329.0), Coord2(297.0, 341.0)),
+        Coord2(350.0, 397.0),
+    );
 
-    test_far_away_points(&curve, |c, p| c.point_at_pos(nearest_point_on_curve_newton_raphson(c, p)));
+    test_far_away_points(&curve, |c, p| {
+        c.point_at_pos(nearest_point_on_curve_newton_raphson(c, p))
+    });
 }
 
 #[test]
 fn nearest_point_on_curve_newton_raphson_6() {
-    let curve = bezier::Curve::from_points(Coord2(259.0, 322.0), (Coord2(272.0, 329.0), Coord2(297.0, 341.0)), Coord2(350.0, 397.0));
+    let curve = bezier::Curve::from_points(
+        Coord2(259.0, 322.0),
+        (Coord2(272.0, 329.0), Coord2(297.0, 341.0)),
+        Coord2(350.0, 397.0),
+    );
     let point = Coord2(240.0, 220.0);
 
     let curve_near_t = nearest_point_on_curve_newton_raphson(&curve, &point);
@@ -224,13 +280,24 @@ fn nearest_point_on_straight_line() {
     let iterate_t = nearest_t_value_iteration(&curve, &Coord2(1.0, 5.0));
     let iterate_point = curve.point_at_pos(iterate_t);
 
-    assert!(iterate_point.distance_to(&curve_near) < 0.1, "Searched for: {:?}, but found: {:?} (t should be {:?} but was {:?})", iterate_point, curve_near, iterate_t, curve_near_t);
+    assert!(
+        iterate_point.distance_to(&curve_near) < 0.1,
+        "Searched for: {:?}, but found: {:?} (t should be {:?} but was {:?})",
+        iterate_point,
+        curve_near,
+        iterate_t,
+        curve_near_t
+    );
     assert!(line_near.distance_to(&curve_near) < 0.1);
 }
 
 #[test]
 fn nearest_point_on_curve_1() {
-    let curve = bezier::Curve::from_points(Coord2(10.0, 100.0), (Coord2(90.0, 30.0), Coord2(40.0, 140.0)), Coord2(220.0, 220.0));
+    let curve = bezier::Curve::from_points(
+        Coord2(10.0, 100.0),
+        (Coord2(90.0, 30.0), Coord2(40.0, 140.0)),
+        Coord2(220.0, 220.0),
+    );
     let point = Coord2(100.0, 130.0);
 
     let curve_near_t = nearest_point_on_curve(&curve, &point);
@@ -239,13 +306,24 @@ fn nearest_point_on_curve_1() {
     let iterate_t = nearest_t_value_iteration(&curve, &point);
     let iterate_point = curve.point_at_pos(iterate_t);
 
-    assert!(iterate_point.distance_to(&curve_near) < 0.1, "Searched for: {:?}, but found: {:?} (t should be {:?} but was {:?})", iterate_point, curve_near, iterate_t, curve_near_t);
+    assert!(
+        iterate_point.distance_to(&curve_near) < 0.1,
+        "Searched for: {:?}, but found: {:?} (t should be {:?} but was {:?})",
+        iterate_point,
+        curve_near,
+        iterate_t,
+        curve_near_t
+    );
 }
 
 #[test]
 fn nearest_point_on_curve_2() {
     // Point nearest to the start of the curve
-    let curve = bezier::Curve::from_points(Coord2(10.0, 100.0), (Coord2(90.0, 30.0), Coord2(40.0, 140.0)), Coord2(220.0, 220.0));
+    let curve = bezier::Curve::from_points(
+        Coord2(10.0, 100.0),
+        (Coord2(90.0, 30.0), Coord2(40.0, 140.0)),
+        Coord2(220.0, 220.0),
+    );
     let point = Coord2(-10.0, 100.0);
 
     let curve_near_t = nearest_point_on_curve(&curve, &point);
@@ -254,13 +332,24 @@ fn nearest_point_on_curve_2() {
     let iterate_t = nearest_t_value_iteration(&curve, &point);
     let iterate_point = curve.point_at_pos(iterate_t);
 
-    assert!(iterate_point.distance_to(&curve_near) < 0.1, "Searched for: {:?}, but found: {:?} (t should be {:?} but was {:?})", iterate_point, curve_near, iterate_t, curve_near_t);
+    assert!(
+        iterate_point.distance_to(&curve_near) < 0.1,
+        "Searched for: {:?}, but found: {:?} (t should be {:?} but was {:?})",
+        iterate_point,
+        curve_near,
+        iterate_t,
+        curve_near_t
+    );
 }
 
 #[test]
 fn nearest_point_on_curve_3() {
-    // Point nearest to the end of the curve 
-    let curve = bezier::Curve::from_points(Coord2(10.0, 100.0), (Coord2(90.0, 30.0), Coord2(40.0, 140.0)), Coord2(220.0, 220.0));
+    // Point nearest to the end of the curve
+    let curve = bezier::Curve::from_points(
+        Coord2(10.0, 100.0),
+        (Coord2(90.0, 30.0), Coord2(40.0, 140.0)),
+        Coord2(220.0, 220.0),
+    );
     let point = Coord2(240.0, 220.0);
 
     let curve_near_t = nearest_point_on_curve(&curve, &point);
@@ -269,26 +358,45 @@ fn nearest_point_on_curve_3() {
     let iterate_t = nearest_t_value_iteration(&curve, &point);
     let iterate_point = curve.point_at_pos(iterate_t);
 
-    assert!(iterate_point.distance_to(&curve_near) < 0.1, "Searched for: {:?}, but found: {:?} (t should be {:?} but was {:?})", iterate_point, curve_near, iterate_t, curve_near_t);
+    assert!(
+        iterate_point.distance_to(&curve_near) < 0.1,
+        "Searched for: {:?}, but found: {:?} (t should be {:?} but was {:?})",
+        iterate_point,
+        curve_near,
+        iterate_t,
+        curve_near_t
+    );
 }
 
 #[test]
 fn nearest_point_on_curve_4() {
-    let curve = bezier::Curve::from_points(Coord2(10.0, 100.0), (Coord2(90.0, 30.0), Coord2(40.0, 140.0)), Coord2(220.0, 220.0));
+    let curve = bezier::Curve::from_points(
+        Coord2(10.0, 100.0),
+        (Coord2(90.0, 30.0), Coord2(40.0, 140.0)),
+        Coord2(220.0, 220.0),
+    );
 
     test_far_away_points(&curve, |c, p| c.nearest_point(p));
 }
 
 #[test]
 fn nearest_point_on_curve_5() {
-    let curve = bezier::Curve::from_points(Coord2(259.0, 322.0), (Coord2(272.0, 329.0), Coord2(297.0, 341.0)), Coord2(350.0, 397.0));
+    let curve = bezier::Curve::from_points(
+        Coord2(259.0, 322.0),
+        (Coord2(272.0, 329.0), Coord2(297.0, 341.0)),
+        Coord2(350.0, 397.0),
+    );
 
     test_far_away_points(&curve, |c, p| c.nearest_point(p));
 }
 
 #[test]
 fn nearest_point_on_curve_6() {
-    let curve = bezier::Curve::from_points(Coord2(259.0, 322.0), (Coord2(272.0, 329.0), Coord2(297.0, 341.0)), Coord2(350.0, 397.0));
+    let curve = bezier::Curve::from_points(
+        Coord2(259.0, 322.0),
+        (Coord2(272.0, 329.0), Coord2(297.0, 341.0)),
+        Coord2(350.0, 397.0),
+    );
     let point = Coord2(240.0, 220.0);
 
     let curve_near_t = nearest_point_on_curve(&curve, &point);
@@ -297,12 +405,23 @@ fn nearest_point_on_curve_6() {
     let iterate_t = nearest_t_value_iteration(&curve, &point);
     let iterate_point = curve.point_at_pos(iterate_t);
 
-    assert!(iterate_point.distance_to(&curve_near) < 0.1, "Searched for: {:?}, but found: {:?} (t should be {:?} but was {:?})", iterate_point, curve_near, iterate_t, curve_near_t);
+    assert!(
+        iterate_point.distance_to(&curve_near) < 0.1,
+        "Searched for: {:?}, but found: {:?} (t should be {:?} but was {:?})",
+        iterate_point,
+        curve_near,
+        iterate_t,
+        curve_near_t
+    );
 }
 
 #[test]
 fn nearest_point_on_curve_7() {
-    let curve = bezier::Curve::from_points(Coord2(269.1, 317.7), (Coord2(280.1, 332.7), Coord2(316.4, 414.1)), Coord2(322.4, 415.0));
+    let curve = bezier::Curve::from_points(
+        Coord2(269.1, 317.7),
+        (Coord2(280.1, 332.7), Coord2(316.4, 414.1)),
+        Coord2(322.4, 415.0),
+    );
     let point = Coord2(296.0, 367.0);
 
     let curve_near_t = nearest_point_on_curve(&curve, &point);
@@ -311,19 +430,34 @@ fn nearest_point_on_curve_7() {
     let iterate_t = nearest_t_value_iteration(&curve, &point);
     let iterate_point = curve.point_at_pos(iterate_t);
 
-    assert!(iterate_point.distance_to(&curve_near) < 0.1, "Searched for: {:?}, but found: {:?} (t should be {:?} but was {:?})", iterate_point, curve_near, iterate_t, curve_near_t);
+    assert!(
+        iterate_point.distance_to(&curve_near) < 0.1,
+        "Searched for: {:?}, but found: {:?} (t should be {:?} but was {:?})",
+        iterate_point,
+        curve_near,
+        iterate_t,
+        curve_near_t
+    );
 }
 
 #[test]
 fn nearest_point_on_curve_8() {
-    let curve = bezier::Curve::from_points(Coord2(269.1, 317.7), (Coord2(280.1, 332.7), Coord2(316.4, 414.1)), Coord2(322.4, 415.0));
+    let curve = bezier::Curve::from_points(
+        Coord2(269.1, 317.7),
+        (Coord2(280.1, 332.7), Coord2(316.4, 414.1)),
+        Coord2(322.4, 415.0),
+    );
 
     test_far_away_points(&curve, |c, p| c.nearest_point(p));
 }
 
 #[test]
 fn nearest_point_on_curve_9() {
-    let curve = bezier::Curve { start_point: Coord2(269.1, 317.7), end_point: Coord2(322.4, 415.0), control_points: (Coord2(280.1, 332.7), Coord2(316.4, 414.1)) };
+    let curve = bezier::Curve {
+        start_point: Coord2(269.1, 317.7),
+        end_point: Coord2(322.4, 415.0),
+        control_points: (Coord2(280.1, 332.7), Coord2(316.4, 414.1)),
+    };
     let point = Coord2(371.76500000000004, 322.565);
 
     let curve_near_t = nearest_point_on_curve(&curve, &point);
@@ -332,7 +466,14 @@ fn nearest_point_on_curve_9() {
     let iterate_t = nearest_t_value_iteration(&curve, &point);
     let iterate_point = curve.point_at_pos(iterate_t);
 
-    assert!(iterate_point.distance_to(&curve_near) < 0.1, "Searched for: {:?}, but found: {:?} (t should be {:?} but was {:?})", iterate_point, curve_near, iterate_t, curve_near_t);
+    assert!(
+        iterate_point.distance_to(&curve_near) < 0.1,
+        "Searched for: {:?}, but found: {:?} (t should be {:?} but was {:?})",
+        iterate_point,
+        curve_near,
+        iterate_t,
+        curve_near_t
+    );
 }
 
 #[test]
@@ -340,7 +481,10 @@ fn nearest_point_on_curve_10() {
     let curve = Curve {
         start_point: Coord2(613.1741629120686, 691.31977047597),
         end_point: Coord2(684.1381074976954, 728.253746282104),
-        control_points: (Coord2(666.1741629120686, 709.31977047597), Coord2(678.1381074976954, 703.253746282104)),
+        control_points: (
+            Coord2(666.1741629120686, 709.31977047597),
+            Coord2(678.1381074976954, 703.253746282104),
+        ),
     };
     let point = Coord2(644.0, 767.0);
 
@@ -350,7 +494,14 @@ fn nearest_point_on_curve_10() {
     let iterate_t = nearest_t_value_iteration(&curve, &point);
     let iterate_point = curve.point_at_pos(iterate_t);
 
-    assert!(iterate_point.distance_to(&curve_near) < 0.1, "Searched for: {:?}, but found: {:?} (t should be {:?} but was {:?})", iterate_point, curve_near, iterate_t, curve_near_t);
+    assert!(
+        iterate_point.distance_to(&curve_near) < 0.1,
+        "Searched for: {:?}, but found: {:?} (t should be {:?} but was {:?})",
+        iterate_point,
+        curve_near,
+        iterate_t,
+        curve_near_t
+    );
 }
 
 #[test]
@@ -358,7 +509,10 @@ fn nearest_point_on_curve_11() {
     let curve = Curve {
         start_point: Coord2(613.1741629120686, 691.31977047597),
         end_point: Coord2(684.1381074976954, 728.253746282104),
-        control_points: (Coord2(666.1741629120686, 709.31977047597), Coord2(678.1381074976954, 703.253746282104)),
+        control_points: (
+            Coord2(666.1741629120686, 709.31977047597),
+            Coord2(678.1381074976954, 703.253746282104),
+        ),
     };
 
     test_point_grid(&curve, 0.0..1000.0, 0.0..1000.0, 10.0);

@@ -1,14 +1,20 @@
-use crate::edgeplan::*;
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
+use std::ops::Range;
+use std::sync::*;
+
+use itertools::*;
+use smallvec::*;
 
 use flo_canvas as canvas;
 use flo_canvas::curves::geo::*;
 use flo_canvas::curves::line::*;
 
-use itertools::*;
-use smallvec::*;
-
-use std::ops::{Range};
-use std::sync::*;
+use crate::edgeplan::*;
 
 ///
 /// A single line within a polyline
@@ -43,7 +49,10 @@ enum PolylineValue {
     Points(Vec<Coord2>),
 
     /// Polyline is represented as a space divided in the y-axis
-    Lines { space: Space1D<PolylineLine>, points: Vec<Coord2> },
+    Lines {
+        space: Space1D<PolylineLine>,
+        points: Vec<Coord2>,
+    },
 }
 
 ///
@@ -114,7 +123,7 @@ impl Polyline {
     /// Creates a new polyline shape
     ///
     #[inline]
-    pub fn new(points: impl IntoIterator<Item=Coord2>) -> Self {
+    pub fn new(points: impl IntoIterator<Item = Coord2>) -> Self {
         let mut points = points.into_iter().collect::<Vec<_>>();
         debug_assert!(points.last() == points.get(0), "Polyline is not closed");
         if points.last() != points.get(0) {
@@ -128,19 +137,22 @@ impl Polyline {
     }
 
     ///
-    /// Performs the calculations required to 
+    /// Performs the calculations required to
     ///
     pub fn prepare_to_render(&mut self) {
         match self.value.take() {
             PolylineValue::Empty => {}
-            PolylineValue::Lines { space, points } => { self.value = PolylineValue::Lines { space, points } }
+            PolylineValue::Lines { space, points } => {
+                self.value = PolylineValue::Lines { space, points }
+            }
 
             PolylineValue::Points(coords) => {
                 // Calculate the coefficients and y-ranges for all of the lines
                 let mut bounds_min = (f64::MAX, f64::MAX);
                 let mut bounds_max = (f64::MIN, f64::MIN);
 
-                let lines = coords.iter()
+                let lines = coords
+                    .iter()
                     .copied()
                     .tuple_windows::<(Coord2, Coord2)>()
                     .enumerate()
@@ -177,7 +189,10 @@ impl Polyline {
                     .map(|line| (line.y_range.clone(), line));
 
                 // Convert to a 1D space
-                self.value = PolylineValue::Lines { space: Space1D::from_data(lines), points: coords };
+                self.value = PolylineValue::Lines {
+                    space: Space1D::from_data(lines),
+                    points: coords,
+                };
                 self.bounding_box = (bounds_min, bounds_max);
             }
         }
@@ -198,10 +213,16 @@ impl Polyline {
     ///
     pub fn transform_unprepared(&self, transform: &canvas::Transform2D) -> Self {
         match &self.value {
-            PolylineValue::Empty => Self { value: PolylineValue::Empty, bounding_box: self.bounding_box },
+            PolylineValue::Empty => Self {
+                value: PolylineValue::Empty,
+                bounding_box: self.bounding_box,
+            },
 
             PolylineValue::Points(points) => {
-                let points = points.iter().map(|point| transform_coord(point, transform)).collect();
+                let points = points
+                    .iter()
+                    .map(|point| transform_coord(point, transform))
+                    .collect();
 
                 // We don't need to transform/recalculate the bounding box as this polyline is not already transformed
                 Self {
@@ -212,7 +233,10 @@ impl Polyline {
 
             PolylineValue::Lines { points, .. } => {
                 // Transform the original set of points (it is possible to transform the lines except when they're horizontal)
-                let points = points.iter().map(|point| transform_coord(point, transform)).collect();
+                let points = points
+                    .iter()
+                    .map(|point| transform_coord(point, transform))
+                    .collect();
 
                 Self {
                     value: PolylineValue::Points(points),
@@ -226,13 +250,17 @@ impl Polyline {
     /// Fills in an intercept list given a list of lines that cross that position
     ///
     #[inline]
-    fn fill_intercepts_from_lines<'a>(y_pos: f64, lines: impl Iterator<Item=&'a PolylineLine>, intercepts: &mut SmallVec<[EdgeDescriptorIntercept; 2]>) {
+    fn fill_intercepts_from_lines<'a>(
+        y_pos: f64,
+        lines: impl Iterator<Item = &'a PolylineLine>,
+        intercepts: &mut SmallVec<[EdgeDescriptorIntercept; 2]>,
+    ) {
         let mut last_direction = EdgeInterceptDirection::Toggle;
 
         for line in lines {
             let x_pos = line.x_pos(y_pos);
             let direction = if let EdgeInterceptDirection::Toggle = line.direction {
-                // TODO: this really requires ordering this intercept according to the other lines 
+                // TODO: this really requires ordering this intercept according to the other lines
                 // (This happens only on horizontal lines too, so we probably should instead consider the intercept direction to come from the end point of the previous line)
                 match last_direction {
                     EdgeInterceptDirection::DirectionOut => EdgeInterceptDirection::DirectionIn,
@@ -250,7 +278,11 @@ impl Polyline {
                 EdgeInterceptDirection::Toggle => y_pos - line.y_range.start,
             };
 
-            intercepts.push(EdgeDescriptorIntercept { direction, x_pos, position: EdgePosition(0, line.idx, line_pos) });
+            intercepts.push(EdgeDescriptorIntercept {
+                direction,
+                x_pos,
+                position: EdgePosition(0, line.idx, line_pos),
+            });
             last_direction = direction;
         }
     }
@@ -259,46 +291,77 @@ impl Polyline {
     /// Finds all of the intercepts along a line at a given y-position
     ///
     #[inline]
-    pub fn intercepts_on_line(&self, y_pos: f64, intercepts: &mut SmallVec<[EdgeDescriptorIntercept; 2]>) {
+    pub fn intercepts_on_line(
+        &self,
+        y_pos: f64,
+        intercepts: &mut SmallVec<[EdgeDescriptorIntercept; 2]>,
+    ) {
         if let PolylineValue::Lines { space, .. } = &self.value {
             // All the lines passing through y_pos are included here (as ranges are exclusive, this will exclude the end point of the line)
             Self::fill_intercepts_from_lines(y_pos, space.data_at_point(y_pos), intercepts);
         } else {
-            debug_assert!(false, "Tried to get intercepts for a polyline without preparing it");
+            debug_assert!(
+                false,
+                "Tried to get intercepts for a polyline without preparing it"
+            );
         }
     }
 
     ///
     /// Finds all of the intercepts along a line at an ordered set of y positions
     ///
-    pub fn intercepts_on_lines(&self, ordered_y_pos: &[f64], intercepts: &mut [SmallVec<[EdgeDescriptorIntercept; 2]>]) {
+    pub fn intercepts_on_lines(
+        &self,
+        ordered_y_pos: &[f64],
+        intercepts: &mut [SmallVec<[EdgeDescriptorIntercept; 2]>],
+    ) {
         // We need an epsilon value to ensure the requested range covers all the y values
         const EPSILON: f64 = 1e-8;
 
         if let PolylineValue::Lines { space, .. } = &self.value {
             // Calculate the range of y values that we'll be processing
-            let y_range = ordered_y_pos.iter()
+            let y_range = ordered_y_pos
+                .iter()
                 .map(|y| *y..(y + EPSILON))
                 .reduce(|a, b| (a.start.min(b.start))..(a.end.max(b.end)));
-            let y_range = if let Some(y_range) = y_range { y_range } else { return; };
+            let y_range = if let Some(y_range) = y_range {
+                y_range
+            } else {
+                return;
+            };
 
             // Fetch all the lines in this range
             let mut line_regions = space.regions_in_range(y_range);
-            let mut current_region = if let Some(region) = line_regions.next() { region } else { return; };
+            let mut current_region = if let Some(region) = line_regions.next() {
+                region
+            } else {
+                return;
+            };
 
             for (y_pos, intercepts) in ordered_y_pos.iter().zip(intercepts.iter_mut()) {
                 // Move the current range forward until it overlaps this y-position (we rely on the y positions being in ascending order here)
                 while current_region.0.end <= *y_pos {
-                    current_region = if let Some(region) = line_regions.next() { region } else { return; };
+                    current_region = if let Some(region) = line_regions.next() {
+                        region
+                    } else {
+                        return;
+                    };
                 }
 
                 if current_region.0.start <= *y_pos {
                     // Fill the intercepts for this y-position
-                    Self::fill_intercepts_from_lines(*y_pos, current_region.1.iter().copied(), intercepts);
+                    Self::fill_intercepts_from_lines(
+                        *y_pos,
+                        current_region.1.iter().copied(),
+                        intercepts,
+                    );
                 }
             }
         } else {
-            debug_assert!(false, "Tried to get intercepts for a polyline without preparing it");
+            debug_assert!(
+                false,
+                "Tried to get intercepts for a polyline without preparing it"
+            );
         }
     }
 
@@ -337,7 +400,7 @@ impl Polyline {
     /// Returns the coordinates of the end points of the lines that make up this polyline
     ///
     #[inline]
-    pub fn points<'a>(&'a self) -> impl 'a + Iterator<Item=Coord2> {
+    pub fn points<'a>(&'a self) -> impl 'a + Iterator<Item = Coord2> {
         match &self.value {
             PolylineValue::Empty => panic!("Polyline is empty"),
             PolylineValue::Points(points) => points.iter().copied(),
@@ -362,7 +425,7 @@ impl PolylineNonZeroEdge {
     /// Creates a new non-zero polyline edge
     ///
     #[inline]
-    pub fn new(shape_id: ShapeId, points: impl IntoIterator<Item=Coord2>) -> Self {
+    pub fn new(shape_id: ShapeId, points: impl IntoIterator<Item = Coord2>) -> Self {
         Self {
             shape_id: shape_id,
             polyline: Polyline::new(points),
@@ -402,7 +465,9 @@ impl EdgeDescriptor for PolylineNonZeroEdge {
     }
 
     #[inline]
-    fn shape(&self) -> ShapeId { self.shape_id }
+    fn shape(&self) -> ShapeId {
+        self.shape_id
+    }
 
     fn bounding_box(&self) -> ((f64, f64), (f64, f64)) {
         self.polyline.bounding_box
@@ -412,12 +477,20 @@ impl EdgeDescriptor for PolylineNonZeroEdge {
         Arc::new(self.transform_as_self(transform))
     }
 
-    fn intercepts(&self, y_positions: &[f64], output: &mut [SmallVec<[EdgeDescriptorIntercept; 2]>]) {
+    fn intercepts(
+        &self,
+        y_positions: &[f64],
+        output: &mut [SmallVec<[EdgeDescriptorIntercept; 2]>],
+    ) {
         self.polyline.intercepts_on_lines(y_positions, output)
     }
 
     fn description(&self) -> String {
-        format!("Even-odd polyline {:?}: {}", self.shape_id, self.polyline.description())
+        format!(
+            "Even-odd polyline {:?}: {}",
+            self.shape_id,
+            self.polyline.description()
+        )
     }
 }
 
@@ -426,7 +499,7 @@ impl PolylineEvenOddEdge {
     /// Creates a new non-zero polyline edge
     ///
     #[inline]
-    pub fn new(shape_id: ShapeId, points: impl IntoIterator<Item=Coord2>) -> Self {
+    pub fn new(shape_id: ShapeId, points: impl IntoIterator<Item = Coord2>) -> Self {
         Self {
             shape_id: shape_id,
             polyline: Polyline::new(points),
@@ -446,7 +519,7 @@ impl PolylineEvenOddEdge {
     ///
     pub fn num_regions(&self) -> usize {
         match &self.polyline.value {
-            PolylineValue::Lines { space, .. } => { space.all_regions().count() }
+            PolylineValue::Lines { space, .. } => space.all_regions().count(),
 
             _ => 0,
         }
@@ -477,7 +550,9 @@ impl EdgeDescriptor for PolylineEvenOddEdge {
     }
 
     #[inline]
-    fn shape(&self) -> ShapeId { self.shape_id }
+    fn shape(&self) -> ShapeId {
+        self.shape_id
+    }
 
     fn bounding_box(&self) -> ((f64, f64), (f64, f64)) {
         self.polyline.bounding_box
@@ -487,7 +562,11 @@ impl EdgeDescriptor for PolylineEvenOddEdge {
         Arc::new(self.transform_as_self(transform))
     }
 
-    fn intercepts(&self, y_positions: &[f64], output: &mut [SmallVec<[EdgeDescriptorIntercept; 2]>]) {
+    fn intercepts(
+        &self,
+        y_positions: &[f64],
+        output: &mut [SmallVec<[EdgeDescriptorIntercept; 2]>],
+    ) {
         self.polyline.intercepts_on_lines(y_positions, output);
 
         for intercepts in output.iter_mut() {
@@ -498,6 +577,10 @@ impl EdgeDescriptor for PolylineEvenOddEdge {
     }
 
     fn description(&self) -> String {
-        format!("Even-odd polyline {:?}: {}", self.shape_id, self.polyline.description())
+        format!(
+            "Even-odd polyline {:?}: {}",
+            self.shape_id,
+            self.polyline.description()
+        )
     }
 }

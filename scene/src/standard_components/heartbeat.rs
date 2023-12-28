@@ -1,3 +1,9 @@
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
 use std::collections::HashMap;
 use std::sync::*;
 
@@ -59,7 +65,9 @@ pub struct Heartbeat;
 impl From<HeartbeatRequest> for InternalHeartbeatRequest {
     fn from(req: HeartbeatRequest) -> InternalHeartbeatRequest {
         match req {
-            HeartbeatRequest::RequestHeartbeat(entity_id) => InternalHeartbeatRequest::RequestHeartbeat(entity_id),
+            HeartbeatRequest::RequestHeartbeat(entity_id) => {
+                InternalHeartbeatRequest::RequestHeartbeat(entity_id)
+            }
         }
     }
 }
@@ -73,7 +81,9 @@ impl From<EntityUpdate> for InternalHeartbeatRequest {
 ///
 /// Creates the heartbeat entity in a context
 ///
-pub fn create_heartbeat_entity(context: &Arc<SceneContext>) -> Result<impl EntityChannel<Message=HeartbeatRequest>, CreateEntityError> {
+pub fn create_heartbeat_entity(
+    context: &Arc<SceneContext>,
+) -> Result<impl EntityChannel<Message = HeartbeatRequest>, CreateEntityError> {
     // Set up converting the messages that the heartbeat entity can receive
     context.convert_message::<EntityUpdate, InternalHeartbeatRequest>()?;
     context.convert_message::<HeartbeatRequest, InternalHeartbeatRequest>()?;
@@ -82,46 +92,59 @@ pub fn create_heartbeat_entity(context: &Arc<SceneContext>) -> Result<impl Entit
     let mut receivers = HashMap::<EntityId, BoxedEntityChannel<'static, Heartbeat>>::new();
 
     // Create the heartbeat entity itself
-    Ok(context.create_entity(HEARTBEAT, move |context, mut requests| async move {
-        // Request details on the entities (we track what gets destroyed so we can stop them receiving heartbeats)
-        if let Ok(our_channel) = context.send_to(HEARTBEAT) {
-            context.send(ENTITY_REGISTRY, EntityRegistryRequest::TrackEntities(our_channel)).await.ok();
-        }
+    Ok(context
+        .create_entity(HEARTBEAT, move |context, mut requests| async move {
+            // Request details on the entities (we track what gets destroyed so we can stop them receiving heartbeats)
+            if let Ok(our_channel) = context.send_to(HEARTBEAT) {
+                context
+                    .send(
+                        ENTITY_REGISTRY,
+                        EntityRegistryRequest::TrackEntities(our_channel),
+                    )
+                    .await
+                    .ok();
+            }
 
-        // Main message loop for the heartbeat entity
-        while let Some(message) = requests.next().await {
-            match message {
-                InternalHeartbeatRequest::GenerateHeartbeat => {
-                    // Send heartbeats to everything that's listening (stop on any error)
-                    let mut stopped = vec![];
+            // Main message loop for the heartbeat entity
+            while let Some(message) = requests.next().await {
+                match message {
+                    InternalHeartbeatRequest::GenerateHeartbeat => {
+                        // Send heartbeats to everything that's listening (stop on any error)
+                        let mut stopped = vec![];
 
-                    for (entity_id, channel) in receivers.iter_mut() {
-                        // Try to send to the channel
-                        if channel.send(Heartbeat).await.is_err() {
-                            // Any error adds to the stopped list
-                            stopped.push(*entity_id);
+                        for (entity_id, channel) in receivers.iter_mut() {
+                            // Try to send to the channel
+                            if channel.send(Heartbeat).await.is_err() {
+                                // Any error adds to the stopped list
+                                stopped.push(*entity_id);
+                            }
                         }
+
+                        // Remove stopped items from the receivers
+                        stopped.into_iter().for_each(|id| {
+                            receivers.remove(&id);
+                        });
                     }
 
-                    // Remove stopped items from the receivers
-                    stopped.into_iter()
-                        .for_each(|id| { receivers.remove(&id); });
-                }
+                    InternalHeartbeatRequest::EntityUpdate(EntityUpdate::CreatedEntity(
+                        _entity_id,
+                    )) => {
+                        // Nothing to do
+                    }
 
-                InternalHeartbeatRequest::EntityUpdate(EntityUpdate::CreatedEntity(_entity_id)) => {
-                    // Nothing to do
-                }
+                    InternalHeartbeatRequest::EntityUpdate(EntityUpdate::DestroyedEntity(
+                        entity_id,
+                    )) => {
+                        // Stop sending heartbeats to this entity
+                        receivers.remove(&entity_id);
+                    }
 
-                InternalHeartbeatRequest::EntityUpdate(EntityUpdate::DestroyedEntity(entity_id)) => {
-                    // Stop sending heartbeats to this entity
-                    receivers.remove(&entity_id);
-                }
-
-                InternalHeartbeatRequest::RequestHeartbeat(channel) => {
-                    // Add this channel to the list that get heartbeat messages
-                    receivers.insert(channel.entity_id(), channel);
+                    InternalHeartbeatRequest::RequestHeartbeat(channel) => {
+                        // Add this channel to the list that get heartbeat messages
+                        receivers.insert(channel.entity_id(), channel);
+                    }
                 }
             }
-        }
-    })?.convert())
+        })?
+        .convert())
 }

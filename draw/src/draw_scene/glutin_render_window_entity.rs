@@ -1,12 +1,18 @@
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
 use std::sync::*;
 
-use flo_binding::*;
-use flo_scene::*;
 use flo_stream::*;
 use futures::channel::mpsc;
 use futures::prelude::*;
 
+use flo_binding::*;
 use flo_canvas_events::*;
+use flo_scene::*;
 
 use crate::glutin::*;
 use crate::window_properties::*;

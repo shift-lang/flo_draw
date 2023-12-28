@@ -1,10 +1,16 @@
-use super::pixel_program_cache::*;
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
+use std::marker::PhantomData;
+use std::ops::Range;
+use std::sync::*;
 
 use crate::scanplan::*;
 
-use std::marker::{PhantomData};
-use std::ops::{Range};
-use std::sync::*;
+use super::pixel_program_cache::*;
 
 ///
 /// Trait implemented by types that can run pixel programs (identified by their data ID)
@@ -19,25 +25,32 @@ pub trait PixelProgramRunner: Send + Sync {
     /// Runs a program with the data found at the `program_data` identifier, to render the pixels in `x_range` to `target`. The pixels will
     /// eventually be rendered at the specified y position in the frame.
     ///
-    fn run_program(&self, program_data: PixelProgramDataId, target: &mut [Self::TPixel], x_range: Range<i32>, x_transform: &ScanlineTransform, y_pos: f64);
+    fn run_program(
+        &self,
+        program_data: PixelProgramDataId,
+        target: &mut [Self::TPixel],
+        x_range: Range<i32>,
+        x_transform: &ScanlineTransform,
+        y_pos: f64,
+    );
 }
 
 ///
 /// A pixel program runner that is implemented as a basic function
 ///
 pub struct BasicPixelProgramRunner<TFn, TPixel>
-    where
-        TFn: Send + Sync + Fn(PixelProgramDataId, &mut [TPixel], Range<i32>, &ScanlineTransform, f64),
-        TPixel: Send,
+where
+    TFn: Send + Sync + Fn(PixelProgramDataId, &mut [TPixel], Range<i32>, &ScanlineTransform, f64),
+    TPixel: Send,
 {
     pixel_fn: TFn,
     pixel: PhantomData<Mutex<TPixel>>,
 }
 
 impl<TFn, TPixel> From<TFn> for BasicPixelProgramRunner<TFn, TPixel>
-    where
-        TFn: Send + Sync + Fn(PixelProgramDataId, &mut [TPixel], Range<i32>, &ScanlineTransform, f64),
-        TPixel: Send,
+where
+    TFn: Send + Sync + Fn(PixelProgramDataId, &mut [TPixel], Range<i32>, &ScanlineTransform, f64),
+    TPixel: Send,
 {
     ///
     /// Creates a new basic pixel program runner.
@@ -54,27 +67,41 @@ impl<TFn, TPixel> From<TFn> for BasicPixelProgramRunner<TFn, TPixel>
 }
 
 impl<TFn, TPixel> PixelProgramRunner for BasicPixelProgramRunner<TFn, TPixel>
-    where
-        TFn: Send + Sync + Fn(PixelProgramDataId, &mut [TPixel], Range<i32>, &ScanlineTransform, f64),
-        TPixel: Send,
+where
+    TFn: Send + Sync + Fn(PixelProgramDataId, &mut [TPixel], Range<i32>, &ScanlineTransform, f64),
+    TPixel: Send,
 {
     type TPixel = TPixel;
 
     #[inline]
-    fn run_program(&self, program_data: PixelProgramDataId, target: &mut [Self::TPixel], x_range: Range<i32>, x_transform: &ScanlineTransform, y_pos: f64) {
+    fn run_program(
+        &self,
+        program_data: PixelProgramDataId,
+        target: &mut [Self::TPixel],
+        x_range: Range<i32>,
+        x_transform: &ScanlineTransform,
+        y_pos: f64,
+    ) {
         (self.pixel_fn)(program_data, target, x_range, x_transform, y_pos)
     }
 }
 
 impl<'a, TFn, TPixel> PixelProgramRunner for &'a BasicPixelProgramRunner<TFn, TPixel>
-    where
-        TFn: Send + Sync + Fn(PixelProgramDataId, &mut [TPixel], Range<i32>, &ScanlineTransform, f64),
-        TPixel: Send,
+where
+    TFn: Send + Sync + Fn(PixelProgramDataId, &mut [TPixel], Range<i32>, &ScanlineTransform, f64),
+    TPixel: Send,
 {
     type TPixel = TPixel;
 
     #[inline]
-    fn run_program(&self, program_data: PixelProgramDataId, target: &mut [Self::TPixel], x_range: Range<i32>, x_transform: &ScanlineTransform, y_pos: f64) {
+    fn run_program(
+        &self,
+        program_data: PixelProgramDataId,
+        target: &mut [Self::TPixel],
+        x_range: Range<i32>,
+        x_transform: &ScanlineTransform,
+        y_pos: f64,
+    ) {
         (self.pixel_fn)(program_data, target, x_range, x_transform, y_pos)
     }
 }

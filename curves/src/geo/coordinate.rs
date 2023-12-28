@@ -1,3 +1,9 @@
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
 //!
 //! # Describing coordinates
 //!
@@ -17,7 +23,14 @@ use std::ops::*;
 ///
 /// Represents a value that can be used as a coordinate in a bezier curve
 ///
-pub trait Coordinate: Sized + Copy + Add<Self, Output=Self> + Mul<f64, Output=Self> + Sub<Self, Output=Self> + PartialEq {
+pub trait Coordinate:
+    Sized
+    + Copy
+    + Add<Self, Output = Self>
+    + Mul<f64, Output = Self>
+    + Sub<Self, Output = Self>
+    + PartialEq
+{
     ///
     /// Creates a new coordinate from the specified set of components
     ///
@@ -184,7 +197,9 @@ pub trait Coordinate2D {
     fn y(&self) -> f64;
 
     #[inline]
-    fn coords(&self) -> (f64, f64) { (self.x(), self.y()) }
+    fn coords(&self) -> (f64, f64) {
+        (self.x(), self.y())
+    }
 }
 
 ///

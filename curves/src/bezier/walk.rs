@@ -1,7 +1,13 @@
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
 use super::basis::*;
 use super::curve::*;
-use super::section::*;
 use super::derivative::*;
+use super::section::*;
 
 use crate::geo::*;
 
@@ -11,12 +17,15 @@ use ouroboros::*;
 /// Walks a bezier curve by dividing it into a number of sections
 ///
 /// These sections are uneven in length: they all advance equally by 't' value but the points will
-/// be spaced according to the shape of the curve (will have an uneven distance between them) 
+/// be spaced according to the shape of the curve (will have an uneven distance between them)
 ///
 #[inline]
-pub fn walk_curve_unevenly<Curve>(curve: &Curve, num_subdivisions: usize) -> impl '_ + Iterator<Item=CurveSection<'_, Curve>>
-    where
-        Curve: BezierCurve,
+pub fn walk_curve_unevenly<Curve>(
+    curve: &Curve,
+    num_subdivisions: usize,
+) -> impl '_ + Iterator<Item = CurveSection<'_, Curve>>
+where
+    Curve: BezierCurve,
 {
     if num_subdivisions > 0 {
         UnevenWalkIterator {
@@ -41,9 +50,13 @@ pub fn walk_curve_unevenly<Curve>(curve: &Curve, num_subdivisions: usize) -> imp
 /// This walks evenly using the curve's chord length rather than the arc length: each section returned will have a `chord_length()`
 /// of `distance`. The call `vary_by()` can be used on the result to vary the step size at each point.
 ///
-pub fn walk_curve_evenly<Curve>(curve: &Curve, distance: f64, max_error: f64) -> EvenWalkIterator<'_, Curve>
-    where
-        Curve: BezierCurve,
+pub fn walk_curve_evenly<Curve>(
+    curve: &Curve,
+    distance: f64,
+    max_error: f64,
+) -> EvenWalkIterator<'_, Curve>
+where
+    Curve: BezierCurve,
 {
     const INITIAL_INCREMENT: f64 = 0.01;
 
@@ -57,7 +70,11 @@ pub fn walk_curve_evenly<Curve>(curve: &Curve, distance: f64, max_error: f64) ->
 
     // We can calculate the initial speed from close to the first point of the curve
     let initial_speed = de_casteljau3(0.001, wn1, wn2, wn3).magnitude();
-    let initial_speed = if distance / (initial_speed.abs()) > 0.25 { de_casteljau3(0.01, wn1, wn2, wn3).magnitude() } else { initial_speed };
+    let initial_speed = if distance / (initial_speed.abs()) > 0.25 {
+        de_casteljau3(0.01, wn1, wn2, wn3).magnitude()
+    } else {
+        initial_speed
+    };
 
     let initial_increment = if initial_speed.abs() < 0.00000001 {
         INITIAL_INCREMENT
@@ -65,7 +82,11 @@ pub fn walk_curve_evenly<Curve>(curve: &Curve, distance: f64, max_error: f64) ->
         distance / initial_speed
     };
 
-    let initial_increment = if initial_increment > 0.25 { INITIAL_INCREMENT } else { initial_increment };
+    let initial_increment = if initial_increment > 0.25 {
+        INITIAL_INCREMENT
+    } else {
+        initial_increment
+    };
 
     EvenWalkIterator {
         last_point: curve.start_point(),
@@ -145,7 +166,7 @@ pub struct EvenWalkIterator<'a, Curve: BezierCurve> {
 /// Iterator that modifies the behaviour of EvenWalkIterator so that it varies the distance between
 /// each step
 ///
-struct VaryingWalkIterator<'a, Curve: BezierCurve, DistanceIter: 'a + Iterator<Item=f64>> {
+struct VaryingWalkIterator<'a, Curve: BezierCurve, DistanceIter: 'a + Iterator<Item = f64>> {
     /// The even walk iterator
     even_iterator: EvenWalkIterator<'a, Curve>,
 
@@ -161,7 +182,10 @@ impl<'a, Curve: BezierCurve> EvenWalkIterator<'a, Curve> {
     /// would generate a cycle of distances (say, by calling `cycle()`), but if it does end, the last distance will be used
     /// until the iteration over the curve is completed
     ///
-    pub fn vary_by<DistanceIter: 'a + Iterator<Item=f64>>(self, distance: DistanceIter) -> impl 'a + Iterator<Item=CurveSection<'a, Curve>> {
+    pub fn vary_by<DistanceIter: 'a + Iterator<Item = f64>>(
+        self,
+        distance: DistanceIter,
+    ) -> impl 'a + Iterator<Item = CurveSection<'a, Curve>> {
         VaryingWalkIterator {
             even_iterator: self,
             distance_iterator: Some(distance),
@@ -247,7 +271,7 @@ impl<'a, Curve: BezierCurve> Iterator for EvenWalkIterator<'a, Curve> {
             next_t = last_t + t_increment;
 
             // Sharp changes in direction can sometimes cause the distance to fail to converge: we limit the maximum number of iterations to avoid this
-            // (It's possible for there to be multiple points 'distance' away or two equidistant points around the target point, 
+            // (It's possible for there to be multiple points 'distance' away or two equidistant points around the target point,
             // and for this algorithm to fail to converge as a result)
             count += 1;
             if count >= MAX_ITERATIONS {
@@ -272,7 +296,9 @@ impl<'a, Curve: BezierCurve> Iterator for EvenWalkIterator<'a, Curve> {
     }
 }
 
-impl<'a, Curve: BezierCurve, DistanceIter: 'a + Iterator<Item=f64>> Iterator for VaryingWalkIterator<'a, Curve, DistanceIter> {
+impl<'a, Curve: BezierCurve, DistanceIter: 'a + Iterator<Item = f64>> Iterator
+    for VaryingWalkIterator<'a, Curve, DistanceIter>
+{
     type Item = CurveSection<'a, Curve>;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -298,25 +324,31 @@ impl<'a, Curve: BezierCurve, DistanceIter: 'a + Iterator<Item=f64>> Iterator for
 /// Walks a curve at even increments and maps the sections to another type
 ///
 /// This takes ownership of the curve rather than borrowing it to generate the sections, which makes it possible to use in circumstances where
-/// `walk_curve_evenly(...).map(...)` would require the result to be collected due to the borrowing. 
+/// `walk_curve_evenly(...).map(...)` would require the result to be collected due to the borrowing.
 ///
 #[inline]
-pub fn walk_curve_evenly_map<TCurve, TResult>(curve: TCurve, distance: f64, max_error: f64, map_fn: impl for<'a> Fn(CurveSection<'a, TCurve>) -> TResult) -> impl Iterator<Item=TResult>
-    where
-        TCurve: 'static + BezierCurve,
+pub fn walk_curve_evenly_map<TCurve, TResult>(
+    curve: TCurve,
+    distance: f64,
+    max_error: f64,
+    map_fn: impl for<'a> Fn(CurveSection<'a, TCurve>) -> TResult,
+) -> impl Iterator<Item = TResult>
+where
+    TCurve: 'static + BezierCurve,
 {
     EvenWalkMapIteratorBuilder {
         curve: curve,
         map_fn: map_fn,
         walk_iterator_builder: move |curve| walk_curve_evenly(curve, distance, max_error),
-    }.build()
+    }
+    .build()
 }
 
 #[self_referencing]
 struct EvenWalkMapIterator<TCurve, TMapFn, TResult>
-    where
-        TCurve: 'static + BezierCurve,
-        TMapFn: for<'a> Fn(CurveSection<'a, TCurve>) -> TResult,
+where
+    TCurve: 'static + BezierCurve,
+    TMapFn: for<'a> Fn(CurveSection<'a, TCurve>) -> TResult,
 {
     curve: TCurve,
     map_fn: TMapFn,
@@ -327,9 +359,9 @@ struct EvenWalkMapIterator<TCurve, TMapFn, TResult>
 }
 
 impl<TCurve, TMapFn, TResult> Iterator for EvenWalkMapIterator<TCurve, TMapFn, TResult>
-    where
-        TCurve: 'static + BezierCurve,
-        TMapFn: for<'a> Fn(CurveSection<'a, TCurve>) -> TResult,
+where
+    TCurve: 'static + BezierCurve,
+    TMapFn: for<'a> Fn(CurveSection<'a, TCurve>) -> TResult,
 {
     type Item = TResult;
 

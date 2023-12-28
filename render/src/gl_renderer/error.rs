@@ -1,3 +1,9 @@
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
 use gl;
 
 #[derive(Debug, Clone, PartialEq, Hash)]
@@ -61,6 +67,6 @@ fn check_next_gl_error() -> Option<GlError> {
         gl::NO_ERROR => None,
         gl::INVALID_OPERATION => Some(GlError::InvalidOperation),
         gl::INVALID_ENUM => Some(GlError::InvalidEnum),
-        unknown => Some(GlError::UnknownError(unknown))
+        unknown => Some(GlError::UnknownError(unknown)),
     }
 }

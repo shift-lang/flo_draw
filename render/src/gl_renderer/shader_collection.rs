@@ -1,9 +1,15 @@
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
 use super::shader_program::*;
 
 use gl;
 
-use std::hash::{Hash};
-use std::collections::{HashMap};
+use std::collections::HashMap;
+use std::hash::Hash;
 
 ///
 /// Every shader used by the renderer has four variants: 'basic', 'erase', 'clip' and 'erase/clip':
@@ -13,9 +19,10 @@ use std::collections::{HashMap};
 /// #defines: this way only a single shader program can be used to produce all 4 variants.
 ///
 pub struct ShaderCollection<ShaderType, UniformAttribute>
-    where
-        UniformAttribute: Hash + Eq,
-        ShaderType: Hash + Eq {
+where
+    UniformAttribute: Hash + Eq,
+    ShaderType: Hash + Eq,
+{
     /// The cached shaders for this collection
     shaders: HashMap<ShaderType, ShaderProgram<UniformAttribute>>,
 
@@ -24,14 +31,17 @@ pub struct ShaderCollection<ShaderType, UniformAttribute>
 }
 
 impl<ShaderType, UniformAttribute> ShaderCollection<ShaderType, UniformAttribute>
-    where
-        UniformAttribute: Hash + Eq,
-        ShaderType: Hash + Eq + Clone {
+where
+    UniformAttribute: Hash + Eq,
+    ShaderType: Hash + Eq + Clone,
+{
     ///
     /// Creates a new shader collection from the specified vertex and fragment programs
     ///
     pub fn new<ShaderLoader>(loader: ShaderLoader) -> ShaderCollection<ShaderType, UniformAttribute>
-        where ShaderLoader: 'static + Send + Fn(ShaderType) -> ShaderProgram<UniformAttribute> {
+    where
+        ShaderLoader: 'static + Send + Fn(ShaderType) -> ShaderProgram<UniformAttribute>,
+    {
         ShaderCollection {
             shaders: HashMap::new(),
             load_shader: Box::new(loader),
@@ -41,12 +51,16 @@ impl<ShaderType, UniformAttribute> ShaderCollection<ShaderType, UniformAttribute
     ///
     /// Retrieves the shader program with the specified type
     ///
-    pub fn program<'a>(&'a mut self, shader_type: ShaderType) -> &'a mut ShaderProgram<UniformAttribute> {
+    pub fn program<'a>(
+        &'a mut self,
+        shader_type: ShaderType,
+    ) -> &'a mut ShaderProgram<UniformAttribute> {
         // Use the existing shader program, or compile a new one if this shader hasn't been used before
         let shaders = &mut self.shaders;
         let load_shader = &self.load_shader;
 
-        let program = shaders.entry(shader_type.clone())
+        let program = shaders
+            .entry(shader_type.clone())
             .or_insert_with(move || (load_shader)(shader_type));
         program
     }
@@ -57,7 +71,10 @@ impl<ShaderType, UniformAttribute> ShaderCollection<ShaderType, UniformAttribute
     /// Textures 1 and 2 are used for the erase and clip mask: texture 0 is intended as the shader input, but 3 and upwards can be used as
     /// well, provided care is taken if we ever need more 'standard' variants
     ///
-    pub fn use_program<'a>(&'a mut self, shader_type: ShaderType) -> &'a mut ShaderProgram<UniformAttribute> {
+    pub fn use_program<'a>(
+        &'a mut self,
+        shader_type: ShaderType,
+    ) -> &'a mut ShaderProgram<UniformAttribute> {
         unsafe {
             let program = self.program(shader_type);
             gl::UseProgram(**program);

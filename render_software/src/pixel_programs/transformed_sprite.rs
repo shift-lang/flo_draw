@@ -1,3 +1,9 @@
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
 use super::basic_sprite::*;
 
 use crate::edgeplan::*;
@@ -6,15 +12,15 @@ use crate::scanplan::*;
 
 use flo_canvas as canvas;
 
-use std::marker::{PhantomData};
+use std::marker::PhantomData;
 use std::sync::*;
 
 ///
 /// The edges supplied to the transformed sprite data, either the version after transformation or the version before
 ///
 enum TransformedEdges<TEdgeDescriptor>
-    where
-        TEdgeDescriptor: EdgeDescriptor,
+where
+    TEdgeDescriptor: EdgeDescriptor,
 {
     /// The original set of edges, before they've been transformed
     OriginalEdges(Arc<EdgePlan<TEdgeDescriptor>>),
@@ -31,9 +37,9 @@ enum TransformedEdges<TEdgeDescriptor>
 /// be rendered more efficiently if the algorithm is able to detect opaque areas.
 ///
 pub struct TransformedSpriteProgram<TPixel, TEdgeDescriptor, TPlanner>
-    where
-        TEdgeDescriptor: 'static + EdgeDescriptor,
-        TPixel: 'static,
+where
+    TEdgeDescriptor: 'static + EdgeDescriptor,
+    TPixel: 'static,
 {
     basic_program: PhantomData<BasicSpriteProgram<TPixel, Arc<dyn EdgeDescriptor>, TPlanner>>,
     edge_descriptor: PhantomData<EdgePlan<TEdgeDescriptor>>,
@@ -43,8 +49,8 @@ pub struct TransformedSpriteProgram<TPixel, TEdgeDescriptor, TPlanner>
 /// Data that can be used to run a basic sprite program
 ///
 pub struct TransformedSpriteData<TEdgeDescriptor>
-    where
-        TEdgeDescriptor: EdgeDescriptor,
+where
+    TEdgeDescriptor: EdgeDescriptor,
 {
     /// The untransformed edges for this sprite
     edges: RwLock<TransformedEdges<TEdgeDescriptor>>,
@@ -53,10 +59,11 @@ pub struct TransformedSpriteData<TEdgeDescriptor>
     transform: canvas::Transform2D,
 }
 
-impl<TPixel, TEdgeDescriptor, TPlanner> Default for TransformedSpriteProgram<TPixel, TEdgeDescriptor, TPlanner>
-    where
-        TEdgeDescriptor: 'static + EdgeDescriptor,
-        TPixel: 'static,
+impl<TPixel, TEdgeDescriptor, TPlanner> Default
+    for TransformedSpriteProgram<TPixel, TEdgeDescriptor, TPlanner>
+where
+    TEdgeDescriptor: 'static + EdgeDescriptor,
+    TPixel: 'static,
 {
     fn default() -> Self {
         TransformedSpriteProgram {
@@ -67,8 +74,8 @@ impl<TPixel, TEdgeDescriptor, TPlanner> Default for TransformedSpriteProgram<TPi
 }
 
 impl<TEdgeDescriptor> TransformedSpriteData<TEdgeDescriptor>
-    where
-        TEdgeDescriptor: EdgeDescriptor,
+where
+    TEdgeDescriptor: EdgeDescriptor,
 {
     ///
     /// Creates a new data object for the transformed sprite program
@@ -81,11 +88,12 @@ impl<TEdgeDescriptor> TransformedSpriteData<TEdgeDescriptor>
     }
 }
 
-impl<TPixel, TEdgeDescriptor, TPlanner> PixelProgramForFrame for TransformedSpriteProgram<TPixel, TEdgeDescriptor, TPlanner>
-    where
-        TEdgeDescriptor: 'static + EdgeDescriptor,
-        TPixel: 'static + Copy + Send + Sync + AlphaBlend,
-        TPlanner: Send + Sync + Default + ScanPlanner<Edge=Arc<dyn EdgeDescriptor>>,
+impl<TPixel, TEdgeDescriptor, TPlanner> PixelProgramForFrame
+    for TransformedSpriteProgram<TPixel, TEdgeDescriptor, TPlanner>
+where
+    TEdgeDescriptor: 'static + EdgeDescriptor,
+    TPixel: 'static + Copy + Send + Sync + AlphaBlend,
+    TPlanner: Send + Sync + Default + ScanPlanner<Edge = Arc<dyn EdgeDescriptor>>,
 {
     /// The type of the pixel program that this will run
     type Program = BasicSpriteProgram<TPixel, Arc<dyn EdgeDescriptor>, TPlanner>;
@@ -98,14 +106,22 @@ impl<TPixel, TEdgeDescriptor, TPlanner> PixelProgramForFrame for TransformedSpri
     ///
     /// Creates a pixel program and the corresponding data that will run for a given frame size
     ///
-    fn program_for_frame(&self, _pixel_size: PixelSize, program_data: &Arc<Self::FrameData>) -> (BasicSpriteProgram<TPixel, Arc<dyn EdgeDescriptor>, TPlanner>, BasicSpriteData<Arc<dyn EdgeDescriptor>>) {
+    fn program_for_frame(
+        &self,
+        _pixel_size: PixelSize,
+        program_data: &Arc<Self::FrameData>,
+    ) -> (
+        BasicSpriteProgram<TPixel, Arc<dyn EdgeDescriptor>, TPlanner>,
+        BasicSpriteData<Arc<dyn EdgeDescriptor>>,
+    ) {
         let transformed_edges = {
             let mut edges = program_data.edges.write().unwrap();
 
             match &*edges {
                 TransformedEdges::OriginalEdges(original_edges) => {
                     // Transform the edegs and update the state
-                    let transformed_edges = Arc::new(original_edges.transform(&program_data.transform));
+                    let transformed_edges =
+                        Arc::new(original_edges.transform(&program_data.transform));
                     *edges = TransformedEdges::TransformedEdges(transformed_edges.clone());
 
                     transformed_edges

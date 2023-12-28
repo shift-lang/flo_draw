@@ -1,7 +1,13 @@
-use flo_curves::Line;
-use flo_curves::geo::*;
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
 use flo_curves::bezier::rasterize::*;
 use flo_curves::bezier::vectorize::*;
+use flo_curves::geo::*;
+use flo_curves::Line;
 
 use smallvec::*;
 
@@ -18,7 +24,11 @@ fn nearest_point_on_circle(x: f64, y: f64, radius: f64) -> Coord2 {
     line.point_at_pos(t)
 }
 
-fn nearby_points_on_circle(point: Coord2, radius: f64, center: Coord2) -> Vec<(ContourPosition, Coord2)> {
+fn nearby_points_on_circle(
+    point: Coord2,
+    radius: f64,
+    center: Coord2,
+) -> Vec<(ContourPosition, Coord2)> {
     let mut points = vec![];
     let grid_x = point.x().round();
     let grid_y = point.y().round();
@@ -82,7 +92,11 @@ fn create_circle_sample(num_points: usize, radius: f64) -> SampledApproxDistance
 ///
 /// Checks that all the values in the distance field cache are within max_error of the actual distance to the circle
 ///
-fn check_circle_distances(cache: &mut SampledApproxDistanceFieldCache, radius: f64, max_error: f64) {
+fn check_circle_distances(
+    cache: &mut SampledApproxDistanceFieldCache,
+    radius: f64,
+    max_error: f64,
+) {
     // Fetch the size and expected center point
     let size = cache.size();
     let center = Coord2(radius + 1.0, radius + 1.0);
@@ -104,7 +118,14 @@ fn check_circle_distances(cache: &mut SampledApproxDistanceFieldCache, radius: f
             let from_center = circle_pos.dot(&circle_pos).sqrt();
             let from_edge = from_center - radius;
 
-            debug_assert!((from_edge.abs() - distance.abs()).abs() < max_error, "({}, {}) has distance {} but was expecting {}", x, y, from_edge.abs(), distance.abs());
+            debug_assert!(
+                (from_edge.abs() - distance.abs()).abs() < max_error,
+                "({}, {}) has distance {} but was expecting {}",
+                x,
+                y,
+                from_edge.abs(),
+                distance.abs()
+            );
 
             debug_assert!(!is_inside || from_edge <= 0.0, "({}, {}) should be outside the circle but isn't. Real distance {} (approximated as {})", x, y, from_edge, distance);
             debug_assert!(is_inside || from_edge >= 0.0, "({}, {}) should be inside the circle but isn't. Real distance {} (approximated as {})", x, y, from_edge, distance);

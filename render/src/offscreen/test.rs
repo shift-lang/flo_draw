@@ -1,3 +1,9 @@
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
 #[cfg(all(test, any(feature = "opengl", feature = "osx-metal")))]
 mod test {
     use crate::action::*;
@@ -14,16 +20,16 @@ mod test {
                 println!("Test not run: graphics device unavailable");
                 return;
             }
-            Err(other) => { panic!("Unexpected error: {:?}", other); }
+            Err(other) => {
+                panic!("Unexpected error: {:?}", other);
+            }
         };
 
         // Draw a triangle in a 100x100 buffer
         use self::RenderAction::*;
 
         let mut renderer = context.create_render_target(100, 100);
-        renderer.render(vec![
-            Clear(Rgba8([128, 128, 128, 255])),
-        ]);
+        renderer.render(vec![Clear(Rgba8([128, 128, 128, 255]))]);
 
         let image = renderer.realize();
 
@@ -62,16 +68,16 @@ mod test {
                 println!("Test not run: graphics device unavailable");
                 return;
             }
-            Err(other) => { panic!("Unexpected error: {:?}", other); }
+            Err(other) => {
+                panic!("Unexpected error: {:?}", other);
+            }
         };
 
         // Draw a triangle in a 100x100 buffer
         use self::RenderAction::*;
 
         let mut renderer = context.create_render_target(100, 100);
-        renderer.render(vec![
-            Clear(Rgba8([128, 129, 130, 255])),
-        ]);
+        renderer.render(vec![Clear(Rgba8([128, 129, 130, 255]))]);
 
         let image = renderer.realize();
 
@@ -110,7 +116,9 @@ mod test {
                 println!("Test not run: graphics device unavailable");
                 return;
             }
-            Err(other) => { panic!("Unexpected error: {:?}", other); }
+            Err(other) => {
+                panic!("Unexpected error: {:?}", other);
+            }
         };
 
         // Draw a triangle in a 100x100 buffer
@@ -121,11 +129,26 @@ mod test {
         renderer.render(vec![
             Clear(Rgba8([128, 128, 128, 255])),
             UseShader(ShaderType::Simple { clip_texture: None }),
-            CreateVertex2DBuffer(VertexBufferId(0), vec![
-                Vertex2D { pos: [-1.0, -1.0], tex_coord: [0.0, 0.0], color: black },
-                Vertex2D { pos: [1.0, 1.0], tex_coord: [0.0, 0.0], color: black },
-                Vertex2D { pos: [1.0, -1.0], tex_coord: [0.0, 0.0], color: black },
-            ]),
+            CreateVertex2DBuffer(
+                VertexBufferId(0),
+                vec![
+                    Vertex2D {
+                        pos: [-1.0, -1.0],
+                        tex_coord: [0.0, 0.0],
+                        color: black,
+                    },
+                    Vertex2D {
+                        pos: [1.0, 1.0],
+                        tex_coord: [0.0, 0.0],
+                        color: black,
+                    },
+                    Vertex2D {
+                        pos: [1.0, -1.0],
+                        tex_coord: [0.0, 0.0],
+                        color: black,
+                    },
+                ],
+            ),
             DrawTriangles(VertexBufferId(0), 0..3),
         ]);
 
@@ -169,7 +192,9 @@ mod test {
                 println!("Test not run: graphics device unavailable");
                 return;
             }
-            Err(other) => { panic!("Unexpected error: {:?}", other); }
+            Err(other) => {
+                panic!("Unexpected error: {:?}", other);
+            }
         };
 
         // Draw a triangle in a 100x100 buffer
@@ -181,11 +206,26 @@ mod test {
             Clear(Rgba8([128, 128, 128, 255])),
             SetTransform(Matrix::identity()),
             UseShader(ShaderType::Simple { clip_texture: None }),
-            CreateVertex2DBuffer(VertexBufferId(0), vec![
-                Vertex2D { pos: [-1.0, -1.0], tex_coord: [0.0, 0.0], color: black },
-                Vertex2D { pos: [1.0, 1.0], tex_coord: [0.0, 0.0], color: black },
-                Vertex2D { pos: [1.0, -1.0], tex_coord: [0.0, 0.0], color: black },
-            ]),
+            CreateVertex2DBuffer(
+                VertexBufferId(0),
+                vec![
+                    Vertex2D {
+                        pos: [-1.0, -1.0],
+                        tex_coord: [0.0, 0.0],
+                        color: black,
+                    },
+                    Vertex2D {
+                        pos: [1.0, 1.0],
+                        tex_coord: [0.0, 0.0],
+                        color: black,
+                    },
+                    Vertex2D {
+                        pos: [1.0, -1.0],
+                        tex_coord: [0.0, 0.0],
+                        color: black,
+                    },
+                ],
+            ),
             DrawTriangles(VertexBufferId(0), 0..3),
         ]);
 
@@ -229,7 +269,9 @@ mod test {
                 println!("Test not run: graphics device unavailable");
                 return;
             }
-            Err(other) => { panic!("Unexpected error: {:?}", other); }
+            Err(other) => {
+                panic!("Unexpected error: {:?}", other);
+            }
         };
 
         // Draw a triangle in a 100x100 buffer
@@ -240,11 +282,26 @@ mod test {
         renderer.render(vec![
             Clear(Rgba8([128, 129, 130, 255])),
             UseShader(ShaderType::Simple { clip_texture: None }),
-            CreateVertex2DBuffer(VertexBufferId(0), vec![
-                Vertex2D { pos: [-1.0, -1.0], tex_coord: [0.0, 0.0], color: black },
-                Vertex2D { pos: [1.0, 1.0], tex_coord: [0.0, 0.0], color: black },
-                Vertex2D { pos: [1.0, -1.0], tex_coord: [0.0, 0.0], color: black },
-            ]),
+            CreateVertex2DBuffer(
+                VertexBufferId(0),
+                vec![
+                    Vertex2D {
+                        pos: [-1.0, -1.0],
+                        tex_coord: [0.0, 0.0],
+                        color: black,
+                    },
+                    Vertex2D {
+                        pos: [1.0, 1.0],
+                        tex_coord: [0.0, 0.0],
+                        color: black,
+                    },
+                    Vertex2D {
+                        pos: [1.0, -1.0],
+                        tex_coord: [0.0, 0.0],
+                        color: black,
+                    },
+                ],
+            ),
             DrawTriangles(VertexBufferId(0), 0..3),
         ]);
 
@@ -252,7 +309,10 @@ mod test {
 
         assert!(image.len() == 100 * 100 * 4);
 
-        println!("({:x}, {:x}, {:x}, {:x})", image[0], image[1], image[2], image[3]);
+        println!(
+            "({:x}, {:x}, {:x}, {:x})",
+            image[0], image[1], image[2], image[3]
+        );
 
         assert!(image[0] == 1);
         assert!(image[1] == 2);

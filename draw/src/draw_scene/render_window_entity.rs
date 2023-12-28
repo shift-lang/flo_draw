@@ -1,8 +1,13 @@
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
 use std::sync::*;
 
-use flo_scene::*;
-
 use flo_canvas_events::*;
+use flo_scene::*;
 
 #[cfg(all(feature = "render-opengl", not(feature = "render-wgpu")))]
 use super::glutin_render_window_entity::*;

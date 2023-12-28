@@ -1,42 +1,59 @@
-use flo_curves::bezier::*;
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
 use flo_curves::bezier::path::*;
-use flo_curves::bezier::vectorize::*;
 use flo_curves::bezier::rasterize::*;
+use flo_curves::bezier::vectorize::*;
+use flo_curves::bezier::*;
 
 use itertools::*;
 use smallvec::*;
 
-use std::collections::{HashMap};
+use std::collections::HashMap;
 
 fn create_circle(radius: f64) -> DynRayCastContour {
     let radius = if radius < 0.0 { 0.0 } else { radius };
     let center = radius.ceil() + 1.0;
     let diameter = (center as usize) * 2 + 1;
 
-    DynRayCastContour::new(Box::new(move |y| {
-        let y = y - center;
+    DynRayCastContour::new(
+        Box::new(move |y| {
+            let y = y - center;
 
-        if y.abs() <= radius {
-            let intercept = ((radius * radius) - (y * y)).sqrt();
-            let min_x = center - intercept;
-            let max_x = center + intercept;
+            if y.abs() <= radius {
+                let intercept = ((radius * radius) - (y * y)).sqrt();
+                let min_x = center - intercept;
+                let max_x = center + intercept;
 
-            smallvec![min_x..max_x]
-        } else {
-            smallvec![]
-        }
-    }), ContourSize(diameter, diameter))
+                smallvec![min_x..max_x]
+            } else {
+                smallvec![]
+            }
+        }),
+        ContourSize(diameter, diameter),
+    )
 }
 
 fn draw<TContour: SampledContour>(contour: TContour) {
-    let bitmap = (0..(contour.contour_size().0 * contour.contour_size().1)).into_iter()
-        .map(|pos| (pos % contour.contour_size().1, pos / contour.contour_size().1))
+    let bitmap = (0..(contour.contour_size().0 * contour.contour_size().1))
+        .into_iter()
+        .map(|pos| {
+            (
+                pos % contour.contour_size().1,
+                pos / contour.contour_size().1,
+            )
+        })
         .map(|(x, y)| contour_point_is_inside(&contour, ContourPosition(x, y)))
         .collect::<Vec<_>>();
 
     for p in 0..bitmap.len() {
         print!("{}", if bitmap[p] { '#' } else { '.' });
-        if ((p + 1) % contour.contour_size().1) == 0 { println!() };
+        if ((p + 1) % contour.contour_size().1) == 0 {
+            println!()
+        };
     }
     println!();
 }
@@ -47,7 +64,11 @@ fn check_contour_against_bitmap<TContour: SampledContour>(contour: &TContour, dr
     let bitmap = (0..size.height())
         .flat_map(|y| {
             let mut pixels = vec![false; size.width()];
-            for fill_x in contour.rounded_intercepts_on_line(y as _).into_iter().flatten() {
+            for fill_x in contour
+                .rounded_intercepts_on_line(y as _)
+                .into_iter()
+                .flatten()
+            {
                 pixels[fill_x] = true;
             }
             pixels
@@ -65,10 +86,29 @@ fn check_contour_against_bitmap<TContour: SampledContour>(contour: &TContour, dr
     let contour_edges = contour.edge_cell_iterator().collect::<Vec<_>>();
 
     // Should generate identical results
-    let edges_for_y_bitmap = bitmap_edges.iter().cloned().group_by(|(pos, _)| pos.1).into_iter().map(|(ypos, group)| (ypos, group.count())).collect::<HashMap<_, _>>();
-    let edges_for_y_contour = contour_edges.iter().cloned().group_by(|(pos, _)| pos.1).into_iter().map(|(ypos, group)| (ypos, group.count())).collect::<HashMap<_, _>>();
+    let edges_for_y_bitmap = bitmap_edges
+        .iter()
+        .cloned()
+        .group_by(|(pos, _)| pos.1)
+        .into_iter()
+        .map(|(ypos, group)| (ypos, group.count()))
+        .collect::<HashMap<_, _>>();
+    let edges_for_y_contour = contour_edges
+        .iter()
+        .cloned()
+        .group_by(|(pos, _)| pos.1)
+        .into_iter()
+        .map(|(ypos, group)| (ypos, group.count()))
+        .collect::<HashMap<_, _>>();
 
-    assert!(edges_for_y_bitmap.len() == edges_for_y_contour.len(), "Returned different number of lines (bitmap has {} vs contour with {})\n{:?}\n\n{:?}", edges_for_y_bitmap.len(), edges_for_y_contour.len(), bitmap_edges, contour_edges);
+    assert!(
+        edges_for_y_bitmap.len() == edges_for_y_contour.len(),
+        "Returned different number of lines (bitmap has {} vs contour with {})\n{:?}\n\n{:?}",
+        edges_for_y_bitmap.len(),
+        edges_for_y_contour.len(),
+        bitmap_edges,
+        contour_edges
+    );
     assert!(contour_edges.len() == bitmap_edges.len(), "Returned different number of edges ({} vs {}). Edges counts were: \n  {}\n\nBitmap edges were \n  {}\n\nContour edges were \n  {}",
             bitmap_edges.len(),
             contour_edges.len(),
@@ -76,11 +116,21 @@ fn check_contour_against_bitmap<TContour: SampledContour>(contour: &TContour, dr
             bitmap_edges.iter().map(|edge| format!("{:?}", edge)).collect::<Vec<_>>().join("\n  "),
             contour_edges.iter().map(|edge| format!("{:?}", edge)).collect::<Vec<_>>().join("\n  "));
 
-    assert!(contour_edges == bitmap_edges, "Edges were \n  {}",
-            bitmap_edges.iter().zip(contour_edges.iter())
-                .map(|(bitmap_edge, contour_edge)| format!("({:?}) {:?}    {:?}", bitmap_edge == contour_edge, bitmap_edge, contour_edge))
-                .collect::<Vec<_>>()
-                .join("\n  "));
+    assert!(
+        contour_edges == bitmap_edges,
+        "Edges were \n  {}",
+        bitmap_edges
+            .iter()
+            .zip(contour_edges.iter())
+            .map(|(bitmap_edge, contour_edge)| format!(
+                "({:?}) {:?}    {:?}",
+                bitmap_edge == contour_edge,
+                bitmap_edge,
+                contour_edge
+            ))
+            .collect::<Vec<_>>()
+            .join("\n  ")
+    );
 
     check_intercepts(contour);
 }
@@ -147,7 +197,11 @@ fn big_circle() {
 fn even_radius_circular_contour() {
     let contour = create_circle(16.0);
 
-    assert!(contour.contour_size().width() == 35, "{:?}", contour.contour_size());
+    assert!(
+        contour.contour_size().width() == 35,
+        "{:?}",
+        contour.contour_size()
+    );
 
     check_contour_against_bitmap(&contour, true);
 }
@@ -156,7 +210,11 @@ fn even_radius_circular_contour() {
 fn odd_radius_circular_contour() {
     let contour = create_circle(15.0);
 
-    assert!(contour.contour_size().width() == 33, "{:?}", contour.contour_size());
+    assert!(
+        contour.contour_size().width() == 33,
+        "{:?}",
+        contour.contour_size()
+    );
 
     check_contour_against_bitmap(&contour, true);
 }
@@ -217,5 +275,10 @@ fn circle_path_from_contours() {
     }
 
     // The error here is semi-random due to the hash table used to store the edge graph
-    assert!(max_error <= 1.5, "Max error {:?} > 1.5. Path generated was {:?}", max_error, circle);
+    assert!(
+        max_error <= 1.5,
+        "Max error {:?} > 1.5. Path generated was {:?}",
+        max_error,
+        circle
+    );
 }

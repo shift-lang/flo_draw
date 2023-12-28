@@ -1,6 +1,12 @@
-use super::canvas_renderer::*;
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
 
 use crate::render_entity::*;
+
+use super::canvas_renderer::*;
 
 impl CanvasRenderer {
     ///
@@ -10,7 +16,10 @@ impl CanvasRenderer {
         // TODO: this does not support the clipping behaviour (it stores/restores the whole layer)
         // (We currently aren't using the clipping behaviour for anything so it might be easier to just
         // remove that capability from the documentation?)
-        self.core.sync(|core| core.layer(self.current_layer).state.restore_point = Some(core.layer(self.current_layer).render_order.len()));
+        self.core.sync(|core| {
+            core.layer(self.current_layer).state.restore_point =
+                Some(core.layer(self.current_layer).render_order.len())
+        });
     }
 
     ///
@@ -46,7 +55,8 @@ impl CanvasRenderer {
     /// Restore will no longer be valid for the current layer
     ///
     pub(super) fn tes_free_stored_buffer(&mut self) {
-        self.core.sync(|core| core.layer(self.current_layer).state.restore_point = None);
+        self.core
+            .sync(|core| core.layer(self.current_layer).state.restore_point = None);
     }
 
     ///
@@ -57,7 +67,10 @@ impl CanvasRenderer {
         self.namespace_stack.push(self.current_namespace);
 
         self.core.sync(|core| {
-            let all_layers = core.layers.iter().cloned()
+            let all_layers = core
+                .layers
+                .iter()
+                .cloned()
                 .chain(core.sprites.iter().map(|(_, layer_id)| *layer_id))
                 .collect::<Vec<_>>();
 
@@ -72,14 +85,21 @@ impl CanvasRenderer {
     ///
     pub(super) fn tes_pop_state(&mut self) {
         // The current transform is applied globally
-        self.transform_stack.pop()
+        self.transform_stack
+            .pop()
             .map(|transform| self.active_transform = transform);
-        if let Some(namespace) = self.namespace_stack.pop() { self.current_namespace = namespace; };
+        if let Some(namespace) = self.namespace_stack.pop() {
+            self.current_namespace = namespace;
+        };
 
         self.core.sync(|core| {
-            core.layer(self.current_layer).update_transform(&self.active_transform);
+            core.layer(self.current_layer)
+                .update_transform(&self.active_transform);
 
-            let all_layers = core.layers.iter().cloned()
+            let all_layers = core
+                .layers
+                .iter()
+                .cloned()
                 .chain(core.sprites.iter().map(|(_, layer_id)| *layer_id))
                 .collect::<Vec<_>>();
 
@@ -92,7 +112,9 @@ impl CanvasRenderer {
                     layer.pop_state();
 
                     if layer.state.current_matrix != old_transform {
-                        layer.render_order.push(RenderEntity::SetTransform(layer.state.current_matrix));
+                        layer
+                            .render_order
+                            .push(RenderEntity::SetTransform(layer.state.current_matrix));
                         layer.update_scale_factor();
                     }
                 } else {

@@ -1,8 +1,14 @@
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
 use super::sampled_contour::*;
 
 use smallvec::*;
 
-use std::ops::{Range};
+use std::ops::Range;
 
 ///
 /// A `SampledContour` that can return the intercepts along columns as well as lines
@@ -22,7 +28,8 @@ pub trait ColumnSampledContour: SampledContour {
     ///
     #[inline]
     fn rounded_intercepts_on_column(&self, x: f64) -> SmallVec<[Range<usize>; 4]> {
-        let intercepts = self.intercepts_on_column(x)
+        let intercepts = self
+            .intercepts_on_column(x)
             .into_iter()
             .map(|intercept| {
                 let min_y_ceil = intercept.start.ceil();
@@ -45,9 +52,11 @@ pub trait ColumnSampledContour: SampledContour {
 }
 
 impl<'a, T> ColumnSampledContour for &'a T
-    where
-        T: ColumnSampledContour,
+where
+    T: ColumnSampledContour,
 {
     #[inline]
-    fn intercepts_on_column(&self, x: f64) -> SmallVec<[Range<f64>; 4]> { (*self).intercepts_on_column(x) }
+    fn intercepts_on_column(&self, x: f64) -> SmallVec<[Range<f64>; 4]> {
+        (*self).intercepts_on_column(x)
+    }
 }

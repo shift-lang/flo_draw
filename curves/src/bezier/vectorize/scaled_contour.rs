@@ -1,9 +1,15 @@
-use super::sampled_contour::*;
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
 use super::column_sampled_contour::*;
+use super::sampled_contour::*;
 
 use smallvec::*;
 
-use std::ops::{Range};
+use std::ops::Range;
 
 ///
 /// A sampled contour whose result is scaled by the specified scale factor. The results of scaling a contour depends on how its
@@ -24,13 +30,13 @@ pub struct ScaledContour<TContour> {
     /// Y offset to apply to the result
     offset_y: f64,
 
-    /// The size of 
+    /// The size of
     size: ContourSize,
 }
 
 impl<TContour> ScaledContour<TContour>
-    where
-        TContour: SampledContour,
+where
+    TContour: SampledContour,
 {
     ///
     /// Creates scaled version of another contour
@@ -50,13 +56,19 @@ impl<TContour> ScaledContour<TContour>
         // The offset is added to the position to allow for aligning the distance field to non-integer grids (eg, when this is used as a brush)
         let (offset_x, offset_y) = offset;
 
-        ScaledContour { contour, scale_factor, size, offset_x, offset_y }
+        ScaledContour {
+            contour,
+            scale_factor,
+            size,
+            offset_x,
+            offset_y,
+        }
     }
 }
 
 impl<TContour> SampledContour for ScaledContour<TContour>
-    where
-        TContour: SampledContour,
+where
+    TContour: SampledContour,
 {
     #[inline]
     fn contour_size(&self) -> ContourSize {
@@ -67,27 +79,31 @@ impl<TContour> SampledContour for ScaledContour<TContour>
     fn intercepts_on_line(&self, y: f64) -> SmallVec<[Range<f64>; 4]> {
         let y = (y - self.offset_y) / self.scale_factor;
 
-        self.contour.intercepts_on_line(y)
+        self.contour
+            .intercepts_on_line(y)
             .into_iter()
             .map(|range| {
-                (range.start * self.scale_factor + self.offset_x)..(range.end * self.scale_factor + self.offset_x)
+                (range.start * self.scale_factor + self.offset_x)
+                    ..(range.end * self.scale_factor + self.offset_x)
             })
             .collect()
     }
 }
 
 impl<TContour> ColumnSampledContour for ScaledContour<TContour>
-    where
-        TContour: ColumnSampledContour,
+where
+    TContour: ColumnSampledContour,
 {
     #[inline]
     fn intercepts_on_column(&self, x: f64) -> SmallVec<[Range<f64>; 4]> {
         let x = (x - self.offset_x) / self.scale_factor;
 
-        self.contour.intercepts_on_column(x)
+        self.contour
+            .intercepts_on_column(x)
             .into_iter()
             .map(|range| {
-                (range.start * self.scale_factor + self.offset_y)..(range.end * self.scale_factor + self.offset_y)
+                (range.start * self.scale_factor + self.offset_y)
+                    ..(range.end * self.scale_factor + self.offset_y)
             })
             .collect()
     }

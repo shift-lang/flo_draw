@@ -1,11 +1,17 @@
-use super::canvas_drawing::*;
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
 
-use crate::pixel::*;
-use crate::edgeplan::*;
+use std::sync::*;
 
 use flo_canvas as canvas;
 
-use std::sync::*;
+use crate::edgeplan::*;
+use crate::pixel::*;
+
+use super::canvas_drawing::*;
 
 ///
 /// A layer handle is a reference to a layer within a drawing
@@ -72,8 +78,8 @@ impl Layer {
 }
 
 impl<TPixel, const N: usize> CanvasDrawing<TPixel, N>
-    where
-        TPixel: 'static + Send + Sync + Pixel<N>,
+where
+    TPixel: 'static + Send + Sync + Pixel<N>,
 {
     ///
     /// Creates a new blank layer and returns the layer ID that it will have
@@ -111,7 +117,8 @@ impl<TPixel, const N: usize> CanvasDrawing<TPixel, N>
     ///
     #[inline]
     pub(crate) fn layer_with_id(&mut self, layer_id: canvas::LayerId) -> Option<&mut Layer> {
-        self.ordered_layers.get(layer_id.0 as usize)
+        self.ordered_layers
+            .get(layer_id.0 as usize)
             .copied()
             .and_then(move |layer_handle| self.layers.get_mut(layer_handle.0))
     }
@@ -143,13 +150,17 @@ impl<TPixel, const N: usize> CanvasDrawing<TPixel, N>
         self.ensure_layer(layer_id);
 
         // Update the transform of the layer we're leaving
-        if let Some(layer) = self.layer(self.current_layer) { layer.last_transform = transform; }
+        if let Some(layer) = self.layer(self.current_layer) {
+            layer.last_transform = transform;
+        }
 
         // Pick this layer
         self.current_layer = self.ordered_layers[layer_id.0 as usize];
 
         // Update the transform of the layer we're entering
-        if let Some(layer) = self.layer(self.current_layer) { layer.last_transform = transform; }
+        if let Some(layer) = self.layer(self.current_layer) {
+            layer.last_transform = transform;
+        }
     }
 
     ///
@@ -210,19 +221,27 @@ impl<TPixel, const N: usize> CanvasDrawing<TPixel, N>
         self.ensure_layer(layer_id);
 
         let operation = match blend {
-            SourceOver => { AlphaOperation::SourceOver }
-            SourceIn => { AlphaOperation::SourceIn }
-            SourceOut => { AlphaOperation::SourceHeldOut }
-            DestinationOver => { AlphaOperation::DestOver }
-            DestinationIn => { AlphaOperation::DestIn }
-            DestinationOut => { AlphaOperation::DestHeldOut }
-            SourceAtop => { AlphaOperation::SourceAtop }
-            DestinationAtop => { AlphaOperation::DestAtop }
+            SourceOver => AlphaOperation::SourceOver,
+            SourceIn => AlphaOperation::SourceIn,
+            SourceOut => AlphaOperation::SourceHeldOut,
+            DestinationOver => AlphaOperation::DestOver,
+            DestinationIn => AlphaOperation::DestIn,
+            DestinationOut => AlphaOperation::DestHeldOut,
+            SourceAtop => AlphaOperation::SourceAtop,
+            DestinationAtop => AlphaOperation::DestAtop,
 
-            Multiply => { todo!() }
-            Screen => { todo!() }
-            Darken => { todo!() }
-            Lighten => { todo!() }
+            Multiply => {
+                todo!()
+            }
+            Screen => {
+                todo!()
+            }
+            Darken => {
+                todo!()
+            }
+            Lighten => {
+                todo!()
+            }
         };
 
         if let Some(layer) = self.layer_with_id(layer_id) {
@@ -250,15 +269,14 @@ impl<TPixel, const N: usize> CanvasDrawing<TPixel, N>
         let layers = &mut self.layers;
         let program_data_cache = &mut self.program_data_cache;
 
-        layers.iter_mut()
-            .for_each(|(_, layer)| {
-                layer.clear();
+        layers.iter_mut().for_each(|(_, layer)| {
+            layer.clear();
 
-                // Release the layer's data
-                for data_id in layer.used_data.drain(..) {
-                    program_data_cache.release_program_data(data_id);
-                }
-            });
+            // Release the layer's data
+            for data_id in layer.used_data.drain(..) {
+                program_data_cache.release_program_data(data_id);
+            }
+        });
     }
 
     ///
@@ -271,7 +289,8 @@ impl<TPixel, const N: usize> CanvasDrawing<TPixel, N>
         self.ensure_layer(layer_2);
 
         // Swap the two indexes in the ordered layer list
-        self.ordered_layers.swap(layer_1.0 as usize, layer_2.0 as usize);
+        self.ordered_layers
+            .swap(layer_1.0 as usize, layer_2.0 as usize);
     }
 
     ///
@@ -287,12 +306,13 @@ impl<TPixel, const N: usize> CanvasDrawing<TPixel, N>
         let layers = &mut self.layers;
         let layer = &mut layers.get_mut(self.current_layer.0).unwrap();
 
-        // Store the current set of edges 
+        // Store the current set of edges
         layer.stored_edges.extend(layer.edges.all_edges().cloned());
 
         // Add extra references to the program data for the stored edges
-        layer.stored_data.extend(layer.used_data.iter()
-            .map(|data_id| {
+        layer
+            .stored_data
+            .extend(layer.used_data.iter().map(|data_id| {
                 program_data_cache.retain_program_data(*data_id);
                 *data_id
             }));
@@ -310,16 +330,21 @@ impl<TPixel, const N: usize> CanvasDrawing<TPixel, N>
         let edges = &mut layer.edges;
         let stored_edges = &layer.stored_edges;
 
-        // Clear the existing set of edges and replace with the stored edges    
+        // Clear the existing set of edges and replace with the stored edges
         edges.clear_edges();
-        stored_edges.iter()
+        stored_edges
+            .iter()
             .cloned()
             .for_each(|edge| edges.add_edge(edge));
 
         // Clear the existing program data and replace with the stored program data
-        layer.used_data.drain(..).for_each(|data_id| program_data_cache.release_program_data(data_id));
-        layer.used_data.extend(layer.stored_data.iter()
-            .map(|data_id| {
+        layer
+            .used_data
+            .drain(..)
+            .for_each(|data_id| program_data_cache.release_program_data(data_id));
+        layer
+            .used_data
+            .extend(layer.stored_data.iter().map(|data_id| {
                 program_data_cache.retain_program_data(*data_id);
                 *data_id
             }));
@@ -343,6 +368,8 @@ impl<TPixel, const N: usize> CanvasDrawing<TPixel, N>
         stored_edges.clear();
 
         // Release the data associated with each edge
-        stored_data.drain(..).for_each(|data_id| program_data_cache.release_program_data(data_id));
+        stored_data
+            .drain(..)
+            .for_each(|data_id| program_data_cache.release_program_data(data_id));
     }
 }

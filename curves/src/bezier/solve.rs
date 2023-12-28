@@ -1,8 +1,14 @@
-use super::curve::*;
-use super::super::geo::*;
-use super::super::consts::*;
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
 
-use roots::{find_roots_quadratic, find_roots_cubic, Roots};
+use super::super::consts::*;
+use super::super::geo::*;
+use super::curve::*;
+
+use roots::{find_roots_cubic, find_roots_quadratic, Roots};
 use smallvec::*;
 
 pub(crate) const CLOSE_ENOUGH: f64 = SMALL_DISTANCE * 50.0;
@@ -21,13 +27,17 @@ pub fn solve_basis_for_t(w1: f64, w2: f64, w3: f64, w4: f64, p: f64) -> SmallVec
     let a = w4 - w1 - c - b;
 
     // Solve for p
-    let roots = if a.abs() < 0.00000001 { find_roots_quadratic(b, c, d) } else { find_roots_cubic(a, b, c, d) };
+    let roots = if a.abs() < 0.00000001 {
+        find_roots_quadratic(b, c, d)
+    } else {
+        find_roots_cubic(a, b, c, d)
+    };
     let mut roots = match roots {
         Roots::No(_) => smallvec![],
         Roots::One([a]) => smallvec![a],
         Roots::Two([a, b]) => smallvec![a, b],
         Roots::Three([a, b, c]) => smallvec![a, b, c],
-        Roots::Four([a, b, c, d]) => smallvec![a, b, c, d]
+        Roots::Four([a, b, c, d]) => smallvec![a, b, c, d],
     };
 
     // Remove any roots outside the range of the function
@@ -59,7 +69,11 @@ pub fn solve_basis_for_t(w1: f64, w2: f64, w3: f64, w4: f64, p: f64) -> SmallVec
 /// For interactive use, `curve_intersects_ray()` might be more useful than eitehr this function or the `nearest_point_on_curve()`
 /// function as the 'true' nearest point may move in an odd manner as the point it's closest to changes.
 ///
-pub fn solve_curve_for_t_along_axis<C: BezierCurve>(curve: &C, point: &C::Point, accuracy: f64) -> Option<f64> {
+pub fn solve_curve_for_t_along_axis<C: BezierCurve>(
+    curve: &C,
+    point: &C::Point,
+    accuracy: f64,
+) -> Option<f64> {
     let p1 = curve.start_point();
     let (p2, p3) = curve.control_points();
     let p4 = curve.end_point();
@@ -67,7 +81,12 @@ pub fn solve_curve_for_t_along_axis<C: BezierCurve>(curve: &C, point: &C::Point,
     // Solve the basis function for each of the point's dimensions and pick the first that appears close enough (and within the range 0-1)
     for dimension in 0..(C::Point::len()) {
         // Solve for this dimension
-        let (w1, w2, w3, w4) = (p1.get(dimension), p2.get(dimension), p3.get(dimension), p4.get(dimension));
+        let (w1, w2, w3, w4) = (
+            p1.get(dimension),
+            p2.get(dimension),
+            p3.get(dimension),
+            p4.get(dimension),
+        );
         let possible_t_values = solve_basis_for_t(w1, w2, w3, w4, point.get(dimension));
 
         for possible_t in possible_t_values {

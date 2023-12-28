@@ -1,9 +1,15 @@
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
 use super::scanline_plan::*;
 use super::scanline_transform::*;
 
 use crate::edgeplan::*;
 
-use std::ops::{Range};
+use std::ops::Range;
 
 ///
 /// A scan planner is an algorithm that discovers where along a scanline to render pixels using pixel programs
@@ -18,5 +24,12 @@ pub trait ScanPlanner: Send + Sync {
     ///
     /// The y-position is copied into the scanlines array, and the scanlines are always generated in the same order that they are requested in.
     ///
-    fn plan_scanlines(&self, edge_plan: &EdgePlan<Self::Edge>, transform: &ScanlineTransform, y_positions: &[f64], x_range: Range<f64>, scanlines: &mut [(f64, ScanlinePlan)]);
+    fn plan_scanlines(
+        &self,
+        edge_plan: &EdgePlan<Self::Edge>,
+        transform: &ScanlineTransform,
+        y_positions: &[f64],
+        x_range: Range<f64>,
+        scanlines: &mut [(f64, ScanlinePlan)],
+    );
 }

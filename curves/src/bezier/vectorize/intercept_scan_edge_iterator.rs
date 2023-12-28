@@ -1,8 +1,14 @@
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
 use super::sampled_contour::*;
 
 use smallvec::*;
 
-use std::ops::{Range};
+use std::ops::Range;
 
 ///
 /// An iterator that finds the edges of a contour by calling the `intercepts_on_line()` function
@@ -34,8 +40,8 @@ pub struct InterceptScanEdgeIterator<TLineIterator> {
 }
 
 impl<TLineIterator> InterceptScanEdgeIterator<TLineIterator>
-    where
-        TLineIterator: Iterator<Item=SmallVec<[Range<usize>; 4]>>,
+where
+    TLineIterator: Iterator<Item = SmallVec<[Range<usize>; 4]>>,
 {
     ///
     /// Creates a new edge iterator at the top-left corner of a contour
@@ -89,7 +95,9 @@ impl<TLineIterator> InterceptScanEdgeIterator<TLineIterator>
             }
 
             if self.current_line.len() > 0 {
-                xpos = xpos.map_or(Some(self.current_line[0].start), |xpos| Some(xpos.min(self.current_line[0].start)));
+                xpos = xpos.map_or(Some(self.current_line[0].start), |xpos| {
+                    Some(xpos.min(self.current_line[0].start))
+                });
             }
 
             if let Some(xpos) = xpos {
@@ -116,8 +124,8 @@ impl<TLineIterator> InterceptScanEdgeIterator<TLineIterator>
 }
 
 impl<TLineIterator> Iterator for InterceptScanEdgeIterator<TLineIterator>
-    where
-        TLineIterator: Iterator<Item=SmallVec<[Range<usize>; 4]>>,
+where
+    TLineIterator: Iterator<Item = SmallVec<[Range<usize>; 4]>>,
 {
     type Item = (ContourPosition, ContourCell);
 
@@ -161,38 +169,67 @@ impl<TLineIterator> Iterator for InterceptScanEdgeIterator<TLineIterator>
                 }
 
                 // If both the upper and lower lines are empty, then move to the first filled spot
-                if upper.map_or(true, |upper| xpos < upper.start) && lower.map_or(true, |lower| xpos < lower.start) {
+                if upper.map_or(true, |upper| xpos < upper.start)
+                    && lower.map_or(true, |lower| xpos < lower.start)
+                {
                     match (upper, lower) {
-                        (Some(upper), Some(lower)) => { self.xpos = upper.start.min(lower.start); }
-                        (Some(upper), None) => { self.xpos = upper.start; }
-                        (None, Some(lower)) => { self.xpos = lower.start; }
+                        (Some(upper), Some(lower)) => {
+                            self.xpos = upper.start.min(lower.start);
+                        }
+                        (Some(upper), None) => {
+                            self.xpos = upper.start;
+                        }
+                        (None, Some(lower)) => {
+                            self.xpos = lower.start;
+                        }
 
-                        (None, None) => { unreachable!() }   // As this case is handled above
+                        (None, None) => {
+                            unreachable!()
+                        } // As this case is handled above
                     }
 
                     continue;
                 }
 
                 // If both the upper and lower lines are filled, then move to the earliest end point
-                if upper.map_or(false, |upper| xpos > upper.start && xpos < upper.end) && lower.map_or(false, |lower| xpos > lower.start && xpos < lower.end) {
+                if upper.map_or(false, |upper| xpos > upper.start && xpos < upper.end)
+                    && lower.map_or(false, |lower| xpos > lower.start && xpos < lower.end)
+                {
                     match (upper, lower) {
-                        (Some(upper), Some(lower)) => { self.xpos = upper.end.min(lower.end); }
+                        (Some(upper), Some(lower)) => {
+                            self.xpos = upper.end.min(lower.end);
+                        }
 
-                        _ => { unreachable!() } // Because we map to 'false' if either is None: hitting the end of the range is the same as the pixel being empty
+                        _ => {
+                            unreachable!()
+                        } // Because we map to 'false' if either is None: hitting the end of the range is the same as the pixel being empty
                     }
 
                     continue;
                 }
 
                 // At least one of the upper or lower lines is transitioning between filled and unfilled at the current xpos
-                let (tl, tr) = upper.map_or((false, false), |upper| (xpos > upper.start && xpos <= upper.end, xpos >= upper.start && xpos < upper.end));
-                let (bl, br) = lower.map_or((false, false), |lower| (xpos > lower.start && xpos <= lower.end, xpos >= lower.start && xpos < lower.end));
+                let (tl, tr) = upper.map_or((false, false), |upper| {
+                    (
+                        xpos > upper.start && xpos <= upper.end,
+                        xpos >= upper.start && xpos < upper.end,
+                    )
+                });
+                let (bl, br) = lower.map_or((false, false), |lower| {
+                    (
+                        xpos > lower.start && xpos <= lower.end,
+                        xpos >= lower.start && xpos < lower.end,
+                    )
+                });
 
                 // Next iteration should look at the next cell along
                 self.xpos += 1;
 
                 // Found a cell to return to the caller
-                return Some((ContourPosition(xpos as _, self.ypos as _), ContourCell::from_corners(tl, tr, bl, br)));
+                return Some((
+                    ContourPosition(xpos as _, self.ypos as _),
+                    ContourCell::from_corners(tl, tr, bl, br),
+                ));
             }
 
             // Read in the next line from the contour
@@ -216,8 +253,8 @@ pub struct ContourInterceptsIterator<'a, TContour> {
 }
 
 impl<'a, TContour> ContourInterceptsIterator<'a, TContour>
-    where
-        TContour: SampledContour,
+where
+    TContour: SampledContour,
 {
     ///
     /// Creates a new iterator that will return the intercepts in a contour
@@ -233,8 +270,8 @@ impl<'a, TContour> ContourInterceptsIterator<'a, TContour>
 }
 
 impl<'a, TContour> Iterator for ContourInterceptsIterator<'a, TContour>
-    where
-        TContour: SampledContour,
+where
+    TContour: SampledContour,
 {
     type Item = SmallVec<[Range<usize>; 4]>;
 

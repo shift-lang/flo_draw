@@ -1,3 +1,9 @@
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
 //!
 //! The draw_scene module provides an interface to flo_draw using the flo_scene library.
 //!
@@ -29,4 +35,3 @@ mod glutin_scene;
 mod wgpu_render_window_entity;
 #[cfg(feature = "render-wgpu")]
 mod wgpu_scene;
-

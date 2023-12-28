@@ -1,12 +1,19 @@
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
 use std::collections::HashMap;
 use std::mem;
-use std::sync::*;
 use std::sync::mpsc;
+use std::sync::*;
 use std::thread;
 
-use ::desync::*;
 use once_cell::sync::Lazy;
 use winit::event_loop::{EventLoop, EventLoopProxy};
+
+use ::desync::*;
 
 use super::winit_runtime::*;
 use super::winit_thread_event::*;
@@ -25,7 +32,9 @@ impl WinitThread {
     /// Sends an event to the Winit thread
     ///
     pub fn send_event(&self, event: WinitThreadEvent) {
-        self.event_proxy.desync(move |proxy| { proxy.send_event(event).ok(); });
+        self.event_proxy.desync(move |proxy| {
+            proxy.send_event(event).ok();
+        });
     }
 }
 
@@ -77,11 +86,13 @@ pub fn with_2d_graphics<TAppFn: 'static + Send + FnOnce() -> ()>(app_fn: TAppFn)
         .spawn(move || {
             WINIT_THREAD.sync(move |thread| {
                 // Wait for the proxy to be created
-                let proxy = recv_proxy.recv().expect("Winit thread will send us a proxy after initialising");
+                let proxy = recv_proxy
+                    .recv()
+                    .expect("Winit thread will send us a proxy after initialising");
 
                 // Create the main thread object
                 *thread = Some(Arc::new(WinitThread {
-                    event_proxy: Desync::new(proxy)
+                    event_proxy: Desync::new(proxy),
                 }));
             });
 
@@ -108,17 +119,17 @@ fn create_winit_thread() -> Arc<WinitThread> {
     // Run the event loop on its own thread
     thread::Builder::new()
         .name("Winit event thread".into())
-        .spawn(move || {
-            run_winit_thread(send_proxy)
-        })
+        .spawn(move || run_winit_thread(send_proxy))
         .expect("Winit thread is running");
 
     // Wait for the proxy to be created
-    let proxy = recv_proxy.recv().expect("Winit thread will send us a proxy after initialising");
+    let proxy = recv_proxy
+        .recv()
+        .expect("Winit thread will send us a proxy after initialising");
 
     // Create a WinitThread object to communicate with this thread
     Arc::new(WinitThread {
-        event_proxy: Desync::new(proxy)
+        event_proxy: Desync::new(proxy),
     })
 }
 
@@ -133,7 +144,9 @@ fn run_winit_thread(send_proxy: mpsc::Sender<EventLoopProxy<WinitThreadEvent>>) 
     let proxy = event_loop.create_proxy();
 
     // Send the proxy back to the creating thread
-    send_proxy.send(proxy).expect("Main thread is waiting to receive its proxy");
+    send_proxy
+        .send(proxy)
+        .expect("Main thread is waiting to receive its proxy");
 
     // The runtime struct is used to maintain state when the event loop is running
     let mut runtime = WinitRuntime {

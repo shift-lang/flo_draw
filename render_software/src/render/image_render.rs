@@ -1,21 +1,27 @@
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
 #[cfg(feature = "render_png")]
 mod render_png {
     use super::super::frame_size::*;
-    use super::super::renderer::*;
     use super::super::render_slice::*;
     use super::super::render_target_trait::*;
+    use super::super::renderer::*;
     use super::super::u8_frame_renderer::*;
 
     use crate::pixel::*;
 
-    use std::io::{Write, BufWriter};
+    use std::io::{BufWriter, Write};
 
     ///
     /// Render target that outputs a PNG file to a stream
     ///
     pub struct PngRenderTarget<TStream>
-        where
-            TStream: Write,
+    where
+        TStream: Write,
     {
         writer: png::Writer<BufWriter<TStream>>,
         width: usize,
@@ -24,8 +30,8 @@ mod render_png {
     }
 
     impl<TStream> PngRenderTarget<TStream>
-        where
-            TStream: Write,
+    where
+        TStream: Write,
     {
         ///
         /// Creates a PNG writer that will write to a stream
@@ -36,7 +42,12 @@ mod render_png {
         ///
         /// Creates a PNG writer that will write to a bufwriter
         ///
-        pub fn from_bufwriter(target: BufWriter<TStream>, width: usize, height: usize, gamma: f64) -> Self {
+        pub fn from_bufwriter(
+            target: BufWriter<TStream>,
+            width: usize,
+            height: usize,
+            gamma: f64,
+        ) -> Self {
             let mut target = png::Encoder::new(target, width as u32, height as u32);
 
             target.set_color(png::ColorType::Rgba);
@@ -53,9 +64,14 @@ mod render_png {
     }
 
     impl<'a, TStream, TPixel> RenderTarget<TPixel> for PngRenderTarget<TStream>
-        where
-            TStream: Write,
-            TPixel: 'static + Send + Copy + Default + AlphaBlend + ToGammaColorSpace<U8RgbaPremultipliedPixel>,
+    where
+        TStream: Write,
+        TPixel: 'static
+            + Send
+            + Copy
+            + Default
+            + AlphaBlend
+            + ToGammaColorSpace<U8RgbaPremultipliedPixel>,
     {
         #[inline]
         fn width(&self) -> usize {
@@ -67,14 +83,21 @@ mod render_png {
             self.height
         }
 
-        fn render<TRegionRenderer>(&mut self, region_renderer: TRegionRenderer, source_data: &TRegionRenderer::Source)
-            where
-                TRegionRenderer: Renderer<Region=RenderSlice, Dest=[TPixel]>
+        fn render<TRegionRenderer>(
+            &mut self,
+            region_renderer: TRegionRenderer,
+            source_data: &TRegionRenderer::Source,
+        ) where
+            TRegionRenderer: Renderer<Region = RenderSlice, Dest = [TPixel]>,
         {
             // Render to a buffer
             // TODO: need to render to a non-premultiplied RGB format for PNG files
             let renderer = U8FrameRenderer::new(region_renderer);
-            let frame_size = GammaFrameSize { width: self.width, height: self.height, gamma: self.gamma };
+            let frame_size = GammaFrameSize {
+                width: self.width,
+                height: self.height,
+                gamma: self.gamma,
+            };
             let mut pixel_data = vec![0u8; self.width * self.height * 4];
 
             renderer.render(&frame_size, source_data, pixel_data.to_rgba_slice_mut());

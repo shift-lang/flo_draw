@@ -1,6 +1,12 @@
-use super::traits::*;
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
 
 use std::sync::*;
+
+use super::traits::*;
 
 // TODO: issue with new 'drop' behaviour is what to do when we clone, as if keep_alive is
 // false on the clone then dropping the clone will also drop this object. Sometimes we

@@ -1,6 +1,12 @@
-use flo_curves::*;
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
 use flo_curves::bezier;
 use flo_curves::line;
+use flo_curves::*;
 
 #[test]
 fn find_intersection_on_straight_line() {
@@ -80,11 +86,26 @@ fn find_intersection_on_curve() {
     assert!(intersections.len() == 3);
 
     // Curve is symmetrical so the mid-point should be at 5,5
-    assert!(curve.point_at_pos(intersections[1].0).distance_to(&Coord2(5.0, 5.0)) < 0.01);
+    assert!(
+        curve
+            .point_at_pos(intersections[1].0)
+            .distance_to(&Coord2(5.0, 5.0))
+            < 0.01
+    );
 
     // Other points are a bit less precise
-    assert!(curve.point_at_pos(intersections[0].0).distance_to(&Coord2(0.260, 5.948)) < 0.01);
-    assert!(curve.point_at_pos(intersections[2].0).distance_to(&Coord2(9.740, 4.052)) < 0.01);
+    assert!(
+        curve
+            .point_at_pos(intersections[0].0)
+            .distance_to(&Coord2(0.260, 5.948))
+            < 0.01
+    );
+    assert!(
+        curve
+            .point_at_pos(intersections[2].0)
+            .distance_to(&Coord2(9.740, 4.052))
+            < 0.01
+    );
 }
 
 #[test]
@@ -102,8 +123,18 @@ fn find_intersection_on_curve_short_line() {
     // Should be 2 intersections
     assert!(intersections.len() == 2);
 
-    assert!(curve.point_at_pos(intersections[1].0).distance_to(&Coord2(5.0, 5.0)) < 0.01);
-    assert!(curve.point_at_pos(intersections[0].0).distance_to(&Coord2(0.260, 5.948)) < 0.01);
+    assert!(
+        curve
+            .point_at_pos(intersections[1].0)
+            .distance_to(&Coord2(5.0, 5.0))
+            < 0.01
+    );
+    assert!(
+        curve
+            .point_at_pos(intersections[0].0)
+            .distance_to(&Coord2(0.260, 5.948))
+            < 0.01
+    );
 }
 
 #[test]
@@ -133,7 +164,12 @@ fn lines_intersect_at_start() {
 
     assert!(intersections.len() == 1);
     assert!(intersections[0].0 < 0.01);
-    assert!(curve2.point_at_pos(intersections[0].0).distance_to(&Coord2(4.0, 4.0)) < 0.01);
+    assert!(
+        curve2
+            .point_at_pos(intersections[0].0)
+            .distance_to(&Coord2(4.0, 4.0))
+            < 0.01
+    );
 }
 
 #[test]
@@ -146,7 +182,12 @@ fn lines_intersect_at_end() {
 
     assert!(intersections.len() == 1);
     assert!(intersections[0].0 > 0.99);
-    assert!(curve2.point_at_pos(intersections[0].0).distance_to(&Coord2(4.0, 4.0)) < 0.01);
+    assert!(
+        curve2
+            .point_at_pos(intersections[0].0)
+            .distance_to(&Coord2(4.0, 4.0))
+            < 0.01
+    );
 }
 
 #[test]
@@ -159,7 +200,12 @@ fn lines_intersect_start_to_end() {
 
     assert!(intersections.len() == 1);
     assert!(intersections[0].0 > 0.99);
-    assert!(curve2.point_at_pos(intersections[0].0).distance_to(&Coord2(4.0, 4.0)) < 0.01);
+    assert!(
+        curve2
+            .point_at_pos(intersections[0].0)
+            .distance_to(&Coord2(4.0, 4.0))
+            < 0.01
+    );
 }
 
 #[test]
@@ -181,7 +227,11 @@ fn ray_intersects_collinear_line_1() {
 fn ray_intersects_collinear_line_2() {
     // Intersecting a collinear line which has a point closer to the start of the ray than the start of the line
     let ray = (Coord2(0.0, 0.0), Coord2(2.0, 1.0));
-    let line = bezier::Curve::from_points(Coord2(4.0, 2.0), (Coord2(2.0, 1.0), Coord2(10.0, 5.0)), Coord2(8.0, 4.0)); // line::line_to_bezier::<bezier::Curve<_>>(&(Coord2(4.0, 2.0), Coord2(8.0, 4.0)));
+    let line = bezier::Curve::from_points(
+        Coord2(4.0, 2.0),
+        (Coord2(2.0, 1.0), Coord2(10.0, 5.0)),
+        Coord2(8.0, 4.0),
+    ); // line::line_to_bezier::<bezier::Curve<_>>(&(Coord2(4.0, 2.0), Coord2(8.0, 4.0)));
 
     let intersections = bezier::curve_intersects_ray(&line, &ray);
 
@@ -210,8 +260,18 @@ fn ray_intersects_collinear_line_3() {
 #[test]
 fn ray_intersects_curve_1() {
     // Failed intersection in ring_with_offset_crossbar_ray_casting_issue
-    let curve = bezier::Curve::from_points(Coord2(0.5857864376269051, 0.5857864376269049), (Coord2(0.488017920077567, 0.683554955176243), Coord2(0.40248767198507907, 0.7889273585090868)), Coord2(0.3291956933494412, 0.899999999999999));
-    let ray = (Coord2(0.3853378796624052, 0.7560017173290998), Coord2(0.385337879662404, 1.0999999999999999));
+    let curve = bezier::Curve::from_points(
+        Coord2(0.5857864376269051, 0.5857864376269049),
+        (
+            Coord2(0.488017920077567, 0.683554955176243),
+            Coord2(0.40248767198507907, 0.7889273585090868),
+        ),
+        Coord2(0.3291956933494412, 0.899999999999999),
+    );
+    let ray = (
+        Coord2(0.3853378796624052, 0.7560017173290998),
+        Coord2(0.385337879662404, 1.0999999999999999),
+    );
 
     let intersections = bezier::curve_intersects_ray(&curve, &ray);
 
@@ -222,8 +282,18 @@ fn ray_intersects_curve_1() {
 #[test]
 fn ray_intersects_curve_1a() {
     // As above but the ray is less vertical
-    let curve = bezier::Curve::from_points(Coord2(0.5857864376269051, 0.5857864376269049), (Coord2(0.488017920077567, 0.683554955176243), Coord2(0.40248767198507907, 0.7889273585090868)), Coord2(0.3291956933494412, 0.899999999999999));
-    let ray = (Coord2(0.3854378796624052, 0.7560017173290998), Coord2(0.385337879662404, 1.0999999999999999));
+    let curve = bezier::Curve::from_points(
+        Coord2(0.5857864376269051, 0.5857864376269049),
+        (
+            Coord2(0.488017920077567, 0.683554955176243),
+            Coord2(0.40248767198507907, 0.7889273585090868),
+        ),
+        Coord2(0.3291956933494412, 0.899999999999999),
+    );
+    let ray = (
+        Coord2(0.3854378796624052, 0.7560017173290998),
+        Coord2(0.385337879662404, 1.0999999999999999),
+    );
 
     let intersections = bezier::curve_intersects_ray(&curve, &ray);
 
@@ -234,8 +304,18 @@ fn ray_intersects_curve_1a() {
 #[test]
 fn ray_intersects_curve_1b() {
     // Failed intersection in ring_with_offset_crossbar_ray_casting_issue (different ray: all vertical rays seem to be an issue)
-    let curve = bezier::Curve::from_points(Coord2(0.5857864376269051, 0.5857864376269049), (Coord2(0.488017920077567, 0.683554955176243), Coord2(0.40248767198507907, 0.7889273585090868)), Coord2(0.3291956933494412, 0.899999999999999));
-    let ray = (Coord2(0.395337879662404, 0.7560017173290998), Coord2(0.395337879662404, 1.0999999999999999));
+    let curve = bezier::Curve::from_points(
+        Coord2(0.5857864376269051, 0.5857864376269049),
+        (
+            Coord2(0.488017920077567, 0.683554955176243),
+            Coord2(0.40248767198507907, 0.7889273585090868),
+        ),
+        Coord2(0.3291956933494412, 0.899999999999999),
+    );
+    let ray = (
+        Coord2(0.395337879662404, 0.7560017173290998),
+        Coord2(0.395337879662404, 1.0999999999999999),
+    );
 
     let intersections = bezier::curve_intersects_ray(&curve, &ray);
 
@@ -246,8 +326,18 @@ fn ray_intersects_curve_1b() {
 #[test]
 fn ray_intersects_curve_1c() {
     // Horizontal ray to the collision point in 1a
-    let curve = bezier::Curve::from_points(Coord2(0.5857864376269051, 0.5857864376269049), (Coord2(0.488017920077567, 0.683554955176243), Coord2(0.40248767198507907, 0.7889273585090868)), Coord2(0.3291956933494412, 0.899999999999999));
-    let ray = (Coord2(0.7560017173290998, 0.8192109187049827), Coord2(1.0999999999999999, 0.8192109187049827));
+    let curve = bezier::Curve::from_points(
+        Coord2(0.5857864376269051, 0.5857864376269049),
+        (
+            Coord2(0.488017920077567, 0.683554955176243),
+            Coord2(0.40248767198507907, 0.7889273585090868),
+        ),
+        Coord2(0.3291956933494412, 0.899999999999999),
+    );
+    let ray = (
+        Coord2(0.7560017173290998, 0.8192109187049827),
+        Coord2(1.0999999999999999, 0.8192109187049827),
+    );
 
     let intersections = bezier::curve_intersects_ray(&curve, &ray);
 
@@ -258,8 +348,18 @@ fn ray_intersects_curve_1c() {
 #[test]
 fn ray_intersects_curve_1d() {
     // Failed intersection in ring_with_offset_crossbar_ray_casting_issue (vertical ray to the collision point from 1a)
-    let curve = bezier::Curve::from_points(Coord2(0.5857864376269051, 0.5857864376269049), (Coord2(0.488017920077567, 0.683554955176243), Coord2(0.40248767198507907, 0.7889273585090868)), Coord2(0.3291956933494412, 0.899999999999999));
-    let ray = (Coord2(0.38541950989400653, 0.7560017173290998), Coord2(0.38541950989400653, 1.0999999999999999));
+    let curve = bezier::Curve::from_points(
+        Coord2(0.5857864376269051, 0.5857864376269049),
+        (
+            Coord2(0.488017920077567, 0.683554955176243),
+            Coord2(0.40248767198507907, 0.7889273585090868),
+        ),
+        Coord2(0.3291956933494412, 0.899999999999999),
+    );
+    let ray = (
+        Coord2(0.38541950989400653, 0.7560017173290998),
+        Coord2(0.38541950989400653, 1.0999999999999999),
+    );
 
     let intersections = bezier::curve_intersects_ray(&curve, &ray);
 
@@ -270,8 +370,18 @@ fn ray_intersects_curve_1d() {
 #[test]
 fn ray_intersects_curve_1e() {
     // Same intersection but using the clipping algorithm (fails the same way as we eventually try to find via the root finder)
-    let curve = bezier::Curve::from_points(Coord2(0.5857864376269051, 0.5857864376269049), (Coord2(0.488017920077567, 0.683554955176243), Coord2(0.40248767198507907, 0.7889273585090868)), Coord2(0.3291956933494412, 0.899999999999999));
-    let ray = (Coord2(0.3853378796624052, 0.0), Coord2(0.385337879662404, 10.0));
+    let curve = bezier::Curve::from_points(
+        Coord2(0.5857864376269051, 0.5857864376269049),
+        (
+            Coord2(0.488017920077567, 0.683554955176243),
+            Coord2(0.40248767198507907, 0.7889273585090868),
+        ),
+        Coord2(0.3291956933494412, 0.899999999999999),
+    );
+    let ray = (
+        Coord2(0.3853378796624052, 0.0),
+        Coord2(0.385337879662404, 10.0),
+    );
     let ray = line::line_to_bezier(&ray);
 
     let intersections = bezier::curve_intersects_curve_clip(&curve, &ray, 0.01);
@@ -302,7 +412,7 @@ fn roots_library_does_not_have_missing_root_bug() {
         Roots::One(r) => r.to_vec(),
         Roots::Two(r) => r.to_vec(),
         Roots::Three(r) => r.to_vec(),
-        Roots::Four(r) => r.to_vec()
+        Roots::Four(r) => r.to_vec(),
     };
 
     // Should exist a root that's close to the value above
@@ -332,7 +442,7 @@ fn ray_missing_root_2() {
         Roots::One(r) => r.to_vec(),
         Roots::Two(r) => r.to_vec(),
         Roots::Three(r) => r.to_vec(),
-        Roots::Four(r) => r.to_vec()
+        Roots::Four(r) => r.to_vec(),
     };
 
     // Should exist a root that's close to the value above
@@ -362,7 +472,7 @@ fn ray_missing_root_3() {
         Roots::One(r) => r.to_vec(),
         Roots::Two(r) => r.to_vec(),
         Roots::Three(r) => r.to_vec(),
-        Roots::Four(r) => r.to_vec()
+        Roots::Four(r) => r.to_vec(),
     };
 
     // Should exist a root that's close to the value above
@@ -372,10 +482,10 @@ fn ray_missing_root_3() {
 
 #[test]
 fn collide_close_to_circle_1() {
-    use flo_curves::line::{line_to_bezier};
-    use flo_curves::bezier::{Curve, curve_intersects_ray, curve_intersects_curve_clip};
     use flo_curves::arc::*;
     use flo_curves::bezier::path::*;
+    use flo_curves::bezier::{curve_intersects_curve_clip, curve_intersects_ray, Curve};
+    use flo_curves::line::line_to_bezier;
 
     // This was found to produce a bad set of collisions in `remove_interior_for_ring_with_offset_crossbar_removes_center_1`
     // `close_line` here passes very close to the circle, and produced a collision both where it intersected the line and at the end, creating an odd subpath
@@ -405,10 +515,10 @@ fn collide_close_to_circle_1() {
 
 #[test]
 fn collide_close_to_circle_2() {
-    use flo_curves::line::{line_to_bezier};
-    use flo_curves::bezier::{Curve, curve_intersects_ray, curve_intersects_curve_clip};
     use flo_curves::arc::*;
     use flo_curves::bezier::path::*;
+    use flo_curves::bezier::{curve_intersects_curve_clip, curve_intersects_ray, Curve};
+    use flo_curves::line::line_to_bezier;
 
     // This was found to produce a bad set of collisions in `remove_interior_for_ring_with_offset_crossbar_removes_center_1`
     // `close_line` here passes very close to the circle, and produced a collision both where it intersected the line and at the end, creating an odd subpath
@@ -438,10 +548,25 @@ fn collide_close_to_circle_2() {
 
 #[test]
 fn collinear_lines_1() {
-    let line1 = bezier::Curve::from_points(Coord2(522.6328510802869, 613.7830260553299), (Coord2(516.1288877500185, 581.0853943497335), Coord2(509.6251664511383, 548.3889794180926)), Coord2(503.12144515225805, 515.6925644864517));
-    let line2 = bezier::Curve::from_points(Coord2(503.12144515225805, 515.6925644864517), (Coord2(521.5936893465483, 608.5588072325999), Coord2(540.0603929756934, 701.3971956767845)), Coord2(558.5270966048384, 794.2355841209692));
+    let line1 = bezier::Curve::from_points(
+        Coord2(522.6328510802869, 613.7830260553299),
+        (
+            Coord2(516.1288877500185, 581.0853943497335),
+            Coord2(509.6251664511383, 548.3889794180926),
+        ),
+        Coord2(503.12144515225805, 515.6925644864517),
+    );
+    let line2 = bezier::Curve::from_points(
+        Coord2(503.12144515225805, 515.6925644864517),
+        (
+            Coord2(521.5936893465483, 608.5588072325999),
+            Coord2(540.0603929756934, 701.3971956767845),
+        ),
+        Coord2(558.5270966048384, 794.2355841209692),
+    );
 
-    let collisions = bezier::curve_intersects_ray(&line1, &(line2.start_point(), line2.end_point()));
+    let collisions =
+        bezier::curve_intersects_ray(&line1, &(line2.start_point(), line2.end_point()));
 
     println!("{:?}", collisions);
 
@@ -454,16 +579,37 @@ fn collinear_lines_1() {
 
         println!("{},{}: {:?}", curve_t, ray_t, curve_pos);
 
-        assert!(distance < 0.01, "Distance between points {} at curve_t {}, line_t {}", distance, curve_t, ray_t);
+        assert!(
+            distance < 0.01,
+            "Distance between points {} at curve_t {}, line_t {}",
+            distance,
+            curve_t,
+            ray_t
+        );
     }
 }
 
 #[test]
 fn collinear_lines_2() {
-    let line1 = bezier::Curve::from_points(Coord2(522.6328510802869, 613.7830260553299), (Coord2(516.1288877500185, 581.0853943497335), Coord2(509.6251664511383, 548.3889794180926)), Coord2(503.12144515225805, 515.6925644864517));
-    let line2 = bezier::Curve::from_points(Coord2(503.12144515225805, 515.6925644864517), (Coord2(521.5936893465483, 608.5588072325999), Coord2(540.0603929756934, 701.3971956767845)), Coord2(558.5270966048384, 794.2355841209692));
+    let line1 = bezier::Curve::from_points(
+        Coord2(522.6328510802869, 613.7830260553299),
+        (
+            Coord2(516.1288877500185, 581.0853943497335),
+            Coord2(509.6251664511383, 548.3889794180926),
+        ),
+        Coord2(503.12144515225805, 515.6925644864517),
+    );
+    let line2 = bezier::Curve::from_points(
+        Coord2(503.12144515225805, 515.6925644864517),
+        (
+            Coord2(521.5936893465483, 608.5588072325999),
+            Coord2(540.0603929756934, 701.3971956767845),
+        ),
+        Coord2(558.5270966048384, 794.2355841209692),
+    );
 
-    let collisions = bezier::curve_intersects_ray(&line2, &(line1.start_point(), line1.end_point()));
+    let collisions =
+        bezier::curve_intersects_ray(&line2, &(line1.start_point(), line1.end_point()));
 
     println!("{:?}", collisions);
 
@@ -476,6 +622,12 @@ fn collinear_lines_2() {
 
         println!("{},{}: {:?}", curve_t, ray_t, curve_pos);
 
-        assert!(distance < 0.01, "Distance between points {} at curve_t {}, line_t {}", distance, curve_t, ray_t);
+        assert!(
+            distance < 0.01,
+            "Distance between points {} at curve_t {}, line_t {}",
+            distance,
+            curve_t,
+            ray_t
+        );
     }
 }

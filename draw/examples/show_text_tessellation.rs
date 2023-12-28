@@ -1,15 +1,21 @@
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
 use std::collections::HashMap;
 use std::mem;
 use std::sync::*;
 
-use ::desync::*;
 use futures::executor;
 use futures::prelude::*;
 use futures::stream;
 
-use flo_draw::*;
+use ::desync::*;
 use flo_draw::canvas::*;
 use flo_draw::render_canvas::*;
+use flo_draw::*;
 
 ///
 /// Draws some text and then shows how it's tessellated
@@ -50,10 +56,10 @@ pub fn main() {
                         .collect::<Vec<_>>()
                         .await
                 }
-                    .boxed()
+                .boxed()
             })
-                .map(|as_vectors| stream::iter(as_vectors))
-                .flatten();
+            .map(|as_vectors| stream::iter(as_vectors))
+            .flatten();
 
         // Say 'hello, world' on the canvas that we're processing
         let hello_size = measure_text(&lato, "Hello, World", 100.0);

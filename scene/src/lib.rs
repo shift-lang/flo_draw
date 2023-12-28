@@ -1,3 +1,9 @@
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
 //!
 //! # Welcome to flo_scene
 //!
@@ -52,7 +58,7 @@
 //! # let scene = Scene::default();
 //! # let context = scene.context();
 //! let mut channel = context.send_to::<ExampleRequest>(EXAMPLE).unwrap();
-//! executor::block_on(async { 
+//! executor::block_on(async {
 //!   channel.send(ExampleRequest::Example).await.unwrap();
 //! });
 //! ```
@@ -83,7 +89,7 @@
 //! `flo_scene` calls these small programs 'entities', partly to distinguish them from the modern concept of an object and
 //! partly because it also contains a properties system that gives it many of the features of an Entity Component System.
 //!
-//! Building large systems from small entities provides a way to manage dependencies in large projects: any two entities 
+//! Building large systems from small entities provides a way to manage dependencies in large projects: any two entities
 //! only need to know about the messages that can be sent between them and don't need to directly depend on each other.
 //! Entities can query their context or the `ENTITY_REGISTRY` to discover each other, rather than needing to have
 //! direct knowledge of each other.
@@ -102,14 +108,20 @@
 #[macro_use]
 extern crate lazy_static;
 
+#[cfg(feature = "properties")]
+pub use flo_rope as rope;
+
+#[cfg(feature = "properties")]
+pub use flo_binding as binding;
+
 pub use self::any_entity_channel::*;
 pub use self::context::*;
 pub use self::convert_entity_channel::*;
 pub use self::entity_channel::*;
 pub use self::entity_id::*;
-pub use self::ergonomics::*;
 #[cfg(feature = "test-scene")]
 pub use self::ergonomics::test;
+pub use self::ergonomics::*;
 pub use self::error::*;
 pub use self::expected_entity_channel::*;
 pub use self::immediate_entity_channel::*;
@@ -119,22 +131,17 @@ pub use self::scene::*;
 pub use self::simple_entity_channel::*;
 pub use self::standard_components::*;
 
-mod error;
-mod scene;
-mod entity_id;
-mod entity_channel;
-mod immediate_entity_channel;
-mod ergonomics;
-mod simple_entity_channel;
 mod any_entity_channel;
-mod mapped_entity_channel;
-mod convert_entity_channel;
-mod expected_entity_channel;
 mod context;
-mod standard_components;
+mod convert_entity_channel;
+mod entity_channel;
+mod entity_id;
+mod ergonomics;
+mod error;
+mod expected_entity_channel;
+mod immediate_entity_channel;
+mod mapped_entity_channel;
 mod panic_entity_channel;
-
-#[cfg(feature = "properties")]
-pub use flo_binding as binding;
-#[cfg(feature = "properties")]
-pub use flo_rope as rope;
+mod scene;
+mod simple_entity_channel;
+mod standard_components;

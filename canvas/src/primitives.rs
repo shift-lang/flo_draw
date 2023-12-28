@@ -1,3 +1,9 @@
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
 use crate::context::*;
 use crate::conversion_streams::*;
 use crate::draw::*;
@@ -49,9 +55,9 @@ pub trait GraphicsPrimitives: GraphicsContext {
     /// Draws a bezier path
     ///
     fn bezier_path<TPath>(&mut self, path: &TPath)
-        where
-            TPath: BezierPath,
-            TPath::Point: Coordinate2D,
+    where
+        TPath: BezierPath,
+        TPath::Point: Coordinate2D,
     {
         let start_point = path.start_point();
 
@@ -73,7 +79,7 @@ pub trait GraphicsPrimitives: GraphicsContext {
     ///
     fn render_with_attributes<'a>(
         &'a mut self,
-        attributes: impl 'a + IntoIterator<Item=&'a PathAttribute>,
+        attributes: impl 'a + IntoIterator<Item = &'a PathAttribute>,
     ) {
         self.draw_list(
             attributes
@@ -143,8 +149,8 @@ pub trait GraphicsPrimitives: GraphicsContext {
     ///
     fn render_bezier_shape<'a, TPath>(
         &'a mut self,
-        attributes: impl 'a + IntoIterator<Item=&'a PathAttribute>,
-        path_set: impl 'a + IntoIterator<Item=&'a TPath>,
+        attributes: impl 'a + IntoIterator<Item = &'a PathAttribute>,
+        path_set: impl 'a + IntoIterator<Item = &'a TPath>,
     ) where
         TPath: 'a + BezierPath,
         TPath::Point: Coordinate2D,
@@ -162,8 +168,8 @@ pub trait GraphicsPrimitives: GraphicsContext {
     /// Draws a bezier curve (defined by the BezierCurve trait)
     ///
     fn bezier_curve<TCurve: BezierCurve>(&mut self, curve: &TCurve)
-        where
-            TCurve::Point: Coordinate2D,
+    where
+        TCurve::Point: Coordinate2D,
     {
         let (cp1, cp2) = curve.control_points();
         let end = curve.end_point();
@@ -181,7 +187,7 @@ pub trait GraphicsPrimitives: GraphicsContext {
     ///
     /// Draws a series of instructions
     ///
-    fn draw_list<'a>(&'a mut self, drawing: impl 'a + IntoIterator<Item=Draw>) {
+    fn draw_list<'a>(&'a mut self, drawing: impl 'a + IntoIterator<Item = Draw>) {
         for d in drawing.into_iter() {
             self.draw(d);
         }
@@ -256,8 +262,8 @@ pub fn draw_circle(center_x: f32, center_y: f32, radius: f32) -> Vec<Draw> {
 }
 
 impl<'a, Curve: BezierCurve> From<&'a Curve> for Draw
-    where
-        Curve::Point: Coordinate2D,
+where
+    Curve::Point: Coordinate2D,
 {
     fn from(curve: &'a Curve) -> Draw {
         let end = curve.end_point();

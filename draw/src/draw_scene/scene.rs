@@ -1,3 +1,9 @@
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
 use std::sync::*;
 
 use flo_scene::*;
@@ -10,7 +16,7 @@ use super::wgpu_scene::*;
 ///
 #[cfg(all(feature = "render-opengl", not(feature = "render-wgpu")))]
 pub fn flo_draw_scene_context() -> Arc<SceneContext> {
-    flo_draw_glutin_scene_context()
+    super::glutin_scene::flo_draw_glutin_scene_context()
 }
 
 ///

@@ -1,3 +1,9 @@
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
 use std::sync::*;
 
 use futures::prelude::*;
@@ -20,24 +26,33 @@ pub enum SceneControlRequest {
     /// Immediately stops running the specified entity (without allowing it to shut down)
     KillEntity(EntityId),
 
-    /// Leaves the specified entity running but 
+    /// Leaves the specified entity running but
     SealEntity(EntityId),
 }
 
 ///
-/// Creates a scene control entity 
+/// Creates a scene control entity
 ///
-pub fn create_scene_control_entity(entity_id: EntityId, scene_context: &Arc<SceneContext>) -> Result<impl EntityChannel<Message=SceneControlRequest>, CreateEntityError> {
-    scene_context.create_entity(entity_id, |context, messages| {
-        async move {
-            let mut messages = messages;
+pub fn create_scene_control_entity(
+    entity_id: EntityId,
+    scene_context: &Arc<SceneContext>,
+) -> Result<impl EntityChannel<Message = SceneControlRequest>, CreateEntityError> {
+    scene_context.create_entity(entity_id, |context, messages| async move {
+        let mut messages = messages;
 
-            while let Some(msg) = messages.next().await {
-                match msg {
-                    SceneControlRequest::StopScene => { context.stop_scene().ok(); }
-                    SceneControlRequest::CloseEntity(target_entity) => { context.close_entity(target_entity).ok(); }
-                    SceneControlRequest::KillEntity(target_entity) => { context.kill_entity(target_entity).ok(); }
-                    SceneControlRequest::SealEntity(target_entity) => { context.seal_entity(target_entity).ok(); }
+        while let Some(msg) = messages.next().await {
+            match msg {
+                SceneControlRequest::StopScene => {
+                    context.stop_scene().ok();
+                }
+                SceneControlRequest::CloseEntity(target_entity) => {
+                    context.close_entity(target_entity).ok();
+                }
+                SceneControlRequest::KillEntity(target_entity) => {
+                    context.kill_entity(target_entity).ok();
+                }
+                SceneControlRequest::SealEntity(target_entity) => {
+                    context.seal_entity(target_entity).ok();
                 }
             }
         }

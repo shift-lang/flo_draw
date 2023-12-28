@@ -1,3 +1,9 @@
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
 //!
 //! # `flo_binding`, a data-driven binding library
 //!
@@ -37,9 +43,9 @@
 //! # assert!(value == 3);
 //! ```
 //!
-//! There are two main ways to be notified when a binding has changed. The 
+//! There are two main ways to be notified when a binding has changed. The
 //! `when_changed()` function provides a way to call a function whenever a binding
-//! has changed since it was last read, and the `follow()` function will return a 
+//! has changed since it was last read, and the `follow()` function will return a
 //! Stream of the most recent value attached to the binding. The streaming approach
 //! is the most flexible.
 //!
@@ -90,8 +96,8 @@
 //! state values into a value representing a static state. It implements all of the other
 //! binding operations.
 //!
-//! Another important type of binding is the `computed()` binding, which makes it possible 
-//! to create a binding that derives a value from other bindings. Computed bindings 
+//! Another important type of binding is the `computed()` binding, which makes it possible
+//! to create a binding that derives a value from other bindings. Computed bindings
 //! automatically monitor any bindings that were captured for changes, so they can be
 //! `follow`ed or `when_change`d as with any other binding:
 //!
@@ -109,7 +115,7 @@
 //!     let value = one_more.get();     // == 4 (3 + 1)
 //! ```
 //!
-//! For collections of data, `flo_binding` uses the concept of a 'rope binding'. The 
+//! For collections of data, `flo_binding` uses the concept of a 'rope binding'. The
 //! general rope data type is provided by the [`flo_rope`](https://crates.io/crates/flo_rope)
 //! crate. These bindings send differences rather than their full state when streaming and
 //! are internally represented by a data structure that can perform deletions and insertions
@@ -142,8 +148,8 @@
 //!
 //! ## Companion libraries
 //!
-//! Aside from `flo_rope`, the [`desync`](https://crates.io/crates/desync) crate provides a 
-//! novel approach to asynchronous code, including pipe operations that work very well with 
+//! Aside from `flo_rope`, the [`desync`](https://crates.io/crates/desync) crate provides a
+//! novel approach to asynchronous code, including pipe operations that work very well with
 //! the streamed updates from the `follow()` function.
 //!
 //! The [`flo_stream`](https://crates.io/crates/flo_stream) provides a pubsub system that
@@ -156,44 +162,44 @@
 
 #![warn(bare_trait_objects)]
 
-mod traits;
-pub mod binding_context;
-mod binding;
-mod computed;
-mod bindref;
-mod notify_fn;
-pub mod releasable;
-mod watcher;
-mod map_binding;
-mod ext;
 #[cfg(feature = "stream")]
-mod follow;
-#[cfg(feature = "stream")]
-mod bind_stream;
-#[cfg(feature = "rope")]
-mod rope_binding;
-
-pub use self::traits::*;
+pub use self::bind_stream::*;
 pub use self::binding::*;
-pub use self::computed::*;
 pub use self::bindref::*;
-pub use self::notify_fn::*;
-pub use self::watcher::*;
-pub use self::map_binding::*;
+pub use self::computed::*;
 pub use self::ext::*;
 #[cfg(feature = "stream")]
 pub use self::follow::*;
-#[cfg(feature = "stream")]
-pub use self::bind_stream::*;
+pub use self::map_binding::*;
+pub use self::notify_fn::*;
 #[cfg(feature = "rope")]
 pub use self::rope_binding::*;
+pub use self::traits::*;
+pub use self::watcher::*;
+
+#[cfg(feature = "stream")]
+mod bind_stream;
+mod binding;
+pub mod binding_context;
+mod bindref;
+mod computed;
+mod ext;
+#[cfg(feature = "stream")]
+mod follow;
+mod map_binding;
+mod notify_fn;
+pub mod releasable;
+#[cfg(feature = "rope")]
+mod rope_binding;
+mod traits;
+mod watcher;
 
 ///
 /// Creates a simple bound value with the specified initial value
 ///
 pub fn bind<Value>(val: Value) -> Binding<Value>
-    where
-        Value: Clone + PartialEq,
+where
+    Value: Clone + PartialEq,
 {
     Binding::new(val)
 }
@@ -202,21 +208,21 @@ pub fn bind<Value>(val: Value) -> Binding<Value>
 /// Creates a computed value that tracks bindings accessed during the function call and marks itself as changed when any of these dependencies also change
 ///
 pub fn computed<Value, TFn>(calculate_value: TFn) -> ComputedBinding<Value, TFn>
-    where
-        Value: Clone + Send,
-        TFn: 'static + Send + Sync + Fn() -> Value,
+where
+    Value: Clone + Send,
+    TFn: 'static + Send + Sync + Fn() -> Value,
 {
     ComputedBinding::new(calculate_value)
 }
 
 #[cfg(test)]
 mod test {
-    use super::*;
-    use super::binding_context::*;
-
-    use std::thread;
     use std::sync::*;
+    use std::thread;
     use std::time::Duration;
+
+    use super::binding_context::*;
+    use super::*;
 
     #[test]
     fn can_create_binding() {
@@ -238,7 +244,9 @@ mod test {
         let changed = bind(false);
 
         let notify_changed = changed.clone();
-        bound.when_changed(notify(move || notify_changed.set(true))).keep_alive();
+        bound
+            .when_changed(notify(move || notify_changed.set(true)))
+            .keep_alive();
 
         assert!(changed.get() == false);
         bound.set(2);
@@ -251,7 +259,9 @@ mod test {
         let changed = bind(false);
 
         let notify_changed = changed.clone();
-        bound.when_changed(notify(move || notify_changed.set(true))).keep_alive();
+        bound
+            .when_changed(notify(move || notify_changed.set(true)))
+            .keep_alive();
 
         assert!(changed.get() == false);
         bound.set(1);
@@ -264,10 +274,12 @@ mod test {
         let change_count = bind(0);
 
         let notify_count = change_count.clone();
-        bound.when_changed(notify(move || {
-            let count = notify_count.get();
-            notify_count.set(count + 1)
-        })).keep_alive();
+        bound
+            .when_changed(notify(move || {
+                let count = notify_count.get();
+                notify_count.set(count + 1)
+            }))
+            .keep_alive();
 
         assert!(change_count.get() == 0);
         bound.set(2);
@@ -348,14 +360,18 @@ mod test {
 
         let notify_count = change_count.clone();
         let notify_count2 = change_count.clone();
-        bound.when_changed(notify(move || {
-            let count = notify_count.get();
-            notify_count.set(count + 1)
-        })).keep_alive();
-        bound.when_changed(notify(move || {
-            let count = notify_count2.get();
-            notify_count2.set(count + 1)
-        })).keep_alive();
+        bound
+            .when_changed(notify(move || {
+                let count = notify_count.get();
+                notify_count.set(count + 1)
+            }))
+            .keep_alive();
+        bound
+            .when_changed(notify(move || {
+                let count = notify_count2.get();
+                notify_count2.set(count + 1)
+            }))
+            .keep_alive();
 
         assert!(change_count.get() == 0);
         bound.set(2);
@@ -400,10 +416,12 @@ mod test {
             let count = notify_count.get();
             notify_count.set(count + 1)
         }));
-        bound.when_changed(notify(move || {
-            let count = notify_count2.get();
-            notify_count2.set(count + 1)
-        })).keep_alive();
+        bound
+            .when_changed(notify(move || {
+                let count = notify_count2.get();
+                notify_count2.set(count + 1)
+            }))
+            .keep_alive();
 
         assert!(change_count.get() == 0);
         bound.set(2);
@@ -438,7 +456,9 @@ mod test {
 
         let changed = bind(false);
         let notify_changed = changed.clone();
-        context.when_changed(notify(move || notify_changed.set(true))).keep_alive();
+        context
+            .when_changed(notify(move || notify_changed.set(true)))
+            .keep_alive();
 
         assert!(changed.get() == false);
         bound.set(3);
@@ -504,7 +524,6 @@ mod test {
         assert!(watcher.get() == 4);
         assert!(change_count.get() == 2);
     }
-
 
     #[test]
     fn can_recursively_compute_values() {
@@ -661,7 +680,9 @@ mod test {
 
         let changed = bind(false);
         let notify_changed = changed.clone();
-        computed.when_changed(notify(move || notify_changed.set(true))).keep_alive();
+        computed
+            .when_changed(notify(move || notify_changed.set(true)))
+            .keep_alive();
 
         assert!(computed.get() == 2);
         assert!(changed.get() == false);
@@ -720,7 +741,9 @@ mod test {
 
         let changed = bind(false);
         let notify_changed = changed.clone();
-        computed.when_changed(notify(move || notify_changed.set(true))).keep_alive();
+        computed
+            .when_changed(notify(move || notify_changed.set(true)))
+            .keep_alive();
 
         // Initial value of computed (first get 'arms' when_changed too)
         assert!(computed.get() == 2);
@@ -798,7 +821,9 @@ mod test {
 
         let changed = bind(false);
         let notify_changed = changed.clone();
-        computed.when_changed(notify(move || notify_changed.set(true))).keep_alive();
+        computed
+            .when_changed(notify(move || notify_changed.set(true)))
+            .keep_alive();
 
         assert!(propagates_from.get() == 2);
         assert!(computed.get() == 3);
@@ -855,7 +880,9 @@ mod test {
 
         let changed = bind(false);
         let notify_changed = changed.clone();
-        computed.when_changed(notify(move || notify_changed.set(true))).keep_alive();
+        computed
+            .when_changed(notify(move || notify_changed.set(true)))
+            .keep_alive();
 
         assert!(computed.get() == 2);
         assert!(changed.get() == false);
@@ -886,7 +913,9 @@ mod test {
             let computed = computed(move || computed_from.get() + 1);
 
             let notify_changed = changed.clone();
-            computed.when_changed(notify(move || notify_changed.set(true))).keep_alive();
+            computed
+                .when_changed(notify(move || notify_changed.set(true)))
+                .keep_alive();
 
             assert!(computed.get() == 2);
             assert!(changed.get() == false);

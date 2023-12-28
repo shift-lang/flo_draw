@@ -1,10 +1,16 @@
-use super::layer_handle::*;
-use super::texture_filter_request::*;
-
-use flo_render as render;
-use flo_canvas as canvas;
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
 
 use std::sync::*;
+
+use flo_canvas as canvas;
+use flo_render as render;
+
+use super::layer_handle::*;
+use super::texture_filter_request::*;
 
 ///
 /// Requests to render vertex data to textures
@@ -16,12 +22,21 @@ pub enum TextureRenderRequest {
     ///
     /// Creates an empty texture of a particular size
     ///
-    CreateBlankTexture(render::TextureId, canvas::TextureSize, canvas::TextureFormat),
+    CreateBlankTexture(
+        render::TextureId,
+        canvas::TextureSize,
+        canvas::TextureFormat,
+    ),
 
     ///
     /// Changes the bytes representing a rectangular region of this texture
     ///
-    SetBytes(render::TextureId, canvas::TexturePosition, canvas::TextureSize, Arc<Vec<u8>>),
+    SetBytes(
+        render::TextureId,
+        canvas::TexturePosition,
+        canvas::TextureSize,
+        Arc<Vec<u8>>,
+    ),
 
     ///
     /// Apply mipmaps to the specified texture
@@ -41,7 +56,14 @@ pub enum TextureRenderRequest {
     /// The list of requests are post-processing instructions made after the texture has been regenerated. These are automatically populated for
     /// requests like `CreateMipMaps`.
     ///
-    DynamicTexture(render::TextureId, LayerHandle, canvas::SpriteBounds, canvas::CanvasSize, canvas::Transform2D, Arc<Vec<TextureRenderRequest>>),
+    DynamicTexture(
+        render::TextureId,
+        LayerHandle,
+        canvas::SpriteBounds,
+        canvas::CanvasSize,
+        canvas::Transform2D,
+        Arc<Vec<TextureRenderRequest>>,
+    ),
 
     ///
     /// Copy the first texture to the second texture, then decrease the usage count of the first texture
@@ -64,7 +86,10 @@ impl TextureRenderRequest {
             SetBytes(_, _, _, _) => vec![],
             CreateMipMaps(_) => vec![],
             FromSprite(_, _, _) => vec![],
-            DynamicTexture(_, _, _, _, _, requests) => requests.iter().flat_map(|request| request.used_textures()).collect(),
+            DynamicTexture(_, _, _, _, _, requests) => requests
+                .iter()
+                .flat_map(|request| request.used_textures())
+                .collect(),
             CopyTexture(copy_from, _) => vec![*copy_from],
             Filter(_, filter_request) => filter_request.used_textures(),
         }

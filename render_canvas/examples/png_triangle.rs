@@ -1,14 +1,19 @@
-use flo_canvas::*;
-use flo_render_canvas::*;
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
 
-use futures::stream;
-use futures::executor;
-
-use png;
-
+use std::fs::*;
 use std::io::*;
 use std::path;
-use std::fs::*;
+
+use futures::executor;
+use futures::stream;
+use png;
+
+use flo_canvas::*;
+use flo_render_canvas::*;
 
 ///
 /// Saves a file 'triangle.png' with a triangle in it
@@ -35,7 +40,8 @@ pub fn main() {
         drawing.fill();
 
         // Render an image to bytes
-        let image = render_canvas_offscreen(&mut context, 1024, 768, 1.0, stream::iter(drawing)).await;
+        let image =
+            render_canvas_offscreen(&mut context, 1024, 768, 1.0, stream::iter(drawing)).await;
 
         // Save to a png file
         let path = path::Path::new(r"triangle.png");

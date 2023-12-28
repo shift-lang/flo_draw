@@ -1,6 +1,12 @@
-use flo_curves::*;
-use flo_curves::line::*;
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
 use flo_curves::bezier::*;
+use flo_curves::line::*;
+use flo_curves::*;
 
 #[test]
 fn convert_line_to_bezier_curve() {

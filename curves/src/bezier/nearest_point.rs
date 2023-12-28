@@ -1,3 +1,9 @@
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
 use super::basis::*;
 use super::characteristics::*;
 use super::curve::*;
@@ -15,9 +21,9 @@ use smallvec::*;
 /// to find points that the user might be indicating instead.
 ///
 pub fn nearest_point_on_curve<C>(curve: &C, point: &C::Point) -> f64
-    where
-        C: BezierCurve + BezierCurve2D,
-        C::Point: Coordinate + Coordinate2D,
+where
+    C: BezierCurve + BezierCurve2D,
+    C::Point: Coordinate + Coordinate2D,
 {
     nearest_point_on_curve_bezier_root_finder(curve, point)
 }
@@ -26,12 +32,12 @@ pub fn nearest_point_on_curve<C>(curve: &C, point: &C::Point) -> f64
 /// Optimises an estimate of a nearest point on a bezier curve using the newton-raphson method
 ///
 pub fn nearest_point_on_curve_newton_raphson<C>(curve: &C, point: &C::Point) -> f64
-    where
-        C: BezierCurve + BezierCurve2D
+where
+    C: BezierCurve + BezierCurve2D,
 {
     use CurveFeatures::*;
 
-    // Choose the initial test points based on the curve features. 
+    // Choose the initial test points based on the curve features.
     // Bezier curves can have inflection points, so we try to guess from the mid-points of all of the arcs.
     let test_positions: SmallVec<[f64; 5]> = match curve.features(0.01) {
         Point => smallvec![0.0, 0.5, 1.0],
@@ -39,9 +45,21 @@ pub fn nearest_point_on_curve_newton_raphson<C>(curve: &C, point: &C::Point) -> 
         Arch => smallvec![0.0, 0.5, 1.0],
         Parabolic => smallvec![0.0, 0.5, 1.0],
         Cusp => smallvec![0.0, 0.5, 1.0],
-        SingleInflectionPoint(t) => smallvec![0.0, t/2.0, (1.0-t)/2.0 + t, 1.0],
-        DoubleInflectionPoint(t1, t2) => smallvec![0.0, t1/2.0, (t2-t1)/2.0 + t1, (1.0-t2)/2.0 + t2, 1.0],
-        Loop(t1, t2) => smallvec![0.0, t1/2.0, (t2-t1)/2.0 + t1, (1.0-t2)/2.0 + t2, 1.0],
+        SingleInflectionPoint(t) => smallvec![0.0, t / 2.0, (1.0 - t) / 2.0 + t, 1.0],
+        DoubleInflectionPoint(t1, t2) => smallvec![
+            0.0,
+            t1 / 2.0,
+            (t2 - t1) / 2.0 + t1,
+            (1.0 - t2) / 2.0 + t2,
+            1.0
+        ],
+        Loop(t1, t2) => smallvec![
+            0.0,
+            t1 / 2.0,
+            (t2 - t1) / 2.0 + t1,
+            (1.0 - t2) / 2.0 + t2,
+            1.0
+        ],
     };
 
     // Find the test point nearest to the point we're trying to get the nearest point for
@@ -68,9 +86,14 @@ pub fn nearest_point_on_curve_newton_raphson<C>(curve: &C, point: &C::Point) -> 
 ///
 /// Optimises an estimate of a nearest point on a bezier curve using the newton-raphson method
 ///
-pub fn nearest_point_on_curve_newton_raphson_with_estimate<C>(curve: &C, point: &C::Point, estimated_t: f64, num_iterations: usize) -> f64
-    where
-        C: BezierCurve
+pub fn nearest_point_on_curve_newton_raphson_with_estimate<C>(
+    curve: &C,
+    point: &C::Point,
+    estimated_t: f64,
+    num_iterations: usize,
+) -> f64
+where
+    C: BezierCurve,
 {
     // This uses the fact that the nearest point must be perpendicular to the curve, so it optimises for the point where
     // the tangent to the curve is at 90 degrees to the vector to the point

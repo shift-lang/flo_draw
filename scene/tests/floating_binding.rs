@@ -1,7 +1,13 @@
-#[cfg(feature = "properties")]
-use flo_scene::*;
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
 #[cfg(feature = "properties")]
 use flo_binding::*;
+#[cfg(feature = "properties")]
+use flo_scene::*;
 
 #[cfg(feature = "properties")]
 use std::mem;
@@ -90,7 +96,9 @@ fn notify_on_binding() {
     let (binding, target) = FloatingBinding::new();
     let notify_1 = Arc::new(Mutex::new(false));
     let notify_2 = Arc::clone(&notify_1);
-    let _releasable = binding.when_changed(notify(move || { (*notify_2.lock().unwrap()) = true; }));
+    let _releasable = binding.when_changed(notify(move || {
+        (*notify_2.lock().unwrap()) = true;
+    }));
 
     assert!(*notify_1.lock().unwrap() == false);
     target.finish_binding(bind(1));
@@ -108,7 +116,9 @@ fn notify_on_binding_update() {
 
     let notify_1 = Arc::new(Mutex::new(false));
     let notify_2 = Arc::clone(&notify_1);
-    let _releasable = binding.when_changed(notify(move || { (*notify_2.lock().unwrap()) = true; }));
+    let _releasable = binding.when_changed(notify(move || {
+        (*notify_2.lock().unwrap()) = true;
+    }));
 
     assert!(*notify_1.lock().unwrap() == false);
     internal_binding.set(2);
@@ -124,7 +134,9 @@ fn continue_notifying_after_final_binding() {
 
     let notify_1 = Arc::new(Mutex::new(false));
     let notify_2 = Arc::clone(&notify_1);
-    let _releasable = binding.when_changed(notify(move || { (*notify_2.lock().unwrap()) = true; }));
+    let _releasable = binding.when_changed(notify(move || {
+        (*notify_2.lock().unwrap()) = true;
+    }));
 
     assert!(*notify_1.lock().unwrap() == false);
     target.finish_binding(internal_binding.clone());
@@ -142,7 +154,9 @@ fn notify_on_missing() {
     let (binding, target) = FloatingBinding::<Binding<u32>>::new();
     let notify_1 = Arc::new(Mutex::new(false));
     let notify_2 = Arc::clone(&notify_1);
-    let _releasable = binding.when_changed(notify(move || { (*notify_2.lock().unwrap()) = true; }));
+    let _releasable = binding.when_changed(notify(move || {
+        (*notify_2.lock().unwrap()) = true;
+    }));
 
     assert!(*notify_1.lock().unwrap() == false);
     target.missing();
@@ -156,7 +170,9 @@ fn notify_on_abandon() {
     let (binding, target) = FloatingBinding::<Binding<u32>>::new();
     let notify_1 = Arc::new(Mutex::new(false));
     let notify_2 = Arc::clone(&notify_1);
-    let _releasable = binding.when_changed(notify(move || { (*notify_2.lock().unwrap()) = true; }));
+    let _releasable = binding.when_changed(notify(move || {
+        (*notify_2.lock().unwrap()) = true;
+    }));
 
     assert!(*notify_1.lock().unwrap() == false);
     mem::drop(target);
@@ -175,7 +191,9 @@ fn notify_via_context() {
 
     let notify_1 = Arc::new(Mutex::new(false));
     let notify_2 = Arc::clone(&notify_1);
-    let _releasable = computed.when_changed(notify(move || { (*notify_2.lock().unwrap()) = true; }));
+    let _releasable = computed.when_changed(notify(move || {
+        (*notify_2.lock().unwrap()) = true;
+    }));
 
     assert!(computed.get() == None);
     assert!(*notify_1.lock().unwrap() == false);
@@ -188,12 +206,12 @@ fn notify_via_context() {
 #[test]
 #[cfg(feature = "properties")]
 fn wait_for_binding_immediate() {
-    use std::time::{Duration};
-    use futures::prelude::*;
-    use futures::future;
-    use futures::future::{Either};
     use futures::executor;
-    use futures_timer::{Delay};
+    use futures::future;
+    use futures::future::Either;
+    use futures::prelude::*;
+    use futures_timer::Delay;
+    use std::time::Duration;
 
     let (binding, target) = FloatingBinding::new();
 
@@ -216,13 +234,13 @@ fn wait_for_binding_immediate() {
 #[test]
 #[cfg(feature = "properties")]
 fn wait_for_binding() {
-    use std::thread;
-    use std::time::{Duration};
-    use futures::prelude::*;
-    use futures::future;
-    use futures::future::{Either};
     use futures::executor;
-    use futures_timer::{Delay};
+    use futures::future;
+    use futures::future::Either;
+    use futures::prelude::*;
+    use futures_timer::Delay;
+    use std::thread;
+    use std::time::Duration;
 
     let (binding, target) = FloatingBinding::new();
 

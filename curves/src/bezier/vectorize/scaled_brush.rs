@@ -1,3 +1,9 @@
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
 use super::brush_stroke::*;
 use super::distance_field::*;
 use super::sampled_contour::*;
@@ -21,8 +27,8 @@ pub struct ScaledBrush<TDistanceField> {
 }
 
 impl<TDistanceField> ScaledBrush<TDistanceField>
-    where
-        TDistanceField: SampledSignedDistanceField,
+where
+    TDistanceField: SampledSignedDistanceField,
 {
     ///
     /// Creates a new scaled brush that will produce scaled versions of the supplied distance field
@@ -49,25 +55,35 @@ impl<TDistanceField> ScaledBrush<TDistanceField>
 }
 
 impl<'a, TDistanceField> DaubBrush for &'a ScaledBrush<TDistanceField>
-    where
-        TDistanceField: SampledSignedDistanceField,
+where
+    TDistanceField: SampledSignedDistanceField,
 {
     type DaubDistanceField = ScaledDistanceField<&'a TDistanceField>;
 
     #[inline]
-    fn create_daub(&self, pos: impl crate::Coordinate + crate::Coordinate2D, radius: f64) -> Option<(Self::DaubDistanceField, ContourPosition)> {
+    fn create_daub(
+        &self,
+        pos: impl crate::Coordinate + crate::Coordinate2D,
+        radius: f64,
+    ) -> Option<(Self::DaubDistanceField, ContourPosition)> {
         if radius > 0.0 {
             let scale = radius * self.radius_scale;
 
             let x = pos.x() - (self.center_x * scale) - 1.0;
             let y = pos.y() - (self.center_y * scale) - 1.0;
 
-            if x < 0.0 || y < 0.0 { return None; }
+            if x < 0.0 || y < 0.0 {
+                return None;
+            }
 
             let offset_x = x - x.floor();
             let offset_y = y - y.floor();
 
-            let distance_field = ScaledDistanceField::from_distance_field(&self.distance_field, scale, (offset_x, offset_y));
+            let distance_field = ScaledDistanceField::from_distance_field(
+                &self.distance_field,
+                scale,
+                (offset_x, offset_y),
+            );
             let position = ContourPosition(x.floor() as usize, y.floor() as usize);
 
             Some((distance_field, position))

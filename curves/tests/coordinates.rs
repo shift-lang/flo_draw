@@ -1,4 +1,10 @@
-#![allow(clippy::all)]  // Tests are lower priority to fix
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
+#![allow(clippy::all)] // Tests are lower priority to fix
 
 extern crate flo_curves;
 
@@ -16,7 +22,14 @@ fn can_find_unit_vector() {
     assert!(Coord2(0.0, 1.0).to_unit_vector() == Coord2(0.0, 1.0));
     assert!(Coord2(0.0, 2.0).to_unit_vector() == Coord2(0.0, 1.0));
 
-    assert!(f64::abs(Coord2(4.0, 2.0).to_unit_vector().distance_to(&Coord2(0.0, 0.0)) - 1.0) < 0.01);
+    assert!(
+        f64::abs(
+            Coord2(4.0, 2.0)
+                .to_unit_vector()
+                .distance_to(&Coord2(0.0, 0.0))
+                - 1.0
+        ) < 0.01
+    );
 }
 
 #[test]
@@ -51,5 +64,7 @@ fn unit_vector_0_degrees() {
 
 #[test]
 fn unit_vector_90_degrees() {
-    assert!(Coord2::unit_vector_at_angle(f64::consts::PI / 2.0).distance_to(&Coord2(0.0, 1.0)) < 0.001);
+    assert!(
+        Coord2::unit_vector_at_angle(f64::consts::PI / 2.0).distance_to(&Coord2(0.0, 1.0)) < 0.001
+    );
 }

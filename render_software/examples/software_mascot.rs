@@ -1,3 +1,9 @@
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
 use flo_render_software::draw::*;
 use flo_render_software::pixel::*;
 use flo_render_software::render::*;
@@ -5,14 +11,16 @@ use flo_render_software::scanplan::*;
 
 use flo_render_software::canvas::*;
 
-use std::time::{Instant};
+use std::time::Instant;
 
 ///
 /// Draws FlowBetween's mascot as vector graphics in a window
 ///
 pub fn main() {
     // Decode
-    let mascot = decode_drawing(MASCOT.chars()).collect::<Result<Vec<Draw>, _>>().unwrap();
+    let mascot = decode_drawing(MASCOT.chars())
+        .collect::<Result<Vec<Draw>, _>>()
+        .unwrap();
 
     /*
     // Splice in a layer blend
@@ -29,7 +37,7 @@ pub fn main() {
     // Splice in setting a clip path
     let mut mascot  = mascot;
     let mut clip    = vec![];
-    
+
     clip.winding_rule(WindingRule::EvenOdd);
     clip.new_path();
     clip.circle(0.0, 0.0, 0.7);
@@ -63,7 +71,11 @@ pub fn main() {
     }
     let render_time = Instant::now().duration_since(render_start);
     let avg_micros = render_time.as_micros() / 100;
-    println!("Canvas drawing time: {}.{}ms", avg_micros / 1000, avg_micros % 1000);
+    println!(
+        "Canvas drawing time: {}.{}ms",
+        avg_micros / 1000,
+        avg_micros % 1000
+    );
 
     // Time some rendering (useful for profiling/optimisation)
     let mut frame = vec![0u8; 1920 * 1080 * 4];
@@ -71,32 +83,56 @@ pub fn main() {
 
     // Warm up before timing the rendering
     for _ in 0..10 {
-        let renderer = CanvasDrawingRegionRenderer::new(ShardScanPlanner::default(), ScanlineRenderer::new(canvas_drawing.program_runner(1080.0)), 1080);
+        let renderer = CanvasDrawingRegionRenderer::new(
+            ShardScanPlanner::default(),
+            ScanlineRenderer::new(canvas_drawing.program_runner(1080.0)),
+            1080,
+        );
         rgba.render(renderer, &canvas_drawing);
     }
 
     let render_start = Instant::now();
     for _ in 0..100 {
-        let renderer = CanvasDrawingRegionRenderer::new(ShardScanPlanner::default(), ScanlineRenderer::new(canvas_drawing.program_runner(1080.0)), 1080);
+        let renderer = CanvasDrawingRegionRenderer::new(
+            ShardScanPlanner::default(),
+            ScanlineRenderer::new(canvas_drawing.program_runner(1080.0)),
+            1080,
+        );
         rgba.render(renderer, &canvas_drawing);
     }
     let render_time = Instant::now().duration_since(render_start);
     let avg_micros = render_time.as_micros() / 100;
-    println!("F32 frame render time: {}.{}ms", avg_micros / 1000, avg_micros % 1000);
+    println!(
+        "F32 frame render time: {}.{}ms",
+        avg_micros / 1000,
+        avg_micros % 1000
+    );
 
     let render_start = Instant::now();
     for _ in 0..100 {
-        let renderer = CanvasDrawingRegionRenderer::new(ShardScanPlanner::default(), ScanlineRenderer::new(u32_canvas_drawing.program_runner(1080.0)), 1080);
+        let renderer = CanvasDrawingRegionRenderer::new(
+            ShardScanPlanner::default(),
+            ScanlineRenderer::new(u32_canvas_drawing.program_runner(1080.0)),
+            1080,
+        );
         rgba.render(renderer, &u32_canvas_drawing);
     }
     let render_time = Instant::now().duration_since(render_start);
     let avg_micros = render_time.as_micros() / 100;
-    println!("U32 fixed-point frame render time: {}.{}ms", avg_micros / 1000, avg_micros % 1000);
+    println!(
+        "U32 fixed-point frame render time: {}.{}ms",
+        avg_micros / 1000,
+        avg_micros % 1000
+    );
 
     // Render the mascot to the terminal
     let mut term_renderer = TerminalRenderTarget::new(1920, 1080);
 
-    let renderer = CanvasDrawingRegionRenderer::new(ShardScanPlanner::default(), ScanlineRenderer::new(canvas_drawing.program_runner(1080.0)), 1080);
+    let renderer = CanvasDrawingRegionRenderer::new(
+        ShardScanPlanner::default(),
+        ScanlineRenderer::new(canvas_drawing.program_runner(1080.0)),
+        1080,
+    );
     term_renderer.render(renderer, &canvas_drawing);
 }
 

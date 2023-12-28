@@ -1,15 +1,22 @@
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
+use std::collections::VecDeque;
+
 use flo_rope::*;
 use futures::task::*;
-
-use std::collections::{VecDeque};
 
 ///
 /// The state of a stream that is reading from a rope binding core
 ///
 pub(super) struct RopeStreamState<Cell, Attribute>
-    where
-        Cell: Clone + PartialEq,
-        Attribute: Clone + PartialEq + Default {
+where
+    Cell: Clone + PartialEq,
+    Attribute: Clone + PartialEq + Default,
+{
     /// The identifier for this stream
     pub(super) identifier: usize,
 

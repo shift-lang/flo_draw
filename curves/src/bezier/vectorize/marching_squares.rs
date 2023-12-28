@@ -1,16 +1,22 @@
-use super::ColumnSampledContour;
-use super::sampled_contour::*;
-use super::distance_field::*;
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
 
-use crate::bezier::vectorize::InterceptScanEdgeIterator;
-use crate::geo::*;
-use crate::bezier::*;
+use super::distance_field::*;
+use super::sampled_contour::*;
+use super::ColumnSampledContour;
+
 use crate::bezier::path::*;
+use crate::bezier::vectorize::InterceptScanEdgeIterator;
+use crate::bezier::*;
+use crate::geo::*;
 
 use smallvec::*;
 
-use std::collections::{HashMap};
-use std::ops::{Range};
+use std::collections::HashMap;
+use std::ops::Range;
 
 ///
 /// Describes a connected set of contour edges
@@ -35,80 +41,88 @@ impl ContourCell {
     #[inline]
     const fn connected_edges(&self) -> ConnectedEdges {
         match self.0 {
-            0 | 15 => { ConnectedEdges::None }
+            0 | 15 => ConnectedEdges::None,
 
             /* *-o
              * |/|
              * o-o */
-            1 => { ConnectedEdges::One(ContourEdgePair(ContourEdge::left(), ContourEdge::top())) }
+            1 => ConnectedEdges::One(ContourEdgePair(ContourEdge::left(), ContourEdge::top())),
 
             /* o-*
              * |\|
              * o-o */
-            2 => { ConnectedEdges::One(ContourEdgePair(ContourEdge::top(), ContourEdge::right())) }
+            2 => ConnectedEdges::One(ContourEdgePair(ContourEdge::top(), ContourEdge::right())),
 
             /* *-*
              * |-|
              * o-o */
-            3 => { ConnectedEdges::One(ContourEdgePair(ContourEdge::left(), ContourEdge::right())) }
+            3 => ConnectedEdges::One(ContourEdgePair(ContourEdge::left(), ContourEdge::right())),
 
             /* o-o
              * |\|
              * *-o */
-            4 => { ConnectedEdges::One(ContourEdgePair(ContourEdge::left(), ContourEdge::bottom())) }
+            4 => ConnectedEdges::One(ContourEdgePair(ContourEdge::left(), ContourEdge::bottom())),
 
             /* *-o
              * |||
              * *-o */
-            5 => { ConnectedEdges::One(ContourEdgePair(ContourEdge::top(), ContourEdge::bottom())) }
+            5 => ConnectedEdges::One(ContourEdgePair(ContourEdge::top(), ContourEdge::bottom())),
 
             /* o--*
              * |\\|
              * *--o */
-            6 => { ConnectedEdges::Two(ContourEdgePair(ContourEdge::left(), ContourEdge::bottom()), ContourEdgePair(ContourEdge::top(), ContourEdge::right())) }
+            6 => ConnectedEdges::Two(
+                ContourEdgePair(ContourEdge::left(), ContourEdge::bottom()),
+                ContourEdgePair(ContourEdge::top(), ContourEdge::right()),
+            ),
 
             /* *-*
              * |/|
              * *-o */
-            7 => { ConnectedEdges::One(ContourEdgePair(ContourEdge::bottom(), ContourEdge::right())) }
+            7 => ConnectedEdges::One(ContourEdgePair(ContourEdge::bottom(), ContourEdge::right())),
 
             /* o-o
              * |/|
              * o-* */
-            8 => { ConnectedEdges::One(ContourEdgePair(ContourEdge::bottom(), ContourEdge::right())) }
+            8 => ConnectedEdges::One(ContourEdgePair(ContourEdge::bottom(), ContourEdge::right())),
 
             /* *--o
              * |//|
              * o--* */
-            9 => { ConnectedEdges::Two(ContourEdgePair(ContourEdge::left(), ContourEdge::top()), ContourEdgePair(ContourEdge::bottom(), ContourEdge::right())) }
+            9 => ConnectedEdges::Two(
+                ContourEdgePair(ContourEdge::left(), ContourEdge::top()),
+                ContourEdgePair(ContourEdge::bottom(), ContourEdge::right()),
+            ),
 
             /* o-*
              * |||
              * o-* */
-            10 => { ConnectedEdges::One(ContourEdgePair(ContourEdge::top(), ContourEdge::bottom())) }
+            10 => ConnectedEdges::One(ContourEdgePair(ContourEdge::top(), ContourEdge::bottom())),
 
             /* *-*
              * |\|
              * o-* */
-            11 => { ConnectedEdges::One(ContourEdgePair(ContourEdge::left(), ContourEdge::bottom())) }
+            11 => ConnectedEdges::One(ContourEdgePair(ContourEdge::left(), ContourEdge::bottom())),
 
             /* o-o
              * |-|
              * *-* */
-            12 => { ConnectedEdges::One(ContourEdgePair(ContourEdge::left(), ContourEdge::right())) }
+            12 => ConnectedEdges::One(ContourEdgePair(ContourEdge::left(), ContourEdge::right())),
 
             /* *-o
              * |\|
              * *-* */
-            13 => { ConnectedEdges::One(ContourEdgePair(ContourEdge::top(), ContourEdge::right())) }
+            13 => ConnectedEdges::One(ContourEdgePair(ContourEdge::top(), ContourEdge::right())),
 
             /* o-*
              * |/|
              * *-* */
-            14 => { ConnectedEdges::One(ContourEdgePair(ContourEdge::left(), ContourEdge::top())) }
+            14 => ConnectedEdges::One(ContourEdgePair(ContourEdge::left(), ContourEdge::top())),
 
             // Other values should not be valid
-            _ => { unreachable!() }
+            _ => {
+                unreachable!()
+            }
         }
     }
 }
@@ -116,7 +130,10 @@ impl ContourCell {
 ///
 /// Uses the marching squares algorithm to trace the edges represented by a sampled contour
 ///
-pub fn trace_contours_from_edges(edges: impl Iterator<Item=(ContourPosition, ContourCell)>, contour_size: ContourSize) -> Vec<Vec<ContourEdge>> {
+pub fn trace_contours_from_edges(
+    edges: impl Iterator<Item = (ContourPosition, ContourCell)>,
+    contour_size: ContourSize,
+) -> Vec<Vec<ContourEdge>> {
     // Hash map indicating which edges are connected to each other
     let mut edge_graph = HashMap::<_, SmallVec<[_; 2]>>::new();
 
@@ -153,11 +170,12 @@ pub fn trace_contours_from_edges(edges: impl Iterator<Item=(ContourPosition, Con
 
     loop {
         // We can fetch any edge from the hash table to follow it around in a loop
-        let (first_edge, next_edge) = if let Some((initial_edge, following_edges)) = edge_graph.iter().next() {
-            (*initial_edge, following_edges[0])
-        } else {
-            break;
-        };
+        let (first_edge, next_edge) =
+            if let Some((initial_edge, following_edges)) = edge_graph.iter().next() {
+                (*initial_edge, following_edges[0])
+            } else {
+                break;
+            };
 
         // Follow the loop to generate the points
         let mut edge_loop = vec![first_edge];
@@ -245,7 +263,7 @@ fn remove_overlapping_points(coords: &mut Vec<impl Coordinate>) {
     // None, or whether or not to keep coordinates
     let mut keep = None;
 
-    // Compare neighboring coordinates and 
+    // Compare neighboring coordinates and
     let mut previous_idx = 0;
     let mut idx = 1;
 
@@ -277,9 +295,7 @@ fn remove_overlapping_points(coords: &mut Vec<impl Coordinate>) {
     // Remove the overlapping points
     if let Some(keep) = keep {
         let mut keep = keep.into_iter();
-        coords.retain(|_| {
-            keep.next() == Some(true)
-        })
+        coords.retain(|_| keep.next() == Some(true))
     }
 }
 
@@ -287,25 +303,31 @@ fn remove_overlapping_points(coords: &mut Vec<impl Coordinate>) {
 /// Uses the marching squares algorithm to trace the edges represented by a sampled contour, and then fine-tunes the positions
 /// using the precise intercepts
 ///
-/// This can be used for cases where there isn't a distance field function, or where generating the distance field is 
+/// This can be used for cases where there isn't a distance field function, or where generating the distance field is
 /// considered to be too slow. It's no so useful for strucures where the intercepts are only known to low accuracy,
 /// however.
 ///
-pub fn trace_contours_from_intercepts<TCoord>(contours: &impl ColumnSampledContour) -> Vec<Vec<TCoord>>
-    where
-        TCoord: Coordinate + Coordinate2D,
+pub fn trace_contours_from_intercepts<TCoord>(
+    contours: &impl ColumnSampledContour,
+) -> Vec<Vec<TCoord>>
+where
+    TCoord: Coordinate + Coordinate2D,
 {
     // Cache the intercepts for the contours
     let contour_size = contours.contour_size();
     let width = contour_size.width();
     let height = contour_size.height();
-    let line_intercepts = (0..height).map(|y| contours.intercepts_on_line(y as _)).collect::<Vec<_>>();
-    let column_intercepts = (0..width).map(|x| contours.intercepts_on_column(x as _)).collect::<Vec<_>>();
+    let line_intercepts = (0..height)
+        .map(|y| contours.intercepts_on_line(y as _))
+        .collect::<Vec<_>>();
+    let column_intercepts = (0..width)
+        .map(|x| contours.intercepts_on_column(x as _))
+        .collect::<Vec<_>>();
 
     // Trace the contours using the intercepts we just cached
     // This re-implements the rounding routine from SampledContour (to avoid calculating the intercepts twice)
-    let edges = InterceptScanEdgeIterator::from_iterator(line_intercepts.iter()
-        .map(|intercepts| {
+    let edges =
+        InterceptScanEdgeIterator::from_iterator(line_intercepts.iter().map(|intercepts| {
             let intercepts = intercepts
                 .into_iter()
                 .map(|intercept| {
@@ -329,9 +351,11 @@ pub fn trace_contours_from_intercepts<TCoord>(contours: &impl ColumnSampledConto
     let edges = trace_contours_from_edges(edges, contour_size);
 
     // Use the line and the column intercepts to adjust the positions returned by the contours
-    let adjusted_edges = edges.into_iter()
+    let adjusted_edges = edges
+        .into_iter()
         .map(|edge_loop| {
-            edge_loop.into_iter()
+            edge_loop
+                .into_iter()
                 .map(|edge| {
                     let (_from, to) = edge.to_contour_coords(contour_size);
 
@@ -346,10 +370,11 @@ pub fn trace_contours_from_intercepts<TCoord>(contours: &impl ColumnSampledConto
                     }
                 })
                 .collect()
-        }).map(|mut coords| {
-        remove_overlapping_points(&mut coords);
-        coords
-    });
+        })
+        .map(|mut coords| {
+            remove_overlapping_points(&mut coords);
+            coords
+        });
 
     adjusted_edges.collect()
 }
@@ -360,26 +385,38 @@ pub fn trace_contours_from_intercepts<TCoord>(contours: &impl ColumnSampledConto
 /// All samples are placed at the middle of the edge, so a fit accuracy > 1.0 should be used to smooth out the shape (1.5 is a good value).
 /// A distance field can be used to get sub-pixel accuracy (see `trace_contours_from_distance_field()`) if that's needed.
 ///
-pub fn trace_paths_from_samples<TPathFactory>(contours: &impl SampledContour, accuracy: f64) -> Vec<TPathFactory>
-    where
-        TPathFactory: BezierPathFactory,
-        TPathFactory::Point: Coordinate + Coordinate2D,
+pub fn trace_paths_from_samples<TPathFactory>(
+    contours: &impl SampledContour,
+    accuracy: f64,
+) -> Vec<TPathFactory>
+where
+    TPathFactory: BezierPathFactory,
+    TPathFactory::Point: Coordinate + Coordinate2D,
 {
     // Trace out the contours
     let contour_size = contours.contour_size();
     let contours = trace_contours_from_samples(contours);
 
     // Convert the edges into points, then fit curves against the points (using low accuracy)
-    contours.into_iter()
-        .map(|edges| edges.into_iter().map(|edge| edge.to_coords(contour_size)).collect::<Vec<_>>())
+    contours
+        .into_iter()
+        .map(|edges| {
+            edges
+                .into_iter()
+                .map(|edge| edge.to_coords(contour_size))
+                .collect::<Vec<_>>()
+        })
         .filter_map(|points| {
             let curves = fit_curve_loop::<Curve<TPathFactory::Point>>(&points, accuracy)?;
-            Some(TPathFactory::from_points(curves[0].start_point(), curves.into_iter().map(|curve| {
-                let (cp1, cp2) = curve.control_points();
-                let end_point = curve.end_point();
+            Some(TPathFactory::from_points(
+                curves[0].start_point(),
+                curves.into_iter().map(|curve| {
+                    let (cp1, cp2) = curve.control_points();
+                    let end_point = curve.end_point();
 
-                (cp1, cp2, end_point)
-            })))
+                    (cp1, cp2, end_point)
+                }),
+            ))
         })
         .collect()
 }
@@ -387,9 +424,11 @@ pub fn trace_paths_from_samples<TPathFactory>(contours: &impl SampledContour, ac
 ///
 /// Traces contours from a distance field using the marching squares algorithm
 ///
-pub fn trace_contours_from_distance_field<TCoord>(distance_field: &impl SampledSignedDistanceField) -> Vec<Vec<TCoord>>
-    where
-        TCoord: Coordinate + Coordinate2D,
+pub fn trace_contours_from_distance_field<TCoord>(
+    distance_field: &impl SampledSignedDistanceField,
+) -> Vec<Vec<TCoord>>
+where
+    TCoord: Coordinate + Coordinate2D,
 {
     // Trace the edges
     let field_size = distance_field.field_size();
@@ -402,16 +441,26 @@ pub fn trace_contours_from_distance_field<TCoord>(distance_field: &impl SampledS
     }
 
     // Every edge will have a point that can be considered as having '0' distance, which we can find by linear interpolation
-    loops.into_iter()
+    loops
+        .into_iter()
         .map(|edge_loop| {
-            edge_loop.into_iter()
+            edge_loop
+                .into_iter()
                 .map(|edge| {
                     // Read the from/to coordinates of this edge
                     let (from, to) = edge.to_contour_coords(field_size);
 
                     // Read the distances at the edge points (edges count from 1)
-                    let from_distance = if from.0 > 0 && from.1 > 0 { distance_field.distance_at_point(edge_coord_to_field_coord(from)) } else { f64::MAX };
-                    let to_distance = if to.0 > 0 && to.1 > 0 { distance_field.distance_at_point(edge_coord_to_field_coord(to)) } else { f64::MAX };
+                    let from_distance = if from.0 > 0 && from.1 > 0 {
+                        distance_field.distance_at_point(edge_coord_to_field_coord(from))
+                    } else {
+                        f64::MAX
+                    };
+                    let to_distance = if to.0 > 0 && to.1 > 0 {
+                        distance_field.distance_at_point(edge_coord_to_field_coord(to))
+                    } else {
+                        f64::MAX
+                    };
 
                     // Interpolate to find the '0' coordinate
                     let zero_point = if from_distance != to_distance {
@@ -431,7 +480,8 @@ pub fn trace_contours_from_distance_field<TCoord>(distance_field: &impl SampledS
                     debug_assert!(!x.is_nan() && !y.is_nan());
 
                     TCoord::from_components(&[x, y])
-                }).collect()
+                })
+                .collect()
         })
         .map(|mut coords| {
             remove_overlapping_points(&mut coords);
@@ -443,28 +493,35 @@ pub fn trace_contours_from_distance_field<TCoord>(distance_field: &impl SampledS
 ///
 /// Creates a bezier path using a contour and fine-tuning with the intercepts function
 ///
-/// This can be used for cases where there isn't a distance field function, or where generating the distance field is 
+/// This can be used for cases where there isn't a distance field function, or where generating the distance field is
 /// considered to be too slow. It's no so useful for strucures where the intercepts are only known to low accuracy,
 /// however.
 ///
-pub fn trace_paths_from_intercepts<TPathFactory>(contours: &impl ColumnSampledContour, accuracy: f64) -> Vec<TPathFactory>
-    where
-        TPathFactory: BezierPathFactory,
-        TPathFactory::Point: Coordinate + Coordinate2D,
+pub fn trace_paths_from_intercepts<TPathFactory>(
+    contours: &impl ColumnSampledContour,
+    accuracy: f64,
+) -> Vec<TPathFactory>
+where
+    TPathFactory: BezierPathFactory,
+    TPathFactory::Point: Coordinate + Coordinate2D,
 {
     // Trace out the contours
     let contours = trace_contours_from_intercepts(contours);
 
     // Convert the edges into points, then fit curves against the points (using low accuracy)
-    contours.into_iter()
+    contours
+        .into_iter()
         .filter_map(|points| {
             let curves = fit_curve_loop::<Curve<TPathFactory::Point>>(&points, accuracy)?;
-            Some(TPathFactory::from_points(curves[0].start_point(), curves.into_iter().map(|curve| {
-                let (cp1, cp2) = curve.control_points();
-                let end_point = curve.end_point();
+            Some(TPathFactory::from_points(
+                curves[0].start_point(),
+                curves.into_iter().map(|curve| {
+                    let (cp1, cp2) = curve.control_points();
+                    let end_point = curve.end_point();
 
-                (cp1, cp2, end_point)
-            })))
+                    (cp1, cp2, end_point)
+                }),
+            ))
         })
         .collect()
 }
@@ -472,24 +529,31 @@ pub fn trace_paths_from_intercepts<TPathFactory>(contours: &impl ColumnSampledCo
 ///
 /// Creates a bezier path from a distance field
 ///
-pub fn trace_paths_from_distance_field<TPathFactory>(distance_field: &impl SampledSignedDistanceField, accuracy: f64) -> Vec<TPathFactory>
-    where
-        TPathFactory: BezierPathFactory,
-        TPathFactory::Point: Coordinate + Coordinate2D,
+pub fn trace_paths_from_distance_field<TPathFactory>(
+    distance_field: &impl SampledSignedDistanceField,
+    accuracy: f64,
+) -> Vec<TPathFactory>
+where
+    TPathFactory: BezierPathFactory,
+    TPathFactory::Point: Coordinate + Coordinate2D,
 {
     // Trace out the contours
     let contours = trace_contours_from_distance_field(distance_field);
 
     // Convert the edges into points, then fit curves against the points (using low accuracy)
-    contours.into_iter()
+    contours
+        .into_iter()
         .filter_map(|points| {
             let curves = fit_curve_loop::<Curve<TPathFactory::Point>>(&points, accuracy)?;
-            Some(TPathFactory::from_points(curves[0].start_point(), curves.into_iter().map(|curve| {
-                let (cp1, cp2) = curve.control_points();
-                let end_point = curve.end_point();
+            Some(TPathFactory::from_points(
+                curves[0].start_point(),
+                curves.into_iter().map(|curve| {
+                    let (cp1, cp2) = curve.control_points();
+                    let end_point = curve.end_point();
 
-                (cp1, cp2, end_point)
-            })))
+                    (cp1, cp2, end_point)
+                }),
+            ))
         })
         .collect()
 }

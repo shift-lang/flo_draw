@@ -1,3 +1,9 @@
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
 use std::sync::atomic::{AtomicU64, Ordering};
 
 lazy_static! {
@@ -88,11 +94,11 @@ impl QueueState {
     ///
     pub(crate) fn is_running(&self) -> bool {
         match self {
-            QueueState::Running |
-            QueueState::AwokenWhileRunning |
-            QueueState::WaitingForPoll(_) |
-            QueueState::WaitingForUnpark => true,
-            _other => false
+            QueueState::Running
+            | QueueState::AwokenWhileRunning
+            | QueueState::WaitingForPoll(_)
+            | QueueState::WaitingForUnpark => true,
+            _other => false,
         }
     }
 }

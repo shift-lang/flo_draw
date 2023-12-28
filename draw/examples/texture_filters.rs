@@ -1,3 +1,9 @@
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
 use std::f64;
 use std::io;
 use std::sync::*;
@@ -5,8 +11,8 @@ use std::sync::*;
 use futures::executor;
 use futures::prelude::*;
 
-use flo_draw::*;
 use flo_draw::canvas::*;
+use flo_draw::*;
 
 ///
 /// Simple example that displays a canvas window and renders an image from a png file
@@ -34,7 +40,9 @@ pub fn main() {
             gc.define_font_data(FontId(1), Arc::clone(&lato));
 
             // Load the texture into TextureId(0)
-            (flo_w, flo_h) = gc.load_texture(TextureId(0), io::Cursor::new(flo_bytes)).unwrap();
+            (flo_w, flo_h) = gc
+                .load_texture(TextureId(0), io::Cursor::new(flo_bytes))
+                .unwrap();
         });
 
         executor::block_on(async move {
@@ -64,7 +72,7 @@ pub fn main() {
                         2 => "Mask",
                         3 => "Displacement map",
 
-                        _ => "Unknown filter"
+                        _ => "Unknown filter",
                     };
                     gc.layout_text(FontId(1), name.to_string());
                     gc.draw_text_layout();
@@ -98,14 +106,30 @@ pub fn main() {
                             gc.sprite(SpriteId(0));
                             gc.clear_sprite();
                             gc.set_font_size(FontId(1), 200.0);
-                            gc.begin_line_layout(500.0, sprite_height / 2.0 - 100.0, TextAlignment::Center);
+                            gc.begin_line_layout(
+                                500.0,
+                                sprite_height / 2.0 - 100.0,
+                                TextAlignment::Center,
+                            );
                             gc.layout_text(FontId(1), "MASK".to_string());
                             gc.draw_text_layout();
 
                             // Back to layer 0, then render the sprite to a texture that's the same size as our input texture
                             gc.layer(LayerId(0));
-                            gc.create_texture(TextureId(2), flo_w as _, flo_h as _, TextureFormat::Rgba);
-                            gc.set_texture_from_sprite(TextureId(2), SpriteId(0), 0.0, sprite_height, 1000.0, -sprite_height);
+                            gc.create_texture(
+                                TextureId(2),
+                                flo_w as _,
+                                flo_h as _,
+                                TextureFormat::Rgba,
+                            );
+                            gc.set_texture_from_sprite(
+                                TextureId(2),
+                                SpriteId(0),
+                                0.0,
+                                sprite_height,
+                                1000.0,
+                                -sprite_height,
+                            );
 
                             // Filter the texture with the stencil we just created
                             gc.filter_texture(TextureId(1), TextureFilter::Mask(TextureId(2)));
@@ -114,29 +138,46 @@ pub fn main() {
                         // Displacement map
                         3 => {
                             // Define a texture to use as the displacement map (the red and green channels are the x and y displacement as a proportion of the scaling factor)
-                            gc.create_texture(TextureId(2), flo_w as _, flo_h as _, TextureFormat::Rgba);
-                            gc.set_texture_bytes(TextureId(2), 0, 0, flo_w as _, flo_h as _,
-                                                 Arc::new((0..(flo_w * flo_h)).into_iter()
-                                                     .flat_map(|pixel_num| {
-                                                         let x_pos = pixel_num % flo_w;
-                                                         let y_pos = pixel_num / flo_w;
+                            gc.create_texture(
+                                TextureId(2),
+                                flo_w as _,
+                                flo_h as _,
+                                TextureFormat::Rgba,
+                            );
+                            gc.set_texture_bytes(
+                                TextureId(2),
+                                0,
+                                0,
+                                flo_w as _,
+                                flo_h as _,
+                                Arc::new(
+                                    (0..(flo_w * flo_h))
+                                        .into_iter()
+                                        .flat_map(|pixel_num| {
+                                            let x_pos = pixel_num % flo_w;
+                                            let y_pos = pixel_num / flo_w;
 
-                                                         let x_factor = (x_pos as f64) / (flo_w as f64);
-                                                         let y_factor = (y_pos as f64) / (flo_h as f64);
-                                                         let x_factor = x_factor * 2.0 * f64::consts::PI;
-                                                         let y_factor = y_factor * 2.0 * f64::consts::PI;
-                                                         let x_factor = x_factor * 8.0;
-                                                         let y_factor = y_factor * 7.0;
+                                            let x_factor = (x_pos as f64) / (flo_w as f64);
+                                            let y_factor = (y_pos as f64) / (flo_h as f64);
+                                            let x_factor = x_factor * 2.0 * f64::consts::PI;
+                                            let y_factor = y_factor * 2.0 * f64::consts::PI;
+                                            let x_factor = x_factor * 8.0;
+                                            let y_factor = y_factor * 7.0;
 
-                                                         let x_seq = (x_factor.sin() + 1.0) / 2.0;
-                                                         let y_seq = (y_factor.cos() + 1.0) / 2.0;
+                                            let x_seq = (x_factor.sin() + 1.0) / 2.0;
+                                            let y_seq = (y_factor.cos() + 1.0) / 2.0;
 
-                                                         [(y_seq * 255.0) as u8, (x_seq * 255.0) as u8, 0, 255]
-                                                     })
-                                                     .collect::<Vec<_>>()));
+                                            [(y_seq * 255.0) as u8, (x_seq * 255.0) as u8, 0, 255]
+                                        })
+                                        .collect::<Vec<_>>(),
+                                ),
+                            );
 
                             // Distort the texture with the filter we just created
-                            gc.filter_texture(TextureId(1), TextureFilter::DisplacementMap(TextureId(2), 8.0, 8.0));
+                            gc.filter_texture(
+                                TextureId(1),
+                                TextureFilter::DisplacementMap(TextureId(2), 8.0, 8.0),
+                            );
                         }
 
                         _ => {}
@@ -158,7 +199,9 @@ pub fn main() {
                 // Wait for the user to hit the space bar
                 loop {
                     let next_event = events.next().await;
-                    if next_event.is_none() { return; }
+                    if next_event.is_none() {
+                        return;
+                    }
 
                     if let Some(DrawEvent::KeyDown(_, Some(key))) = next_event {
                         if key == Key::KeySpace {

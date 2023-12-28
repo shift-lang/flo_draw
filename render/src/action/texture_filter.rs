@@ -1,3 +1,9 @@
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
 use super::identities::*;
 
 use std::f32;
@@ -72,16 +78,20 @@ impl TextureFilter {
     ///
     pub(crate) fn weights_for_gaussian_blur(sigma: f32, step: f32, count: usize) -> Vec<f32> {
         // Short-circuit the case where count is 0
-        if count == 0 { return vec![]; }
+        if count == 0 {
+            return vec![];
+        }
 
         let sigma_squared = sigma * sigma;
 
         // Compute the weight at each position
-        let uncorrected = (0..count).into_iter()
+        let uncorrected = (0..count)
+            .into_iter()
             .map(|x| {
                 let x = x as f32;
                 let x = x * step;
-                (1.0 / ((2.0 * f32::consts::PI * sigma_squared).sqrt())) * (f32::consts::E.powf(-(x * x) / (2.0 * sigma_squared)))
+                (1.0 / ((2.0 * f32::consts::PI * sigma_squared).sqrt()))
+                    * (f32::consts::E.powf(-(x * x) / (2.0 * sigma_squared)))
             })
             .collect::<Vec<_>>();
 

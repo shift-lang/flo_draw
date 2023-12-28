@@ -1,7 +1,13 @@
-use super::curve::*;
-use super::basis::*;
-use super::super::geo::*;
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
 use super::super::consts::*;
+use super::super::geo::*;
+use super::basis::*;
+use super::curve::*;
 
 use std::cell::*;
 
@@ -112,7 +118,9 @@ impl<'a, C: 'a + BezierCurve> BezierCurve for CurveSection<'a, C> {
     /// The control points in this curve
     ///
     fn control_points(&self) -> (Self::Point, Self::Point) {
-        *self.cached_control_points.borrow_mut()
+        *self
+            .cached_control_points
+            .borrow_mut()
             .get_or_insert_with(move || {
                 // This is the de-casteljau subdivision algorithm (ran twice to cut out a section of the curve)
                 let t_min = self.t_c;

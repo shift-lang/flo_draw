@@ -1,5 +1,11 @@
-use super::basis::*;
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
 use super::super::geo::*;
+use super::basis::*;
 
 ///
 /// Finds the t values of the extremities of a curve (these are the points at which
@@ -26,8 +32,12 @@ pub fn find_extremities<Point: Coordinate>(w1: Point, w2: Point, w3: Point, w4: 
         let root1 = (-b + f64::sqrt(b * b - a * c * 4.0)) / (a * 2.0);
         let root2 = (-b - f64::sqrt(b * b - a * c * 4.0)) / (a * 2.0);
 
-        if root1 > 0.0 && root1 < 1.0 { t_extremes.push(root1); }
-        if root2 > 0.0 && root2 < 1.0 { t_extremes.push(root2); }
+        if root1 > 0.0 && root1 < 1.0 {
+            t_extremes.push(root1);
+        }
+        if root2 > 0.0 && root2 < 1.0 {
+            t_extremes.push(root2);
+        }
 
         // We also solve for the second derivative
         let aa = 2.0 * (b - a);
@@ -48,7 +58,12 @@ pub fn find_extremities<Point: Coordinate>(w1: Point, w2: Point, w3: Point, w4: 
 ///
 /// Finds the upper and lower points in a cubic curve's bounding box
 ///
-pub fn bounding_box4<Point: Coordinate, Bounds: BoundingBox<Point=Point>>(w1: Point, w2: Point, w3: Point, w4: Point) -> Bounds {
+pub fn bounding_box4<Point: Coordinate, Bounds: BoundingBox<Point = Point>>(
+    w1: Point,
+    w2: Point,
+    w3: Point,
+    w4: Point,
+) -> Bounds {
     // The 't' values where this curve has extremities we need to examine
     let t_extremes = find_extremities(w1, w2, w3, w4);
 

@@ -1,3 +1,9 @@
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
 use super::error::*;
 use super::offscreen_trait::*;
 
@@ -6,7 +12,7 @@ use crate::metal_renderer::*;
 
 use metal;
 
-use std::ffi::{c_void};
+use std::ffi::c_void;
 
 ///
 /// A metal offscreen render context
@@ -31,15 +37,18 @@ struct MetalOffscreenRenderTarget {
 ///
 /// This version is the Metal version for Mac OS X
 ///
-pub fn metal_initialize_offscreen_rendering() -> Result<impl OffscreenRenderContext, RenderInitError> {
+pub fn metal_initialize_offscreen_rendering() -> Result<impl OffscreenRenderContext, RenderInitError>
+{
     // Get the default metal device for the current system
     let device = metal::Device::system_default();
-    let device = if let Some(device) = device { device } else { Err(RenderInitError::CannotOpenGraphicsDevice)? };
+    let device = if let Some(device) = device {
+        device
+    } else {
+        Err(RenderInitError::CannotOpenGraphicsDevice)?
+    };
 
     // Result is a Metal offscreen render context
-    Ok(MetalOffscreenRenderContext {
-        device: device
-    })
+    Ok(MetalOffscreenRenderContext { device })
 }
 
 ///
@@ -62,7 +71,12 @@ impl OffscreenRenderContext for MetalOffscreenRenderContext {
     ///
     fn create_render_target(&mut self, width: usize, height: usize) -> Self::RenderTarget {
         let device = self.device.clone();
-        let render_target = RenderTarget::new(&self.device, width, height, RenderTargetType::StandardForReading);
+        let render_target = RenderTarget::new(
+            &self.device,
+            width,
+            height,
+            RenderTargetType::StandardForReading,
+        );
         let renderer = MetalRenderer::with_device(&self.device, true);
 
         MetalOffscreenRenderTarget {
@@ -79,8 +93,10 @@ impl OffscreenRenderTarget for MetalOffscreenRenderTarget {
     ///
     /// Sends render actions to this offscreen render target
     ///
-    fn render<ActionIter: IntoIterator<Item=RenderAction>>(&mut self, actions: ActionIter) {
-        let buffer = self.renderer.render_to_buffer(actions, self.render_target.render_texture());
+    fn render<ActionIter: IntoIterator<Item = RenderAction>>(&mut self, actions: ActionIter) {
+        let buffer = self
+            .renderer
+            .render_to_buffer(actions, self.render_target.render_texture());
 
         let blit_encoder = buffer.new_blit_command_encoder();
         blit_encoder.synchronize_resource(self.render_target.render_texture());
@@ -99,9 +115,18 @@ impl OffscreenRenderTarget for MetalOffscreenRenderTarget {
         let texture = self.render_target.render_texture();
         let region = metal::MTLRegion {
             origin: metal::MTLOrigin { x: 0, y: 0, z: 0 },
-            size: metal::MTLSize { width: self.width as u64, height: self.height as u64, depth: 1 },
+            size: metal::MTLSize {
+                width: self.width as u64,
+                height: self.height as u64,
+                depth: 1,
+            },
         };
-        texture.get_bytes(result.as_mut_ptr() as *mut c_void, (self.width * 4) as u64, region, 0);
+        texture.get_bytes(
+            result.as_mut_ptr() as *mut c_void,
+            (self.width * 4) as u64,
+            region,
+            0,
+        );
 
         result
     }

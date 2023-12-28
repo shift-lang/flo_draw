@@ -1,4 +1,10 @@
-use std::ops::{Range};
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
+use std::ops::Range;
 
 use smallvec::*;
 
@@ -29,14 +35,14 @@ impl<TData> Space1D<TData> {
     /// Returns the data in this space without the locations
     ///
     #[inline]
-    pub fn data<'a>(&'a self) -> impl 'a + Iterator<Item=&'a TData> {
+    pub fn data<'a>(&'a self) -> impl 'a + Iterator<Item = &'a TData> {
         self.values.iter()
     }
 
     ///
     /// Creates a new space from a data iterator
     ///
-    pub fn from_data(data: impl IntoIterator<Item=(Range<f64>, TData)>) -> Self {
+    pub fn from_data(data: impl IntoIterator<Item = (Range<f64>, TData)>) -> Self {
         use std::mem;
 
         // Create the data structures
@@ -78,10 +84,12 @@ impl<TData> Space1D<TData> {
                     if range.start == last_range.start {
                         handles.extend(last_handles.iter().copied());
                     } else {
-                        combined_space.push((last_range.clone(), last_handles.iter().copied().collect()));
+                        combined_space
+                            .push((last_range.clone(), last_handles.iter().copied().collect()));
                     }
                 } else {
-                    combined_space.push((last_range.clone(), last_handles.iter().copied().collect()));
+                    combined_space
+                        .push((last_range.clone(), last_handles.iter().copied().collect()));
                 }
 
                 remaining.pop();
@@ -120,7 +128,7 @@ impl<TData> Space1D<TData> {
                     new_remaining.push((range.clone(), range_handles));
                     range.start = range.end;
 
-                    // Consume the part of the active range that overlapped the new range 
+                    // Consume the part of the active range that overlapped the new range
                     active_range.start = range.end;
                     new_remaining.push((active_range, active_handles));
                 }
@@ -153,7 +161,9 @@ impl<TData> Space1D<TData> {
     ///
     #[inline]
     fn search(&self, point: f64) -> Result<usize, usize> {
-        match self.space.binary_search_by(|(range, _)| range.start.total_cmp(&point))
+        match self
+            .space
+            .binary_search_by(|(range, _)| range.start.total_cmp(&point))
         {
             Ok(idx) => Ok(idx),
             Err(idx) => {
@@ -166,7 +176,7 @@ impl<TData> Space1D<TData> {
                         // idx-1 contains this point
                         Ok(idx - 1)
                     } else {
-                        // idx is the first range 
+                        // idx is the first range
                         Err(idx)
                     }
                 }
@@ -178,10 +188,12 @@ impl<TData> Space1D<TData> {
     /// Returns the data items that are at a particular point
     ///
     #[inline]
-    pub fn data_at_point<'a>(&'a self, point: f64) -> impl 'a + Iterator<Item=&'a TData> {
+    pub fn data_at_point<'a>(&'a self, point: f64) -> impl 'a + Iterator<Item = &'a TData> {
         if let Ok(idx) = self.search(point) {
             // Found a range matching this point
-            let data = self.space[idx].1.iter()
+            let data = self.space[idx]
+                .1
+                .iter()
                 .map(move |handle| &self.values[*handle]);
 
             Some(data).into_iter().flatten()
@@ -194,11 +206,11 @@ impl<TData> Space1D<TData> {
     ///
     /// Finds all of the data that overlaps a particular range
     ///
-    pub fn data_in_region<'a>(&'a self, range: Range<f64>) -> impl 'a + Iterator<Item=&'a TData> {
+    pub fn data_in_region<'a>(&'a self, range: Range<f64>) -> impl 'a + Iterator<Item = &'a TData> {
         // Search for the first ares that is covered by this range
         let mut idx = match self.search(range.start) {
             Ok(idx) => idx,
-            Err(idx) => idx
+            Err(idx) => idx,
         };
 
         // Create the result in a vec, use a bit field to indicate which values are used
@@ -208,7 +220,9 @@ impl<TData> Space1D<TData> {
 
         loop {
             // Stop once we get to the end of the space
-            if idx >= self.space.len() { break; }
+            if idx >= self.space.len() {
+                break;
+            }
 
             let (space_range, handles) = &self.space[idx];
 
@@ -240,25 +254,40 @@ impl<TData> Space1D<TData> {
     /// Returns the non-overlapping regions and data that makes up this space (data may appear multiple times if it's in several regions)
     ///
     #[inline]
-    pub fn all_regions<'a>(&'a self) -> impl 'a + Iterator<Item=(Range<f64>, SmallVec<[&'a TData; 2]>)> {
-        self.space.iter()
-            .map(move |(range, handles)| (range.clone(), handles.iter().map(|handle| &self.values[*handle]).collect()))
+    pub fn all_regions<'a>(
+        &'a self,
+    ) -> impl 'a + Iterator<Item = (Range<f64>, SmallVec<[&'a TData; 2]>)> {
+        self.space.iter().map(move |(range, handles)| {
+            (
+                range.clone(),
+                handles.iter().map(|handle| &self.values[*handle]).collect(),
+            )
+        })
     }
 
     ///
     /// Returns the non-overlapping regions and data that makes up this space (data may appear multiple times if it's in several regions)
     ///
     #[inline]
-    pub fn regions_in_range<'a>(&'a self, range: Range<f64>) -> impl 'a + Iterator<Item=(Range<f64>, SmallVec<[&'a TData; 2]>)> {
+    pub fn regions_in_range<'a>(
+        &'a self,
+        range: Range<f64>,
+    ) -> impl 'a + Iterator<Item = (Range<f64>, SmallVec<[&'a TData; 2]>)> {
         let start_idx = match self.search(range.start) {
             Ok(idx) => idx,
-            Err(idx) => idx
+            Err(idx) => idx,
         };
 
-        self.space.iter()
+        self.space
+            .iter()
             .skip(start_idx)
             .take_while(move |(space_range, _)| space_range.start < range.end)
-            .map(move |(range, handles)| (range.clone(), handles.iter().map(|handle| &self.values[*handle]).collect()))
+            .map(move |(range, handles)| {
+                (
+                    range.clone(),
+                    handles.iter().map(|handle| &self.values[*handle]).collect(),
+                )
+            })
     }
 
     ///
@@ -267,15 +296,31 @@ impl<TData> Space1D<TData> {
     #[cfg(test)]
     pub fn verify(&self) {
         // Nothing to do if the space is so short it can't be incorrect
-        if self.space.len() <= 1 { return; }
+        if self.space.len() <= 1 {
+            return;
+        }
 
         // Ranges must not overlap or go backwards
         let mut last_range = self.space[0].0.clone();
-        assert!(last_range.start != last_range.end, "First range has 0 length {:?}", last_range);
+        assert!(
+            last_range.start != last_range.end,
+            "First range has 0 length {:?}",
+            last_range
+        );
 
         for (range, _) in self.space.iter().skip(1) {
-            assert!(range.start >= last_range.end, "New range starts before last range ends ({:?} vs {:?})", last_range, range);
-            assert!(range.start != range.end, "Range has 0 length ({:?} vs {:?})", last_range, range);
+            assert!(
+                range.start >= last_range.end,
+                "New range starts before last range ends ({:?} vs {:?})",
+                last_range,
+                range
+            );
+            assert!(
+                range.start != range.end,
+                "Range has 0 length ({:?} vs {:?})",
+                last_range,
+                range
+            );
 
             last_range = range.clone();
         }
@@ -289,7 +334,10 @@ mod test {
 
     #[test]
     fn random() {
-        let mut rng = StdRng::from_seed([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31]);
+        let mut rng = StdRng::from_seed([
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23,
+            24, 25, 26, 27, 28, 29, 30, 31,
+        ]);
 
         for _ in 0..2000 {
             let num_sections = rng.gen_range(10..100);
@@ -307,22 +355,53 @@ mod test {
             assert!(space.space.len() >= num_sections);
 
             for (range, idx) in sections.iter() {
-                let data_at_mid = space.data_at_point((range.start + range.end) / 2.0).collect::<Vec<_>>();
+                let data_at_mid = space
+                    .data_at_point((range.start + range.end) / 2.0)
+                    .collect::<Vec<_>>();
 
-                assert!(data_at_mid.len() > 0, "No data found at middle of {:?}", range);
-                assert!(data_at_mid.contains(&idx), "Could not find section index {} for middle of range {:?} (found {:?} instead)", idx, range, data_at_mid);
+                assert!(
+                    data_at_mid.len() > 0,
+                    "No data found at middle of {:?}",
+                    range
+                );
+                assert!(
+                    data_at_mid.contains(&idx),
+                    "Could not find section index {} for middle of range {:?} (found {:?} instead)",
+                    idx,
+                    range,
+                    data_at_mid
+                );
 
                 let data_at_end = space.data_at_point(range.end - 0.001).collect::<Vec<_>>();
 
                 assert!(data_at_end.len() > 0, "No data found at end of {:?}", range);
-                assert!(data_at_end.contains(&idx), "Could not find section index {} for end of range {:?} (found {:?} instead)", idx, range, data_at_mid);
+                assert!(
+                    data_at_end.contains(&idx),
+                    "Could not find section index {} for end of range {:?} (found {:?} instead)",
+                    idx,
+                    range,
+                    data_at_mid
+                );
 
                 let regions_in_range = space.regions_in_range(range.clone()).collect::<Vec<_>>();
-                assert!(regions_in_range.iter().all(|(_, handles)| handles.contains(&idx)), "Over the whole range, found a section that's missing this handle ({}: {:?})", idx, regions_in_range);
+                assert!(
+                    regions_in_range
+                        .iter()
+                        .all(|(_, handles)| handles.contains(&idx)),
+                    "Over the whole range, found a section that's missing this handle ({}: {:?})",
+                    idx,
+                    regions_in_range
+                );
             }
 
             let all_data = space.data_in_region(0.0..201.0).collect::<Vec<_>>();
-            assert!(all_data.len() == num_sections, "Retrieved {} items for the whole range (should have been {}) - {:?}", all_data.len(), num_sections, all_data);
+            assert!(
+                all_data.len() == num_sections,
+                "Retrieved {} items for the whole range (should have been {}) - {:?}",
+                all_data.len(),
+                num_sections,
+                all_data
+            );
             assert!((0..num_sections).all(|section_id| all_data.contains(&&section_id)));
         }
     }

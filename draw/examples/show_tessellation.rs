@@ -1,15 +1,21 @@
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
 use std::collections::HashMap;
 use std::mem;
 use std::sync::*;
 
-use ::desync::*;
 use futures::executor;
 use futures::prelude::*;
 use futures::stream;
 
-use flo_draw::*;
+use ::desync::*;
 use flo_draw::canvas::*;
 use flo_draw::render_canvas::*;
+use flo_draw::*;
 
 ///
 /// Draws a circle, then intercepts the tessellation and displays that instead
@@ -55,10 +61,10 @@ pub fn main() {
                         .collect::<Vec<_>>()
                         .await
                 }
-                    .boxed()
+                .boxed()
             })
-                .map(|as_vectors| stream::iter(as_vectors))
-                .flatten();
+            .map(|as_vectors| stream::iter(as_vectors))
+            .flatten();
 
         // Draw a circle that will get sent to the renderer we just set up (rather than directly to the window)
         canvas.draw(|gc| {

@@ -1,14 +1,24 @@
-use super::curve::*;
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
+use super::super::consts::*;
 use super::super::geo::*;
 use super::super::line::*;
-use super::super::consts::*;
+use super::curve::*;
 
 ///
 /// If `curve2` overlaps `curve1`, returns two sets of `t` values (those for `curve1` and those for `curve2`)
 ///
-pub fn overlapping_region<C1: BezierCurve, C2: BezierCurve>(curve1: &C1, curve2: &C2) -> Option<((f64, f64), (f64, f64))>
-    where C1::Point: Coordinate + Coordinate2D,
-          C2: BezierCurve<Point=C1::Point>,
+pub fn overlapping_region<C1: BezierCurve, C2: BezierCurve>(
+    curve1: &C1,
+    curve2: &C2,
+) -> Option<((f64, f64), (f64, f64))>
+where
+    C1::Point: Coordinate + Coordinate2D,
+    C2: BezierCurve<Point = C1::Point>,
 {
     // Two curves are overlapping if two of the four start/end points lies on the other curve and the control points are the same for those points
     // An exception for this is if the two curves are collinear lines, in which case the control points don't matter
@@ -76,8 +86,11 @@ pub fn overlapping_region<C1: BezierCurve, C2: BezierCurve>(curve1: &C1, curve2:
     let coeff = (curve1.start_point(), curve1.end_point()).coefficients();
     let (c1_cp1, c1_cp2) = curve1.control_points();
 
-    if is_collinear(&c1_cp1, &coeff) && is_collinear(&c1_cp2, &coeff)
-        && is_collinear(&curve2.start_point(), &coeff) && is_collinear(&curve2.end_point(), &coeff) {
+    if is_collinear(&c1_cp1, &coeff)
+        && is_collinear(&c1_cp2, &coeff)
+        && is_collinear(&curve2.start_point(), &coeff)
+        && is_collinear(&curve2.end_point(), &coeff)
+    {
         let (c2_cp1, c2_cp2) = curve2.control_points();
 
         if is_collinear(&c2_cp1, &coeff) && is_collinear(&c2_cp2, &coeff) {
@@ -94,8 +107,8 @@ pub fn overlapping_region<C1: BezierCurve, C2: BezierCurve>(curve1: &C1, curve2:
     // Get the control points for the two curves
     #[inline]
     fn control_points<C: BezierCurve>(curve: &C, t1: f64, t2: f64) -> (C::Point, C::Point)
-        where
-            C::Point: Coordinate + Coordinate2D,
+    where
+        C::Point: Coordinate + Coordinate2D,
     {
         if t2 < t1 {
             let (cp2, cp1) = curve.section(t2, t1).control_points();

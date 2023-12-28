@@ -1,12 +1,18 @@
-use super::fit::*;
-use super::curve::*;
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
 use super::bounds::*;
+use super::curve::*;
+use super::fit::*;
 use super::normal::*;
 
 use crate::geo::*;
 
-use std::iter;
 use itertools::*;
+use std::iter;
 
 ///
 /// Options for the `offset_lms_subdivisions` function
@@ -92,12 +98,17 @@ impl SubdivisionOffsetOptions {
 /// Calculates the offset point and unit tangent for a point on the curve
 ///
 #[inline]
-fn calc_offset_point<Curve, NormalOffsetFn, TangentOffsetFn>(curve: &Curve, normal_offset_for_t: &NormalOffsetFn, tangent_offset_for_t: &TangentOffsetFn, t: f64) -> (Curve::Point, Curve::Point)
-    where
-        Curve: BezierCurveFactory + NormalCurve,
-        Curve::Point: Normalize + Coordinate2D,
-        NormalOffsetFn: Fn(f64) -> f64,
-        TangentOffsetFn: Fn(f64) -> f64,
+fn calc_offset_point<Curve, NormalOffsetFn, TangentOffsetFn>(
+    curve: &Curve,
+    normal_offset_for_t: &NormalOffsetFn,
+    tangent_offset_for_t: &TangentOffsetFn,
+    t: f64,
+) -> (Curve::Point, Curve::Point)
+where
+    Curve: BezierCurveFactory + NormalCurve,
+    Curve::Point: Normalize + Coordinate2D,
+    NormalOffsetFn: Fn(f64) -> f64,
+    TangentOffsetFn: Fn(f64) -> f64,
 {
     // Compute the curve point and normal/tangent points
     let mut point = curve.point_at_pos(t);
@@ -117,14 +128,19 @@ fn calc_offset_point<Curve, NormalOffsetFn, TangentOffsetFn>(curve: &Curve, norm
 ///
 /// Produces an offset curve by performing a least-mean-square curve fit against the output of a function
 ///
-/// The samples are obtained by subdividing the curve until the 
+/// The samples are obtained by subdividing the curve until the
 ///
-pub fn offset_lms_subdivisions<Curve, NormalOffsetFn, TangentOffsetFn>(curve: &Curve, normal_offset_for_t: NormalOffsetFn, tangent_offset_for_t: TangentOffsetFn, subdivision_options: &SubdivisionOffsetOptions) -> Option<Vec<Curve>>
-    where
-        Curve: BezierCurveFactory + NormalCurve,
-        Curve::Point: Normalize + Coordinate2D,
-        NormalOffsetFn: Fn(f64) -> f64,
-        TangentOffsetFn: Fn(f64) -> f64,
+pub fn offset_lms_subdivisions<Curve, NormalOffsetFn, TangentOffsetFn>(
+    curve: &Curve,
+    normal_offset_for_t: NormalOffsetFn,
+    tangent_offset_for_t: TangentOffsetFn,
+    subdivision_options: &SubdivisionOffsetOptions,
+) -> Option<Vec<Curve>>
+where
+    Curve: BezierCurveFactory + NormalCurve,
+    Curve::Point: Normalize + Coordinate2D,
+    NormalOffsetFn: Fn(f64) -> f64,
+    TangentOffsetFn: Fn(f64) -> f64,
 {
     let (start_point, (cp1, cp2), end_point) = curve.all_points();
 
@@ -141,8 +157,14 @@ pub fn offset_lms_subdivisions<Curve, NormalOffsetFn, TangentOffsetFn>(curve: &C
     }
 
     // Calculate the offsets at these as the initial set of samples
-    let samples = extremities.into_iter()
-        .map(|t| (t, calc_offset_point(curve, &normal_offset_for_t, &tangent_offset_for_t, t)))
+    let samples = extremities
+        .into_iter()
+        .map(|t| {
+            (
+                t,
+                calc_offset_point(curve, &normal_offset_for_t, &tangent_offset_for_t, t),
+            )
+        })
         .collect::<Vec<_>>();
     let last_sample = samples.last().copied();
 
@@ -152,16 +174,19 @@ pub fn offset_lms_subdivisions<Curve, NormalOffsetFn, TangentOffsetFn>(curve: &C
         let normal_offset_for_t = &normal_offset_for_t;
         let tangent_offset_for_t = &tangent_offset_for_t;
 
-        samples.into_iter().tuple_windows()
+        samples
+            .into_iter()
+            .tuple_windows()
             .flat_map(|((t1, p1), (t2, _p2))| {
-                iter::once((t1, p1))
-                    .chain((0..initial_subdivisions)
-                        .map(move |div| {
-                            let div = ((div + 1) as f64) / ((initial_subdivisions + 2) as f64);
-                            let t = (t2 - t1) * div + t1;
+                iter::once((t1, p1)).chain((0..initial_subdivisions).map(move |div| {
+                    let div = ((div + 1) as f64) / ((initial_subdivisions + 2) as f64);
+                    let t = (t2 - t1) * div + t1;
 
-                            (t, calc_offset_point(curve, normal_offset_for_t, tangent_offset_for_t, t))
-                        }))
+                    (
+                        t,
+                        calc_offset_point(curve, normal_offset_for_t, tangent_offset_for_t, t),
+                    )
+                }))
             })
             .chain(last_sample)
             .collect::<Vec<_>>()
@@ -190,13 +215,17 @@ pub fn offset_lms_subdivisions<Curve, NormalOffsetFn, TangentOffsetFn>(curve: &C
             if distance > subdivision_options.max_distance {
                 // Subdivide between t1, t2 as these points are too far apart
                 let t3 = (t1 + t2) / 2.0;
-                next_samples.push((t3, calc_offset_point(curve, &normal_offset_for_t, &tangent_offset_for_t, t3)));
+                next_samples.push((
+                    t3,
+                    calc_offset_point(curve, &normal_offset_for_t, &tangent_offset_for_t, t3),
+                ));
 
                 subdivided = true;
             } else if distance > subdivision_options.min_distance && idx < samples.len() - 1 {
                 // Sample the midpoint of these two points
                 let t3 = (t1 + t2) / 2.0;
-                let (mid_point, mid_tangent) = calc_offset_point(curve, &normal_offset_for_t, &tangent_offset_for_t, t3);
+                let (mid_point, mid_tangent) =
+                    calc_offset_point(curve, &normal_offset_for_t, &tangent_offset_for_t, t3);
 
                 let estimate_point = (*first_point + *next_point) * 0.5;
 
@@ -227,9 +256,17 @@ pub fn offset_lms_subdivisions<Curve, NormalOffsetFn, TangentOffsetFn>(curve: &C
     }
 
     // Convert the samples to just the points and fit the curve
-    let sample_points = samples.into_iter().map(|(_, (point, _))| point).collect::<Vec<_>>();
+    let sample_points = samples
+        .into_iter()
+        .map(|(_, (point, _))| point)
+        .collect::<Vec<_>>();
 
     let start_tangent = curve.tangent_at_pos(0.0).to_unit_vector();
     let end_tangent = curve.tangent_at_pos(1.0).to_unit_vector() * -1.0;
-    Some(fit_curve_cubic(&sample_points, &start_tangent, &end_tangent, subdivision_options.max_error))
+    Some(fit_curve_cubic(
+        &sample_points,
+        &start_tangent,
+        &end_tangent,
+        subdivision_options.max_error,
+    ))
 }

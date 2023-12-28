@@ -1,14 +1,20 @@
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
 use futures::channel::mpsc;
 
-use std::sync::{Arc};
-use futures::prelude::*;
-use futures::executor;
 use ::desync::*;
+use futures::executor;
+use futures::prelude::*;
+use std::sync::Arc;
 
 use std::thread;
 
 #[test]
-#[cfg(not(miri))]   // slow!
+#[cfg(not(miri))] // slow!
 fn pipe_blockage() {
     // See https://github.com/Logicalshift/desync/issues/4 - this test fails by blocking and timing out
 
@@ -50,7 +56,7 @@ fn pipe_blockage() {
 }
 
 #[test]
-#[cfg(not(miri))]   // slow!
+#[cfg(not(miri))] // slow!
 fn pipe_through() {
     // Race: the 'desync' to update the value to 2 should schedule ahead of the 'send(42)'
     for _ in 0..1000 {
@@ -61,7 +67,9 @@ fn pipe_through() {
         let obj = Arc::new(Desync::new(1));
 
         // Create a pipe that adds values from the stream to the value in the object
-        let mut pipe_out = pipe(Arc::clone(&obj), receiver, |core, item| future::ready(item + *core).boxed());
+        let mut pipe_out = pipe(Arc::clone(&obj), receiver, |core, item| {
+            future::ready(item + *core).boxed()
+        });
 
         // Start things running
         executor::block_on(async {

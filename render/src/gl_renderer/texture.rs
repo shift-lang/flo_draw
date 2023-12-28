@@ -1,17 +1,23 @@
-use super::error::*;
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
 use super::buffer::*;
-use super::vertex_array::*;
+use super::error::*;
 use super::render_target::*;
 use super::shader_program::*;
 use super::shader_uniforms::*;
+use super::vertex_array::*;
 
 use crate::buffer::*;
 
 use gl;
 
+use std::ops::Deref;
 use std::ptr;
 use std::rc::*;
-use std::ops::{Deref};
 
 struct TextureRef {
     texture_id: gl::types::GLuint,
@@ -42,7 +48,9 @@ impl Texture {
             gl::GenTextures(1, &mut new_texture);
 
             Texture {
-                texture: Rc::new(TextureRef { texture_id: new_texture }),
+                texture: Rc::new(TextureRef {
+                    texture_id: new_texture,
+                }),
                 premultiplied: false,
                 texture_target: gl::TEXTURE_2D,
                 texture_format: gl::RGBA,
@@ -60,16 +68,34 @@ impl Texture {
         // Create a new texture with the same properties as the existing one
         let mut new_texture = Self::new();
 
-        match (properties_from.texture_target, properties_from.texture_format) {
-            (gl::TEXTURE_2D, gl::RGBA) => new_texture.create_empty(properties_from.width as _, properties_from.height as _),
-            (gl::TEXTURE_2D, gl::RED) => new_texture.create_monochrome(properties_from.width as _, properties_from.height as _),
-            (gl::TEXTURE_2D_MULTISAMPLE, gl::RGBA) => new_texture.create_empty_multisampled(properties_from.width as _, properties_from.height as _, properties_from.num_samples as _),
-            (gl::TEXTURE_2D_MULTISAMPLE, gl::RED) => new_texture.create_monochrome_multisampled(properties_from.width as _, properties_from.height as _, properties_from.num_samples as _),
+        match (
+            properties_from.texture_target,
+            properties_from.texture_format,
+        ) {
+            (gl::TEXTURE_2D, gl::RGBA) => {
+                new_texture.create_empty(properties_from.width as _, properties_from.height as _)
+            }
+            (gl::TEXTURE_2D, gl::RED) => new_texture
+                .create_monochrome(properties_from.width as _, properties_from.height as _),
+            (gl::TEXTURE_2D_MULTISAMPLE, gl::RGBA) => new_texture.create_empty_multisampled(
+                properties_from.width as _,
+                properties_from.height as _,
+                properties_from.num_samples as _,
+            ),
+            (gl::TEXTURE_2D_MULTISAMPLE, gl::RED) => new_texture.create_monochrome_multisampled(
+                properties_from.width as _,
+                properties_from.height as _,
+                properties_from.num_samples as _,
+            ),
 
             (gl::TEXTURE_1D, gl::RGBA) => new_texture.create_empty_1d(properties_from.width as _),
-            (gl::TEXTURE_1D, gl::RED) => new_texture.create_monochrome_1d(properties_from.width as _),
+            (gl::TEXTURE_1D, gl::RED) => {
+                new_texture.create_monochrome_1d(properties_from.width as _)
+            }
 
-            _ => { return None; }
+            _ => {
+                return None;
+            }
         };
 
         // Copy over other properties
@@ -94,7 +120,17 @@ impl Texture {
             gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MIN_FILTER, gl::LINEAR as i32);
             gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MAG_FILTER, gl::LINEAR as i32);
 
-            gl::TexImage2D(gl::TEXTURE_2D, 0, gl::RGBA as _, width as _, height as _, 0, gl::RGBA, gl::UNSIGNED_BYTE, ptr::null());
+            gl::TexImage2D(
+                gl::TEXTURE_2D,
+                0,
+                gl::RGBA as _,
+                width as _,
+                height as _,
+                0,
+                gl::RGBA,
+                gl::UNSIGNED_BYTE,
+                ptr::null(),
+            );
 
             panic_on_gl_error("Create texture");
         }
@@ -121,7 +157,14 @@ impl Texture {
             // Set up a MSAA texture
             gl::BindTexture(gl::TEXTURE_2D_MULTISAMPLE, texture_id);
 
-            gl::TexImage2DMultisample(gl::TEXTURE_2D_MULTISAMPLE, samples, gl::RGBA, width as _, height as _, gl::FALSE);
+            gl::TexImage2DMultisample(
+                gl::TEXTURE_2D_MULTISAMPLE,
+                samples,
+                gl::RGBA,
+                width as _,
+                height as _,
+                gl::FALSE,
+            );
 
             panic_on_gl_error("Create multisampled texture");
         }
@@ -143,7 +186,17 @@ impl Texture {
             gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MIN_FILTER, gl::LINEAR as i32);
             gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MAG_FILTER, gl::LINEAR as i32);
 
-            gl::TexImage2D(gl::TEXTURE_2D, 0, gl::RED as _, width as _, height as _, 0, gl::RED, gl::UNSIGNED_BYTE, ptr::null());
+            gl::TexImage2D(
+                gl::TEXTURE_2D,
+                0,
+                gl::RED as _,
+                width as _,
+                height as _,
+                0,
+                gl::RED,
+                gl::UNSIGNED_BYTE,
+                ptr::null(),
+            );
 
             panic_on_gl_error("Create monochrome texture");
         }
@@ -170,7 +223,14 @@ impl Texture {
             // Set up a MSAA texture
             gl::BindTexture(gl::TEXTURE_2D_MULTISAMPLE, texture_id);
 
-            gl::TexImage2DMultisample(gl::TEXTURE_2D_MULTISAMPLE, samples, gl::RED, width as _, height as _, gl::FALSE);
+            gl::TexImage2DMultisample(
+                gl::TEXTURE_2D_MULTISAMPLE,
+                samples,
+                gl::RED,
+                width as _,
+                height as _,
+                gl::FALSE,
+            );
 
             panic_on_gl_error("Create monochrome multisampled texture");
         }
@@ -192,7 +252,16 @@ impl Texture {
             gl::TexParameteri(gl::TEXTURE_1D, gl::TEXTURE_MIN_FILTER, gl::LINEAR as i32);
             gl::TexParameteri(gl::TEXTURE_1D, gl::TEXTURE_MAG_FILTER, gl::LINEAR as i32);
 
-            gl::TexImage1D(gl::TEXTURE_1D, 0, gl::RGBA as _, width as _, 0, gl::RGBA, gl::UNSIGNED_BYTE, ptr::null());
+            gl::TexImage1D(
+                gl::TEXTURE_1D,
+                0,
+                gl::RGBA as _,
+                width as _,
+                0,
+                gl::RGBA,
+                gl::UNSIGNED_BYTE,
+                ptr::null(),
+            );
 
             panic_on_gl_error("Create 1D texture");
         }
@@ -214,7 +283,16 @@ impl Texture {
             gl::TexParameteri(gl::TEXTURE_1D, gl::TEXTURE_MIN_FILTER, gl::LINEAR as i32);
             gl::TexParameteri(gl::TEXTURE_1D, gl::TEXTURE_MAG_FILTER, gl::LINEAR as i32);
 
-            gl::TexImage1D(gl::TEXTURE_1D, 0, gl::RED as _, width as _, 0, gl::RED, gl::UNSIGNED_BYTE, ptr::null());
+            gl::TexImage1D(
+                gl::TEXTURE_1D,
+                0,
+                gl::RED as _,
+                width as _,
+                0,
+                gl::RED,
+                gl::UNSIGNED_BYTE,
+                ptr::null(),
+            );
 
             panic_on_gl_error("Create 1D mono texture");
         }
@@ -236,7 +314,16 @@ impl Texture {
             gl::TexParameteri(gl::TEXTURE_1D, gl::TEXTURE_MIN_FILTER, gl::LINEAR as i32);
             gl::TexParameteri(gl::TEXTURE_1D, gl::TEXTURE_MAG_FILTER, gl::LINEAR as i32);
 
-            gl::TexImage1D(gl::TEXTURE_1D, 0, gl::R16F as _, width as _, 0, gl::RED, gl::FLOAT, ptr::null());
+            gl::TexImage1D(
+                gl::TEXTURE_1D,
+                0,
+                gl::R16F as _,
+                width as _,
+                0,
+                gl::RED,
+                gl::FLOAT,
+                ptr::null(),
+            );
 
             panic_on_gl_error("Create 1D mono texture (floating point)");
         }
@@ -257,14 +344,31 @@ impl Texture {
     ///
     /// Sets 8-bit RGBA pixel data for a texture
     ///
-    pub fn set_data_rgba(&mut self, x: usize, y: usize, width: usize, height: usize, pixels: &[u8]) {
+    pub fn set_data_rgba(
+        &mut self,
+        x: usize,
+        y: usize,
+        width: usize,
+        height: usize,
+        pixels: &[u8],
+    ) {
         if pixels.len() != (width * height * 4) {
             panic!("set_data_bgra called with incorrect sized pixel array")
         }
 
         unsafe {
             gl::BindTexture(self.texture_target, self.texture.texture_id);
-            gl::TexSubImage2D(gl::TEXTURE_2D, 0, x as _, y as _, width as _, height as _, gl::RGBA, gl::UNSIGNED_BYTE, pixels.as_ptr() as _);
+            gl::TexSubImage2D(
+                gl::TEXTURE_2D,
+                0,
+                x as _,
+                y as _,
+                width as _,
+                height as _,
+                gl::RGBA,
+                gl::UNSIGNED_BYTE,
+                pixels.as_ptr() as _,
+            );
 
             panic_on_gl_error("Set rgba data");
         }
@@ -273,14 +377,31 @@ impl Texture {
     ///
     /// Sets 8-bit mono pixel data for a texture
     ///
-    pub fn set_data_mono(&mut self, x: usize, y: usize, width: usize, height: usize, pixels: &[u8]) {
+    pub fn set_data_mono(
+        &mut self,
+        x: usize,
+        y: usize,
+        width: usize,
+        height: usize,
+        pixels: &[u8],
+    ) {
         if pixels.len() != width * height {
             panic!("set_data_mono called with incorrect sized pixel array")
         }
 
         unsafe {
             gl::BindTexture(self.texture_target, self.texture.texture_id);
-            gl::TexSubImage2D(gl::TEXTURE_2D, 0, x as _, y as _, width as _, height as _, gl::RED, gl::UNSIGNED_BYTE, pixels.as_ptr() as _);
+            gl::TexSubImage2D(
+                gl::TEXTURE_2D,
+                0,
+                x as _,
+                y as _,
+                width as _,
+                height as _,
+                gl::RED,
+                gl::UNSIGNED_BYTE,
+                pixels.as_ptr() as _,
+            );
 
             panic_on_gl_error("Set mono data");
         }
@@ -296,7 +417,15 @@ impl Texture {
 
         unsafe {
             gl::BindTexture(self.texture_target, self.texture.texture_id);
-            gl::TexSubImage1D(gl::TEXTURE_1D, 0, x as _, width as _, gl::RGBA, gl::UNSIGNED_BYTE, pixels.as_ptr() as _);
+            gl::TexSubImage1D(
+                gl::TEXTURE_1D,
+                0,
+                x as _,
+                width as _,
+                gl::RGBA,
+                gl::UNSIGNED_BYTE,
+                pixels.as_ptr() as _,
+            );
 
             panic_on_gl_error("Set rgba 1D data");
         }
@@ -312,7 +441,15 @@ impl Texture {
 
         unsafe {
             gl::BindTexture(self.texture_target, self.texture.texture_id);
-            gl::TexSubImage1D(gl::TEXTURE_1D, 0, x as _, width as _, gl::RED, gl::UNSIGNED_BYTE, pixels.as_ptr() as _);
+            gl::TexSubImage1D(
+                gl::TEXTURE_1D,
+                0,
+                x as _,
+                width as _,
+                gl::RED,
+                gl::UNSIGNED_BYTE,
+                pixels.as_ptr() as _,
+            );
 
             panic_on_gl_error("Set mono 1D data");
         }
@@ -328,7 +465,15 @@ impl Texture {
 
         unsafe {
             gl::BindTexture(self.texture_target, self.texture.texture_id);
-            gl::TexSubImage1D(gl::TEXTURE_1D, 0, x as _, width as _, gl::RED, gl::FLOAT, pixels.as_ptr() as _);
+            gl::TexSubImage1D(
+                gl::TEXTURE_1D,
+                0,
+                x as _,
+                width as _,
+                gl::RED,
+                gl::FLOAT,
+                pixels.as_ptr() as _,
+            );
 
             panic_on_gl_error("Set mono 1D data (float)");
         }
@@ -365,7 +510,16 @@ impl Texture {
                     gl::TexParameteri(gl::TEXTURE_1D, gl::TEXTURE_MIN_FILTER, gl::LINEAR as i32);
                     gl::TexParameteri(gl::TEXTURE_1D, gl::TEXTURE_MAG_FILTER, gl::LINEAR as i32);
 
-                    gl::TexImage1D(gl::TEXTURE_1D, 0, format as _, width, 0, format, gl::UNSIGNED_BYTE, ptr::null());
+                    gl::TexImage1D(
+                        gl::TEXTURE_1D,
+                        0,
+                        format as _,
+                        width,
+                        0,
+                        format,
+                        gl::UNSIGNED_BYTE,
+                        ptr::null(),
+                    );
                     panic_on_gl_error("Create 1D copy target");
                 }
 
@@ -375,7 +529,17 @@ impl Texture {
                     gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MIN_FILTER, gl::LINEAR as i32);
                     gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MAG_FILTER, gl::LINEAR as i32);
 
-                    gl::TexImage2D(gl::TEXTURE_2D, 0, format as _, width, height, 0, format, gl::UNSIGNED_BYTE, ptr::null());
+                    gl::TexImage2D(
+                        gl::TEXTURE_2D,
+                        0,
+                        format as _,
+                        width,
+                        height,
+                        0,
+                        format,
+                        gl::UNSIGNED_BYTE,
+                        ptr::null(),
+                    );
                     panic_on_gl_error("Create 2D copy target");
                 }
 
@@ -389,7 +553,14 @@ impl Texture {
                     // Set up a MSAA texture
                     gl::BindTexture(gl::TEXTURE_2D_MULTISAMPLE, texture_id);
 
-                    gl::TexImage2DMultisample(gl::TEXTURE_2D_MULTISAMPLE, samples, gl::RGBA, width as _, height as _, gl::FALSE);
+                    gl::TexImage2DMultisample(
+                        gl::TEXTURE_2D_MULTISAMPLE,
+                        samples,
+                        gl::RGBA,
+                        width as _,
+                        height as _,
+                        gl::FALSE,
+                    );
                     panic_on_gl_error("Create multisampled copy target");
                 }
 
@@ -398,7 +569,6 @@ impl Texture {
                     return None;
                 }
             }
-
 
             // Find the currently bound frame buffer (so we can rebind it later on)
             let mut old_frame_buffer = 0;
@@ -446,7 +616,10 @@ impl Texture {
     /// This sets up the new texture as a render target, sets the rendering state for filtering and then performs
     /// the filter operation using the currently selected texture
     ///
-    pub fn filter<'a>(&self, filter_shader: &'a mut ShaderProgram<ShaderUniform>) -> Option<Texture> {
+    pub fn filter<'a>(
+        &self,
+        filter_shader: &'a mut ShaderProgram<ShaderUniform>,
+    ) -> Option<Texture> {
         unsafe {
             // Create a texture blank that's equivalent of this one
             let new_texture = Self::empty_equivalent(self)?;
@@ -463,11 +636,20 @@ impl Texture {
             gl::TexParameteri(self.texture_target, gl::TEXTURE_MAG_FILTER, gl::LINEAR as _);
 
             // Texture wrap is clamp to edge
-            gl::TexParameteri(self.texture_target, gl::TEXTURE_WRAP_S, gl::CLAMP_TO_EDGE as _);
-            gl::TexParameteri(self.texture_target, gl::TEXTURE_WRAP_T, gl::CLAMP_TO_EDGE as _);
+            gl::TexParameteri(
+                self.texture_target,
+                gl::TEXTURE_WRAP_S,
+                gl::CLAMP_TO_EDGE as _,
+            );
+            gl::TexParameteri(
+                self.texture_target,
+                gl::TEXTURE_WRAP_T,
+                gl::CLAMP_TO_EDGE as _,
+            );
 
             // Set the current texture in the shader program
-            filter_shader.uniform_location(ShaderUniform::Texture, "t_Texture")
+            filter_shader
+                .uniform_location(ShaderUniform::Texture, "t_Texture")
                 .map(|texture_uniform| {
                     gl::Uniform1i(texture_uniform, 0);
                 });
@@ -487,8 +669,12 @@ impl Texture {
 
             // Create some vertices representing the triangles the fill the render target
             let vertices = vec![
-                Vertex2D::with_pos(-1.0, -1.0), Vertex2D::with_pos(1.0, -1.0), Vertex2D::with_pos(-1.0, 1.0),
-                Vertex2D::with_pos(1.0, -1.0), Vertex2D::with_pos(-1.0, 1.0), Vertex2D::with_pos(1.0, 1.0),
+                Vertex2D::with_pos(-1.0, -1.0),
+                Vertex2D::with_pos(1.0, -1.0),
+                Vertex2D::with_pos(-1.0, 1.0),
+                Vertex2D::with_pos(1.0, -1.0),
+                Vertex2D::with_pos(-1.0, 1.0),
+                Vertex2D::with_pos(1.0, 1.0),
             ];
             let mut buffer = Buffer::new();
             let vertex_array = VertexArray::new();
@@ -512,7 +698,12 @@ impl Texture {
 
             // Reset to the original render target
             gl::BindFramebuffer(gl::FRAMEBUFFER, *original_render_target);
-            gl::Viewport(original_viewport[0], original_viewport[1], original_viewport[2], original_viewport[3]);
+            gl::Viewport(
+                original_viewport[0],
+                original_viewport[1],
+                original_viewport[2],
+                original_viewport[3],
+            );
 
             gl::Enable(gl::BLEND);
 

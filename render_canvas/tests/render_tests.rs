@@ -1,41 +1,47 @@
-use flo_render::*;
-use flo_render as render;
-use flo_render_canvas::*;
-use flo_canvas::*;
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
 
-use futures::prelude::*;
 use futures::executor;
+use futures::prelude::*;
+
+use flo_canvas::*;
+use flo_render as render;
+use flo_render::*;
+use flo_render_canvas::*;
 
 ///
 /// Checks that the instructions beginning a new layer are valid
 ///
-async fn check_layer_preamble<S: Unpin + Stream<Item=RenderAction>>(stream: &mut S) {
+async fn check_layer_preamble<S: Unpin + Stream<Item = RenderAction>>(stream: &mut S) {
     let select_render_target = stream.next().await;
     println!("{:?}", select_render_target);
     assert!(match select_render_target {
         Some(RenderAction::SelectRenderTarget(_)) => true,
-        _ => false
+        _ => false,
     });
 
     let set_blend_mode = stream.next().await;
     println!("{:?}", set_blend_mode);
     assert!(match set_blend_mode {
         Some(RenderAction::BlendMode(render::BlendMode::SourceOver)) => true,
-        _ => false
+        _ => false,
     });
 
     let use_shader = stream.next().await;
     println!("{:?}", use_shader);
     assert!(match use_shader {
         Some(RenderAction::UseShader(_)) => true,
-        _ => false
+        _ => false,
     });
 
     let set_transform = stream.next().await;
     println!("{:?}", set_transform);
     assert!(match set_transform {
         Some(RenderAction::SetTransform(_)) => true,
-        _ => false
+        _ => false,
     });
 }
 
@@ -68,7 +74,7 @@ fn fill_simple_circle() {
         assert!(set_transform.is_some());
         assert!(match set_transform {
             Some(RenderAction::SetTransform(_)) => true,
-            _ => false
+            _ => false,
         });
 
         let upload_vertices = draw_stream.next().await;
@@ -76,7 +82,7 @@ fn fill_simple_circle() {
         assert!(upload_vertices.is_some());
         assert!(match upload_vertices {
             Some(RenderAction::CreateVertex2DBuffer(_, _)) => true,
-            _ => false
+            _ => false,
         });
 
         let upload_indices = draw_stream.next().await;
@@ -84,7 +90,7 @@ fn fill_simple_circle() {
         assert!(upload_indices.is_some());
         assert!(match upload_indices {
             Some(RenderAction::CreateIndexBuffer(_, _)) => true,
-            _ => false
+            _ => false,
         });
 
         // Layer preamble occurs after uploading the buffers
@@ -95,7 +101,7 @@ fn fill_simple_circle() {
         assert!(draw_vertices.is_some());
         assert!(match draw_vertices {
             Some(RenderAction::DrawIndexedTriangles(_, _, _)) => true,
-            _ => false
+            _ => false,
         });
 
         // Stream then has some post-rendering instructions
@@ -131,7 +137,7 @@ fn fill_two_circles() {
         assert!(set_transform.is_some());
         assert!(match set_transform {
             Some(RenderAction::SetTransform(_)) => true,
-            _ => false
+            _ => false,
         });
 
         // First we upload the vertex buffers...
@@ -139,28 +145,28 @@ fn fill_two_circles() {
         assert!(upload_vertices.is_some());
         assert!(match upload_vertices {
             Some(RenderAction::CreateVertex2DBuffer(_, _)) => true,
-            _ => false
+            _ => false,
         });
 
         let upload_indices = draw_stream.next().await;
         assert!(upload_indices.is_some());
         assert!(match upload_indices {
             Some(RenderAction::CreateIndexBuffer(_, _)) => true,
-            _ => false
+            _ => false,
         });
 
         let upload_vertices_2 = draw_stream.next().await;
         assert!(upload_vertices_2.is_some());
         assert!(match upload_vertices_2 {
             Some(RenderAction::CreateVertex2DBuffer(_, _)) => true,
-            _ => false
+            _ => false,
         });
 
         let upload_indices_2 = draw_stream.next().await;
         assert!(upload_indices_2.is_some());
         assert!(match upload_indices_2 {
             Some(RenderAction::CreateIndexBuffer(_, _)) => true,
-            _ => false
+            _ => false,
         });
 
         // Layer preamble occurs after uploading the buffers
@@ -171,14 +177,14 @@ fn fill_two_circles() {
         assert!(draw_vertices.is_some());
         assert!(match draw_vertices {
             Some(RenderAction::DrawIndexedTriangles(_, _, _)) => true,
-            _ => false
+            _ => false,
         });
 
         let draw_vertices_2 = draw_stream.next().await;
         assert!(draw_vertices_2.is_some());
         assert!(match draw_vertices_2 {
             Some(RenderAction::DrawIndexedTriangles(_, _, _)) => true,
-            _ => false
+            _ => false,
         });
     })
 }
@@ -231,7 +237,7 @@ fn draw_twice() {
         assert!(set_transform.is_some());
         assert!(match set_transform {
             Some(RenderAction::SetTransform(_)) => true,
-            _ => false
+            _ => false,
         });
 
         check_layer_preamble(&mut draw_stream).await;
@@ -240,7 +246,7 @@ fn draw_twice() {
         assert!(draw_vertices.is_some());
         assert!(match draw_vertices {
             Some(RenderAction::DrawIndexedTriangles(_, _, _)) => true,
-            _ => false
+            _ => false,
         });
     })
 }
@@ -282,79 +288,81 @@ fn clip_rect() {
         use self::RenderAction::*;
         assert!(match rendering[0] {
             SetTransform(_) => true,
-            _ => false
+            _ => false,
         });
         assert!(match rendering[1] {
             CreateVertex2DBuffer(_, _) => true,
-            _ => false
+            _ => false,
         });
         assert!(match rendering[2] {
             CreateIndexBuffer(_, _) => true,
-            _ => false
+            _ => false,
         });
 
         // Set up the initial rendering state (nothing is rendered but we set this up anyway: this can probably go away)
         assert!(match rendering[3] {
             SelectRenderTarget(RenderTargetId(0)) => true,
-            _ => false
+            _ => false,
         });
         assert!(match rendering[4] {
             BlendMode(render::BlendMode::SourceOver) => true,
-            _ => false
+            _ => false,
         });
         assert!(match rendering[5] {
             UseShader(render::ShaderType::Simple { clip_texture: None }) => true,
-            _ => false
+            _ => false,
         });
         assert!(match rendering[6] {
             SetTransform(_) => true,
-            _ => false
+            _ => false,
         });
 
         // Then set up to render to the clip texture (render target 2)
         assert!(match rendering[7] {
             SelectRenderTarget(RenderTargetId(1)) => true,
-            _ => false
+            _ => false,
         });
         assert!(match rendering[8] {
             UseShader(render::ShaderType::Simple { clip_texture: None }) => true,
-            _ => false
+            _ => false,
         });
         assert!(match rendering[9] {
             Clear(Rgba8([0, 0, 0, 255])) => true,
-            _ => false
+            _ => false,
         });
         assert!(match rendering[10] {
             BlendMode(render::BlendMode::AllChannelAlphaSourceOver) => true,
-            _ => false
+            _ => false,
         });
         assert!(match rendering[11] {
             SetTransform(_) => true,
-            _ => false
+            _ => false,
         });
 
         // Render the clipping texture
         assert!(match rendering[12] {
             DrawIndexedTriangles(_, _, _) => true,
-            _ => false
+            _ => false,
         });
 
         // Finally, resets the state for rendering to the main view with a clipping region (texture ID 2 has the clip region in it)
         assert!(match rendering[13] {
             SelectRenderTarget(RenderTargetId(0)) => true,
-            _ => false
+            _ => false,
         });
         assert!(match rendering[14] {
             BlendMode(render::BlendMode::SourceOver) => true,
-            _ => false
+            _ => false,
         });
         assert!(match rendering[15] {
-            UseShader(render::ShaderType::Simple { clip_texture: Some(render::TextureId(1)) }) => true,
-            _ => false
+            UseShader(render::ShaderType::Simple {
+                clip_texture: Some(render::TextureId(1)),
+            }) => true,
+            _ => false,
         });
         assert!(match rendering[16] {
             SetTransform(_) => true,
-            _ => false
+            _ => false,
         });
 
         // Remaining instructions finish the render

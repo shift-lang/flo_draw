@@ -1,3 +1,9 @@
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
 //!
 //! `flo_draw` provides a simple API for rendering 2D graphics into a window
 //!
@@ -52,13 +58,12 @@
 //!
 
 pub use flo_binding as binding;
-pub use flo_scene as scene;
-
 pub use flo_canvas as canvas;
 pub use flo_canvas_events as events;
 pub use flo_render::initialize_offscreen_rendering;
 pub use flo_render_canvas as render_canvas;
 pub use flo_render_canvas::render_canvas_offscreen;
+pub use flo_scene as scene;
 
 pub use self::drawing_window::*;
 pub use self::events::*;
@@ -83,4 +88,3 @@ pub mod wgpu;
 
 /// The 'Scene' API provides a framework for building more complex software out of message-passing components
 pub mod draw_scene;
-

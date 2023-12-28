@@ -1,3 +1,9 @@
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
 use super::job_queue::*;
 use super::queue_state::*;
 
@@ -13,7 +19,9 @@ pub(super) struct ActiveQueue<'a> {
 impl<'a> Drop for ActiveQueue<'a> {
     fn drop(&mut self) {
         if thread::panicking() {
-            self.queue.core.lock()
+            self.queue
+                .core
+                .lock()
                 .map(|mut core| core.state = QueueState::Panicked)
                 .ok();
         }

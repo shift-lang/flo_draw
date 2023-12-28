@@ -1,23 +1,36 @@
-use super::path::*;
-use super::to_curves::*;
-use super::super::curve::*;
-use super::super::intersection::*;
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
 use super::super::super::geo::*;
 use super::super::super::line::*;
+use super::super::curve::*;
+use super::super::intersection::*;
+use super::path::*;
+use super::to_curves::*;
 
 ///
 /// Determines the intersections of a path and a line
 ///
 /// Intersections are returned as the path section index, the 't' parameter along that curve and the 't' value along the line:
-/// ie: `(path_point_idx, curve_t, line_t)`. 
+/// ie: `(path_point_idx, curve_t, line_t)`.
 ///
-pub fn path_intersects_line<'a, Path: BezierPath, L: Line<Point=Path::Point>>(path: &'a Path, line: &'a L) -> impl 'a + Iterator<Item=(usize, f64, f64)>
-    where
-        Path::Point: 'a + Coordinate2D,
+pub fn path_intersects_line<'a, Path: BezierPath, L: Line<Point = Path::Point>>(
+    path: &'a Path,
+    line: &'a L,
+) -> impl 'a + Iterator<Item = (usize, f64, f64)>
+where
+    Path::Point: 'a + Coordinate2D,
 {
     path_to_curves::<_, Curve<_>>(path)
         .enumerate()
-        .flat_map(move |(section_id, curve)| curve_intersects_line(&curve, line).into_iter().map(move |(t, s, _pos)| (section_id, t, s)))
+        .flat_map(move |(section_id, curve)| {
+            curve_intersects_line(&curve, line)
+                .into_iter()
+                .map(move |(t, s, _pos)| (section_id, t, s))
+        })
 }
 
 ///
@@ -29,13 +42,20 @@ pub fn path_intersects_line<'a, Path: BezierPath, L: Line<Point=Path::Point>>(pa
 ///
 /// It's possible to filter for matches that occur after the start of the line by looking for results with an `s` value >= 0
 ///
-pub fn path_intersects_ray<'a, Path: BezierPath, L: Line<Point=Path::Point>>(path: &'a Path, line: &'a L) -> impl 'a + Iterator<Item=(usize, f64, f64)>
-    where
-        Path::Point: 'a + Coordinate2D,
+pub fn path_intersects_ray<'a, Path: BezierPath, L: Line<Point = Path::Point>>(
+    path: &'a Path,
+    line: &'a L,
+) -> impl 'a + Iterator<Item = (usize, f64, f64)>
+where
+    Path::Point: 'a + Coordinate2D,
 {
     path_to_curves::<_, Curve<_>>(path)
         .enumerate()
-        .flat_map(move |(section_id, curve)| curve_intersects_line(&curve, line).into_iter().map(move |(t, s, _pos)| (section_id, t, s)))
+        .flat_map(move |(section_id, curve)| {
+            curve_intersects_line(&curve, line)
+                .into_iter()
+                .map(move |(t, s, _pos)| (section_id, t, s))
+        })
 }
 
 ///
@@ -47,9 +67,13 @@ pub fn path_intersects_ray<'a, Path: BezierPath, L: Line<Point=Path::Point>>(pat
 /// The accuracy value indicates the maximum errors that's permitted for an intersection: the bezier curve
 /// intersection algorithm is approximate.
 ///
-pub fn path_intersects_path<'a, Path: BezierPath>(path1: &'a Path, path2: &'a Path, accuracy: f64) -> Vec<((usize, f64), (usize, f64))>
-    where
-        Path::Point: 'a + Coordinate2D,
+pub fn path_intersects_path<'a, Path: BezierPath>(
+    path1: &'a Path,
+    path2: &'a Path,
+    accuracy: f64,
+) -> Vec<((usize, f64), (usize, f64))>
+where
+    Path::Point: 'a + Coordinate2D,
 {
     // Convert both paths to sections: also compute the bounding boxes for quick rejection of sections with no intersections
     let path1_sections = path_to_curves::<_, Curve<_>>(path1)
@@ -75,7 +99,11 @@ pub fn path_intersects_path<'a, Path: BezierPath>(path1: &'a Path, path2: &'a Pa
                 let intersections = curve_intersects_curve_clip(&p1_curve, p2_curve, accuracy);
 
                 // Combine with the section IDs to generate the results
-                result.extend(intersections.into_iter().map(|(t1, t2)| ((p1_section_id, t1), (*p2_section_id, t2))));
+                result.extend(
+                    intersections
+                        .into_iter()
+                        .map(|(t1, t2)| ((p1_section_id, t1), (*p2_section_id, t2))),
+                );
             }
         }
     }

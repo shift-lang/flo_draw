@@ -1,5 +1,11 @@
-use super::curve::*;
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
 use super::basis::*;
+use super::curve::*;
 use crate::geo::*;
 
 /// Maximum number of iterations to perform when trying to improve the curve fit
@@ -23,7 +29,9 @@ fn max_points_to_fit(num_points: usize) -> usize {
         let mut max_points_to_fit = MAX_POINTS_TO_FIT;
 
         // Try to pick a number of points that doesn't divide awkwardly (if there are very few points in the final curve section it will produce a flat region)
-        while max_points_to_fit > min_points_to_fit && (num_points % max_points_to_fit) < min_points_to_fit {
+        while max_points_to_fit > min_points_to_fit
+            && (num_points % max_points_to_fit) < min_points_to_fit
+        {
             max_points_to_fit -= 1;
         }
 
@@ -41,14 +49,14 @@ fn max_points_to_fit(num_points: usize) -> usize {
 ///
 /// There are a few modifications from the original algorithm:
 ///
-///   * The 'small' error used to determine if we should use Newton-Raphson is now 
+///   * The 'small' error used to determine if we should use Newton-Raphson is now
 ///     just a multiplier of the max error
 ///   * We only try to fit a certain number of points at once as the algorithm runs
 ///     in quadratic time otherwise
 ///
 pub fn fit_curve<Curve>(points: &[Curve::Point], max_error: f64) -> Option<Vec<Curve>>
-    where
-        Curve: BezierCurveFactory + BezierCurve,
+where
+    Curve: BezierCurveFactory + BezierCurve,
 {
     let max_points_to_fit = max_points_to_fit(points.len());
 
@@ -72,7 +80,9 @@ pub fn fit_curve<Curve>(points: &[Curve::Point], max_error: f64) -> Option<Vec<C
             }
 
             // Edge case: one point outside of a block (we ignore these blocks)
-            if num_points < 2 { continue; }
+            if num_points < 2 {
+                continue;
+            }
 
             // Need the start and end tangents so we know how the curve continues
             let block_points = &points[start_point..start_point + num_points];
@@ -101,8 +111,8 @@ pub fn fit_curve<Curve>(points: &[Curve::Point], max_error: f64) -> Option<Vec<C
 /// the start and end points are the same
 ///
 pub fn fit_curve_loop<Curve>(points: &[Curve::Point], max_error: f64) -> Option<Vec<Curve>>
-    where
-        Curve: BezierCurveFactory + BezierCurve,
+where
+    Curve: BezierCurveFactory + BezierCurve,
 {
     let max_points_to_fit = max_points_to_fit(points.len());
 
@@ -126,7 +136,9 @@ pub fn fit_curve_loop<Curve>(points: &[Curve::Point], max_error: f64) -> Option<
             }
 
             // Edge case: one point outside of a block (we ignore these blocks)
-            if num_points < 2 { continue; }
+            if num_points < 2 {
+                continue;
+            }
 
             // Need the start and end tangents so we know how the curve continues
             let block_points = &points[start_point..start_point + num_points];
@@ -168,7 +180,12 @@ pub fn fit_curve_loop<Curve>(points: &[Curve::Point], max_error: f64) -> Option<
 /// The algorithm here is to attempt to fit a single bezier curve against the points, estimate the point which has the highest error, and if too high
 /// subdivide at that point and try again.
 ///
-pub fn fit_curve_cubic<Curve: BezierCurveFactory + BezierCurve>(points: &[Curve::Point], start_tangent: &Curve::Point, end_tangent: &Curve::Point, max_error: f64) -> Vec<Curve> {
+pub fn fit_curve_cubic<Curve: BezierCurveFactory + BezierCurve>(
+    points: &[Curve::Point],
+    start_tangent: &Curve::Point,
+    end_tangent: &Curve::Point,
+    max_error: f64,
+) -> Vec<Curve> {
     if points.len() <= 2 {
         // 2 points is a line (less than 2 points is an error here)
         fit_line(&points[0], &points[1])
@@ -209,11 +226,25 @@ pub fn fit_curve_cubic<Curve: BezierCurveFactory + BezierCurve>(points: &[Curve:
             vec![curve]
         } else {
             // If error still too large, split the points and create two curves
-            let center_tangent = tangent_between(&points[split_pos - 1], &points[split_pos], &points[split_pos + 1]);
+            let center_tangent = tangent_between(
+                &points[split_pos - 1],
+                &points[split_pos],
+                &points[split_pos + 1],
+            );
 
             // Fit the two sides
-            let lhs = fit_curve_cubic(&points[0..split_pos + 1], start_tangent, &center_tangent, max_error);
-            let rhs = fit_curve_cubic(&points[split_pos..points.len()], &(center_tangent * -1.0), end_tangent, max_error);
+            let lhs = fit_curve_cubic(
+                &points[0..split_pos + 1],
+                start_tangent,
+                &center_tangent,
+                max_error,
+            );
+            let rhs = fit_curve_cubic(
+                &points[split_pos..points.len()],
+                &(center_tangent * -1.0),
+                end_tangent,
+                max_error,
+            );
 
             // Collect the result
             lhs.into_iter().chain(rhs.into_iter()).collect()
@@ -260,16 +291,24 @@ fn chords_for_points<Point: Coordinate>(points: &[Point]) -> Vec<f64> {
 ///
 /// Generates a bezier curve using the least-squares method
 ///
-fn generate_bezier<Curve: BezierCurveFactory>(points: &[Curve::Point], chords: &[f64], start_tangent: &Curve::Point, end_tangent: &Curve::Point) -> Curve {
+fn generate_bezier<Curve: BezierCurveFactory>(
+    points: &[Curve::Point],
+    chords: &[f64],
+    start_tangent: &Curve::Point,
+    end_tangent: &Curve::Point,
+) -> Curve {
     // Precompute the RHS as 'a'
-    let a: Vec<_> = chords.iter().map(|chord| {
-        let inverse_chord = 1.0 - chord;
+    let a: Vec<_> = chords
+        .iter()
+        .map(|chord| {
+            let inverse_chord = 1.0 - chord;
 
-        let b1 = 3.0 * chord * (inverse_chord * inverse_chord);
-        let b2 = 3.0 * chord * chord * inverse_chord;
+            let b1 = 3.0 * chord * (inverse_chord * inverse_chord);
+            let b2 = 3.0 * chord * chord * inverse_chord;
 
-        (*start_tangent * b1, *end_tangent * b2)
-    }).collect();
+            (*start_tangent * b1, *end_tangent * b2)
+        })
+        .collect();
 
     // Create the 'C' and 'X' matrices
     let mut c = [[0.0, 0.0], [0.0, 0.0]];
@@ -290,8 +329,8 @@ fn generate_bezier<Curve: BezierCurveFactory>(points: &[Curve::Point], chords: &
         let b2 = 3.0 * chord * chord * inverse_chord;
         let b3 = chord * chord * chord;
 
-        let tmp = points[point] -
-            ((points[0] * b0) + (points[0] * b1) + (last_point * b2) + (last_point * b3));
+        let tmp = points[point]
+            - ((points[0] * b0) + (points[0] * b1) + (last_point * b2) + (last_point * b3));
 
         x[0] += a[point].0.dot(&tmp);
         x[1] += a[point].1.dot(&tmp);
@@ -303,8 +342,16 @@ fn generate_bezier<Curve: BezierCurveFactory>(points: &[Curve::Point], chords: &
     let det_x_c1 = x[0] * c[1][1] - x[1] * c[0][1];
 
     // Derive alpha values
-    let alpha_l = if f64::abs(det_c0_c1) < 1.0e-4 { 0.0 } else { det_x_c1 / det_c0_c1 };
-    let alpha_r = if f64::abs(det_c0_c1) < 1.0e-4 { 0.0 } else { det_c0_x / det_c0_c1 };
+    let alpha_l = if f64::abs(det_c0_c1) < 1.0e-4 {
+        0.0
+    } else {
+        det_x_c1 / det_c0_c1
+    };
+    let alpha_r = if f64::abs(det_c0_c1) < 1.0e-4 {
+        0.0
+    } else {
+        det_c0_x / det_c0_c1
+    };
 
     // Use the Wu/Barsky heuristic if alpha-negative
     let seg_length = points[0].distance_to(&last_point);
@@ -313,10 +360,24 @@ fn generate_bezier<Curve: BezierCurveFactory>(points: &[Curve::Point], chords: &
     if alpha_l < epsilon || alpha_r < epsilon {
         // Much less accurate means of estimating a curve
         let dist = seg_length / 3.0;
-        Curve::from_points(points[0], (points[0] + (*start_tangent * dist), last_point + (*end_tangent * dist)), last_point)
+        Curve::from_points(
+            points[0],
+            (
+                points[0] + (*start_tangent * dist),
+                last_point + (*end_tangent * dist),
+            ),
+            last_point,
+        )
     } else {
         // The control points are positioned an alpha distance out along the tangent vectors
-        Curve::from_points(points[0], (points[0] + (*start_tangent * alpha_l), last_point + (*end_tangent * alpha_r)), last_point)
+        Curve::from_points(
+            points[0],
+            (
+                points[0] + (*start_tangent * alpha_l),
+                last_point + (*end_tangent * alpha_r),
+            ),
+            last_point,
+        )
     }
 }
 
@@ -327,16 +388,19 @@ fn generate_bezier<Curve: BezierCurveFactory>(points: &[Curve::Point], chords: &
 ///
 /// Returns the maximum error and the index of the point with that error.
 ///
-fn max_error_for_curve<Curve: BezierCurveFactory>(points: &[Curve::Point], chords: &[f64], curve: &Curve) -> (f64, usize) {
-    let errors = points.iter().zip(chords.iter())
-        .map(|(point, chord)| {
-            // Get the actual position of this point and the offset
-            let actual = curve.point_at_pos(*chord);
-            let offset = *point - actual;
+fn max_error_for_curve<Curve: BezierCurveFactory>(
+    points: &[Curve::Point],
+    chords: &[f64],
+    curve: &Curve,
+) -> (f64, usize) {
+    let errors = points.iter().zip(chords.iter()).map(|(point, chord)| {
+        // Get the actual position of this point and the offset
+        let actual = curve.point_at_pos(*chord);
+        let offset = *point - actual;
 
-            // The dot product of an item with itself is the square of the distance
-            offset.dot(&offset)
-        });
+        // The dot product of an item with itself is the square of the distance
+        offset.dot(&offset)
+    });
 
     // Search the errors for the biggest one
     let mut biggest_error_squared = 0.0;
@@ -349,7 +413,7 @@ fn max_error_for_curve<Curve: BezierCurveFactory>(points: &[Curve::Point], chord
         }
     }
 
-    // Indicate the biggest error and where it was 
+    // Indicate the biggest error and where it was
     (f64::sqrt(biggest_error_squared), biggest_error_offset)
 }
 
@@ -370,7 +434,7 @@ fn end_tangent<Point: Coordinate>(points: &[Point]) -> Point {
 }
 
 ///
-/// Estimates the tangent between three points 
+/// Estimates the tangent between three points
 ///
 fn tangent_between<Point: Coordinate>(p1: &Point, p2: &Point, p3: &Point) -> Point {
     let v1 = *p1 - *p2;
@@ -382,8 +446,14 @@ fn tangent_between<Point: Coordinate>(p1: &Point, p2: &Point, p3: &Point) -> Poi
 ///
 /// Applies the newton-raphson method in order to improve the t values of a curve
 ///
-fn reparameterize<Curve: BezierCurve>(points: &[Curve::Point], chords: &[f64], curve: &Curve) -> Vec<f64> {
-    points.iter().zip(chords.iter())
+fn reparameterize<Curve: BezierCurve>(
+    points: &[Curve::Point],
+    chords: &[f64],
+    curve: &Curve,
+) -> Vec<f64> {
+    points
+        .iter()
+        .zip(chords.iter())
         .map(|(point, chord)| newton_raphson_root_find(curve, point, *chord))
         .collect()
 }
@@ -391,7 +461,11 @@ fn reparameterize<Curve: BezierCurve>(points: &[Curve::Point], chords: &[f64], c
 ///
 /// Uses newton-raphson to find a root for a curve
 ///
-fn newton_raphson_root_find<Curve: BezierCurve>(curve: &Curve, point: &Curve::Point, estimated_t: f64) -> f64 {
+fn newton_raphson_root_find<Curve: BezierCurve>(
+    curve: &Curve,
+    point: &Curve::Point,
+    estimated_t: f64,
+) -> f64 {
     let start = curve.start_point();
     let end = curve.end_point();
     let (cp1, cp2) = curve.control_points();

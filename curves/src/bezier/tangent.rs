@@ -1,5 +1,11 @@
-use super::curve::*;
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
 use super::basis::*;
+use super::curve::*;
 use super::derivative::*;
 
 ///
@@ -18,7 +24,12 @@ impl<'a, Curve: BezierCurve> From<&'a Curve> for Tangent<Curve> {
         let control_points = curve.control_points();
 
         Tangent {
-            derivative: derivative4(curve.start_point(), control_points.0, control_points.1, curve.end_point())
+            derivative: derivative4(
+                curve.start_point(),
+                control_points.0,
+                control_points.1,
+                curve.end_point(),
+            ),
         }
     }
 }

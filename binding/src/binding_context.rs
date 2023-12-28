@@ -1,9 +1,15 @@
-use super::traits::*;
-use super::notify_fn::*;
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
 
+use std::cell::*;
 use std::rc::*;
 use std::sync::*;
-use std::cell::*;
+
+use super::notify_fn::*;
+use super::traits::*;
 
 thread_local! {
     static CURRENT_CONTEXT: RefCell<Option<BindingContext>> = RefCell::new(None);
@@ -43,7 +49,9 @@ impl BindingDependencies {
         // Set the recently changed flag so that we can tell if the dependencies are already out of date before when_changed is called
         let recently_changed = Arc::clone(&self.recently_changed);
         let mut recent_change_monitors = self.recent_change_monitors.borrow_mut();
-        recent_change_monitors.push(dependency.when_changed(notify(move || { *recently_changed.lock().unwrap() = true; })));
+        recent_change_monitors.push(dependency.when_changed(notify(move || {
+            *recently_changed.lock().unwrap() = true;
+        })));
 
         // Add this dependency to the list
         self.dependencies.borrow_mut().push(Box::new(dependency))
@@ -53,7 +61,10 @@ impl BindingDependencies {
     /// If the dependencies have not changed since they were registered, registers for changes
     /// and returns a `Releasable`. If the dependencies are already different, returns `None`.
     ///
-    pub fn when_changed_if_unchanged(&self, what: Arc<dyn Notifiable>) -> Option<Box<dyn Releasable>> {
+    pub fn when_changed_if_unchanged(
+        &self,
+        what: Arc<dyn Notifiable>,
+    ) -> Option<Box<dyn Releasable>> {
         let mut to_release = vec![];
 
         // Register with all of the dependencies
@@ -63,7 +74,9 @@ impl BindingDependencies {
 
         if *self.recently_changed.lock().unwrap() {
             // If a value changed while we were building these dependencies, then immediately generate the notification
-            to_release.into_iter().for_each(|mut releasable| releasable.done());
+            to_release
+                .into_iter()
+                .for_each(|mut releasable| releasable.done());
 
             // Nothing to release
             None
@@ -107,12 +120,7 @@ impl BindingContext {
     /// Gets the active binding context
     ///
     pub fn current() -> Option<BindingContext> {
-        CURRENT_CONTEXT.with(|current_context| {
-            current_context
-                .borrow()
-                .as_ref()
-                .cloned()
-        })
+        CURRENT_CONTEXT.with(|current_context| current_context.borrow().as_ref().cloned())
     }
 
     ///
@@ -128,7 +136,9 @@ impl BindingContext {
     /// Executes a function in a new binding context
     ///
     pub fn bind<TResult, TFn>(to_do: TFn) -> (TResult, BindingDependencies)
-        where TFn: FnOnce() -> TResult {
+    where
+        TFn: FnOnce() -> TResult,
+    {
         // Remember the previous context
         let previous_context = Self::current();
 
@@ -152,11 +162,13 @@ impl BindingContext {
     }
 
     ///
-    /// Performs an action outside of the binding context (dependencies 
+    /// Performs an action outside of the binding context (dependencies
     /// will not be tracked for anything the supplied function does)
     ///
     pub fn out_of_context<TResult, TFn>(to_do: TFn) -> TResult
-        where TFn: FnOnce() -> TResult {
+    where
+        TFn: FnOnce() -> TResult,
+    {
         // Remember the previous context
         let previous_context = Self::current();
 

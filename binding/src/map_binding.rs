@@ -1,9 +1,14 @@
-use crate::traits::*;
-use crate::computed::*;
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
 
-use std::marker::{PhantomData};
-
+use std::marker::PhantomData;
 use std::sync::*;
+
+use crate::computed::*;
+use crate::traits::*;
 
 ///
 /// A map binding is a type of computed binding created by the `BoundValueExt::map()` function
@@ -11,22 +16,25 @@ use std::sync::*;
 #[derive(Clone)]
 pub struct MapBinding<TBinding: ?Sized, TMapValue, TMapFn> {
     /// Reference to a computed binding that performs the map function
-    computed: Arc<dyn Bound<Value=TMapValue>>,
+    computed: Arc<dyn Bound<Value = TMapValue>>,
 
     /// Phantom data (we present an interface on the outside that is like we re-implemented a computed binding, so future versions of flo_binding can do that without changing the API)
     _phantom: (PhantomData<TBinding>, PhantomData<TMapFn>),
 }
 
 impl<TBinding, TMapValue, TMapFn> MapBinding<TBinding, TMapValue, TMapFn>
-    where
-        TBinding: 'static + Bound,
-        TMapFn: 'static + Send + Sync + Fn(TBinding::Value) -> TMapValue,
-        TMapValue: 'static + Send + Clone,
+where
+    TBinding: 'static + Bound,
+    TMapFn: 'static + Send + Sync + Fn(TBinding::Value) -> TMapValue,
+    TMapValue: 'static + Send + Clone,
 {
     ///
     /// Creates a new map binding
     ///
-    pub(crate) fn new(binding: TBinding, map_fn: TMapFn) -> MapBinding<TBinding, TMapValue, TMapFn> {
+    pub(crate) fn new(
+        binding: TBinding,
+        map_fn: TMapFn,
+    ) -> MapBinding<TBinding, TMapValue, TMapFn> {
         let computed_map = ComputedBinding::new(move || map_fn(binding.get()));
 
         MapBinding {
@@ -37,10 +45,10 @@ impl<TBinding, TMapValue, TMapFn> MapBinding<TBinding, TMapValue, TMapFn>
 }
 
 impl<TBinding, TMapValue, TMapFn> Changeable for MapBinding<TBinding, TMapValue, TMapFn>
-    where
-        TBinding: 'static + Bound,
-        TMapFn: 'static + Send + Sync + Fn(TBinding::Value) -> TMapValue,
-        TMapValue: 'static + Send + Clone,
+where
+    TBinding: 'static + Bound,
+    TMapFn: 'static + Send + Sync + Fn(TBinding::Value) -> TMapValue,
+    TMapValue: 'static + Send + Clone,
 {
     #[inline]
     fn when_changed(&self, what: Arc<dyn Notifiable>) -> Box<dyn Releasable> {
@@ -49,10 +57,10 @@ impl<TBinding, TMapValue, TMapFn> Changeable for MapBinding<TBinding, TMapValue,
 }
 
 impl<TBinding, TMapValue, TMapFn> Bound for MapBinding<TBinding, TMapValue, TMapFn>
-    where
-        TBinding: 'static + Bound,
-        TMapFn: 'static + Send + Sync + Fn(TBinding::Value) -> TMapValue,
-        TMapValue: 'static + Send + Clone,
+where
+    TBinding: 'static + Bound,
+    TMapFn: 'static + Send + Sync + Fn(TBinding::Value) -> TMapValue,
+    TMapValue: 'static + Send + Clone,
 {
     type Value = TMapValue;
 

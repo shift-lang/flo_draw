@@ -1,3 +1,9 @@
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
 use super::error::*;
 use super::offscreen_trait::*;
 
@@ -40,7 +46,8 @@ struct WgpuOffscreenRenderTarget {
 ///
 /// This version is the Metal version for Mac OS X
 ///
-pub async fn wgpu_initialize_offscreen_rendering() -> Result<impl OffscreenRenderContext, RenderInitError> {
+pub async fn wgpu_initialize_offscreen_rendering(
+) -> Result<impl OffscreenRenderContext, RenderInitError> {
     // Create a new WGPU instance and adapter
     let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
         backends: wgpu::Backends::all(),
@@ -146,7 +153,7 @@ impl OffscreenRenderTarget for WgpuOffscreenRenderTarget {
     /// Sends render actions to this offscreen render target
     ///
     #[inline]
-    fn render<ActionIter: IntoIterator<Item=RenderAction>>(&mut self, actions: ActionIter) {
+    fn render<ActionIter: IntoIterator<Item = RenderAction>>(&mut self, actions: ActionIter) {
         self.renderer.render_to_surface(actions);
     }
 

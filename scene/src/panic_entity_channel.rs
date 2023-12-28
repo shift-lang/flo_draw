@@ -1,16 +1,22 @@
-use crate::error::*;
-use crate::entity_id::*;
-use crate::entity_channel::*;
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
 
+use crate::entity_channel::*;
+use crate::entity_id::*;
+use crate::error::*;
+
+use futures::channel::oneshot;
+use futures::future::BoxFuture;
 use futures::prelude::*;
 use futures::stream;
-use futures::future::{BoxFuture};
-use futures::channel::oneshot;
 
-use std::thread;
-use std::cell::{RefCell};
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::cell::RefCell;
 use std::panic;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::thread;
 
 thread_local! {
     ///
@@ -39,33 +45,42 @@ fn install_panic_hook() {
 
         // Set a new panic hook to set the LAST_PANIC_MESSAGE
         panic::set_hook(Box::new(move |info| {
-            LAST_PANIC_MESSAGE.try_with(|last_panic_message| {
-                let last_panic_message = last_panic_message.try_borrow_mut();
+            LAST_PANIC_MESSAGE
+                .try_with(|last_panic_message| {
+                    let last_panic_message = last_panic_message.try_borrow_mut();
 
-                if let Ok(mut last_panic_message) = last_panic_message {
-                    // Retrieve the payload as a string, if possible, and store in the last panic message
-                    let payload = info.payload();
+                    if let Ok(mut last_panic_message) = last_panic_message {
+                        // Retrieve the payload as a string, if possible, and store in the last panic message
+                        let payload = info.payload();
 
-                    if let Some(str_value) = payload.downcast_ref::<&str>() {
-                        *last_panic_message = Some(str_value.to_string());
-                    } else if let Some(string_value) = payload.downcast_ref::<String>() {
-                        *last_panic_message = Some(string_value.clone());
-                    } else {
-                        // There is a message but we don't know how to convert it to string
-                        *last_panic_message = None;
+                        if let Some(str_value) = payload.downcast_ref::<&str>() {
+                            *last_panic_message = Some(str_value.to_string());
+                        } else if let Some(string_value) = payload.downcast_ref::<String>() {
+                            *last_panic_message = Some(string_value.clone());
+                        } else {
+                            // There is a message but we don't know how to convert it to string
+                            *last_panic_message = None;
+                        }
                     }
-                }
-            }).ok();
+                })
+                .ok();
 
-            LAST_PANIC_LOCATION.try_with(|last_panic_location| {
-                if let Ok(mut last_panic_location) = last_panic_location.try_borrow_mut() {
-                    if let Some(location) = info.location() {
-                        *last_panic_location = Some(format!("{}: {}:{}", location.file(), location.line(), location.column()));
-                    } else {
-                        *last_panic_location = None;
+            LAST_PANIC_LOCATION
+                .try_with(|last_panic_location| {
+                    if let Ok(mut last_panic_location) = last_panic_location.try_borrow_mut() {
+                        if let Some(location) = info.location() {
+                            *last_panic_location = Some(format!(
+                                "{}: {}:{}",
+                                location.file(),
+                                location.line(),
+                                location.column()
+                            ));
+                        } else {
+                            *last_panic_location = None;
+                        }
                     }
-                }
-            }).ok();
+                })
+                .ok();
 
             old_hook(info);
         }));
@@ -76,8 +91,8 @@ fn install_panic_hook() {
 /// Entity channel that sends a message on a stream if it is dropped by a panicking thread
 ///
 pub struct PanicEntityChannel<TChannel>
-    where
-        TChannel: EntityChannel,
+where
+    TChannel: EntityChannel,
 {
     /// The entity channel that this will send messages to
     channel: TChannel,
@@ -90,25 +105,32 @@ pub struct PanicEntityChannel<TChannel>
 }
 
 impl<TChannel> PanicEntityChannel<TChannel>
-    where
-        TChannel: EntityChannel,
-        TChannel::Message: 'static,
+where
+    TChannel: EntityChannel,
+    TChannel::Message: 'static,
 {
     ///
     /// Creates a new panic entity channel. The supplied stream is modified to receive the panic message, should it occur
     ///
-    pub fn new(source_channel: TChannel, stream: impl 'static + Send + Stream<Item=TChannel::Message>, panic_message: impl 'static + Send + FnOnce(String, Option<String>) -> TChannel::Message) -> (PanicEntityChannel<TChannel>, impl 'static + Send + Stream<Item=TChannel::Message>) {
+    pub fn new(
+        source_channel: TChannel,
+        stream: impl 'static + Send + Stream<Item = TChannel::Message>,
+        panic_message: impl 'static + Send + FnOnce(String, Option<String>) -> TChannel::Message,
+    ) -> (
+        PanicEntityChannel<TChannel>,
+        impl 'static + Send + Stream<Item = TChannel::Message>,
+    ) {
         // Ensure that this panic hook is installed (so that LAST_PANIC_MESSAGE is updated)
         install_panic_hook();
 
         // Create a oneshot receiver for the panic message
         let (sender, receiver) = oneshot::channel();
-        let receiver = receiver.map(|maybe_result| {
-            match maybe_result {
+        let receiver = receiver
+            .map(|maybe_result| match maybe_result {
                 Ok(msg) => stream::iter(vec![msg]),
                 Err(_) => stream::iter(vec![]),
-            }
-        }).flatten_stream();
+            })
+            .flatten_stream();
 
         // Amend the existing stream
         let stream = stream::select(stream, receiver);
@@ -125,8 +147,8 @@ impl<TChannel> PanicEntityChannel<TChannel>
 }
 
 impl<TChannel> EntityChannel for PanicEntityChannel<TChannel>
-    where
-        TChannel: EntityChannel,
+where
+    TChannel: EntityChannel,
 {
     type Message = TChannel::Message;
 
@@ -141,23 +163,35 @@ impl<TChannel> EntityChannel for PanicEntityChannel<TChannel>
     }
 
     #[inline]
-    fn send(&mut self, message: Self::Message) -> BoxFuture<'static, Result<(), EntityChannelError>> {
+    fn send(
+        &mut self,
+        message: Self::Message,
+    ) -> BoxFuture<'static, Result<(), EntityChannelError>> {
         self.channel.send(message)
     }
 }
 
 impl<TChannel> Drop for PanicEntityChannel<TChannel>
-    where
-        TChannel: EntityChannel,
+where
+    TChannel: EntityChannel,
 {
     fn drop(&mut self) {
         if thread::panicking() {
-            if let (Some(send_panic), Some(panic_message)) = (self.send_panic.take(), self.panic_message.take()) {
-                let last_panic_location = LAST_PANIC_LOCATION.try_with(|loc| loc.borrow_mut().take()).unwrap_or(None);
-                let last_panic_string = LAST_PANIC_MESSAGE.try_with(|msg| msg.borrow_mut().take()).unwrap_or(None);
-                let last_panic_string = last_panic_string.unwrap_or_else(|| "<NO PANIC MESSAGE AVAILABLE>".to_string());
+            if let (Some(send_panic), Some(panic_message)) =
+                (self.send_panic.take(), self.panic_message.take())
+            {
+                let last_panic_location = LAST_PANIC_LOCATION
+                    .try_with(|loc| loc.borrow_mut().take())
+                    .unwrap_or(None);
+                let last_panic_string = LAST_PANIC_MESSAGE
+                    .try_with(|msg| msg.borrow_mut().take())
+                    .unwrap_or(None);
+                let last_panic_string =
+                    last_panic_string.unwrap_or_else(|| "<NO PANIC MESSAGE AVAILABLE>".to_string());
 
-                send_panic.send(panic_message(last_panic_string, last_panic_location)).ok();
+                send_panic
+                    .send(panic_message(last_panic_string, last_panic_location))
+                    .ok();
             }
         }
     }

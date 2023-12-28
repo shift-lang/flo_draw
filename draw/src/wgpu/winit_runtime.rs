@@ -1,22 +1,29 @@
-use std::collections::HashMap;
-use std::sync::*;
-use std::sync::atomic::{AtomicU64, Ordering};
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
 
-use flo_binding::*;
+use std::collections::HashMap;
+use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::*;
+
 use flo_stream::*;
 use futures::channel::oneshot;
 use futures::future::LocalBoxFuture;
 use futures::prelude::*;
 use futures::task;
 use wgpu;
-use winit::event::{DeviceId, ElementState, Event, WindowEvent};
+use winit::event::WindowEvent::{CloseRequested, Destroyed, HoveredFileCancelled};
+use winit::event::{DeviceId, Event, WindowEvent};
 use winit::event_loop::{ControlFlow, EventLoopWindowTarget};
 use winit::window::{Fullscreen, Window, WindowId};
+
+use flo_binding::*;
 
 use crate::events::*;
 use crate::window_properties::*;
 
-use super::event_conversion::*;
 use super::winit_thread::*;
 use super::winit_thread_event::*;
 use super::winit_window::*;
@@ -88,14 +95,21 @@ impl WinitRuntime {
     /// Retrieves the current state for a particular pointer in a mutable form
     ///
     fn state_for_pointer<'a>(&'a mut self, device_id: &'a DeviceId) -> &'a mut PointerState {
-        &mut *self.pointer_state.entry(*device_id)
-            .or_insert_with(|| PointerState::new())
+        &mut *self
+            .pointer_state
+            .entry(*device_id)
+            .or_insert_with(|| PointerState::new((0.0, 0.0).into()))
     }
 
     ///
     /// Handles an event from the rest of the process and updates the state
     ///
-    pub fn handle_event(&mut self, event: Event<'_, WinitThreadEvent>, window_target: &EventLoopWindowTarget<WinitThreadEvent>, control_flow: &mut ControlFlow) {
+    pub fn handle_event(
+        &mut self,
+        event: Event<'_, WinitThreadEvent>,
+        window_target: &EventLoopWindowTarget<WinitThreadEvent>,
+        control_flow: &mut ControlFlow,
+    ) {
         use Event::*;
 
         if *control_flow != ControlFlow::Exit {
@@ -104,20 +118,29 @@ impl WinitRuntime {
 
         match event {
             NewEvents(_cause) => {}
-            WindowEvent { window_id, event } => { self.handle_window_event(window_id, event); }
-            DeviceEvent { device_id: _, event: _ } => {}
-            UserEvent(thread_event) => { self.handle_thread_event(thread_event, window_target); }
+            WindowEvent { window_id, event } => {
+                self.handle_window_event(window_id, event);
+            }
+            DeviceEvent {
+                device_id: _,
+                event: _,
+            } => {}
+            UserEvent(thread_event) => {
+                self.handle_thread_event(thread_event, window_target);
+            }
             Suspended => {}
             Resumed => {}
             RedrawRequested(window_id) => {
-                if let Some((pending_surface, redraw_finished)) = self.pending_redraws.remove(&window_id) {
+                if let Some((pending_surface, redraw_finished)) =
+                    self.pending_redraws.remove(&window_id)
+                {
                     // Present the surface
                     pending_surface.present();
 
                     // Signal the 'finished' event when the redraw events are all clear
                     self.pending_yields.push(redraw_finished);
                 } else {
-                    // self.request_redraw(window_id); 
+                    // self.request_redraw(window_id);
                 }
             }
 
@@ -156,130 +179,60 @@ impl WinitRuntime {
         use WindowEvent::*;
 
         // Generate draw_events for the window event
-        let draw_events = match event {
-            Resized(new_size) => {
-                vec![DrawEvent::Resize(new_size.width as f64, new_size.height as f64), DrawEvent::Redraw]
-            }
-
-            ScaleFactorChanged { scale_factor, new_inner_size } => {
-                vec![DrawEvent::Scale(scale_factor), DrawEvent::Resize(new_inner_size.width as f64, new_inner_size.height as f64), DrawEvent::Redraw]
-            }
-
-            Moved(_position) => vec![],
-            CloseRequested => vec![DrawEvent::Closed],
-            Destroyed => vec![],
-            DroppedFile(_path) => vec![],
-            HoveredFile(_path) => vec![],
-            HoveredFileCancelled => vec![],
-            ReceivedCharacter(_c) => vec![],
-            Focused(_focused) => vec![],
-            ModifiersChanged(_state) => vec![],
-            TouchpadPressure { device_id: _, pressure: _, stage: _ } => vec![],
-            TouchpadMagnify { .. } => vec![],
-            TouchpadRotate { .. } => vec![],
-            SmartMagnify { .. } => vec![],
-            AxisMotion { device_id: _, axis: _, value: _ } => vec![],
-            Touch(_touch) => vec![],
-            ThemeChanged(_theme) => vec![],
-            Occluded(_) => vec![],
-
-            // Keyboard events
-            KeyboardInput { device_id: _, input, is_synthetic: _, } => {
-                // Convert the keycode
-                let key = input.virtual_keycode.map(|keycode| key_from_winit(&keycode));
-                let key = if key == Some(Key::Unknown) { None } else { key };
-
-                // TODO: for modifier keys, generate keydown/up using the modifier state
-
-                // Generate the event for this keypress
-                match input.state {
-                    ElementState::Pressed => vec![DrawEvent::KeyDown(input.scancode as _, key)],
-                    ElementState::Released => vec![DrawEvent::KeyUp(input.scancode as _, key)]
-                }
-            }
-
-            // Pointer events
-            CursorMoved { device_id, position, .. } => {
-                // Update the pointer state
-                let pointer_id = self.id_for_pointer(&device_id);
-                let pointer_state = self.state_for_pointer(&device_id);
-
-                pointer_state.location_in_window = (position.x, position.y);
-
-                // Generate the mouse event
-                let pointer_state = pointer_state.clone();
-                let is_drag = pointer_state.buttons.len() > 0;
-                let action = if is_drag { PointerAction::Drag } else { PointerAction::Move };
-
-                vec![DrawEvent::Pointer(action, pointer_id, pointer_state)]
-            }
-
-            CursorEntered { device_id } => {
-                // Generate the 'entered' event with the current pointer state
-                let pointer_id = self.id_for_pointer(&device_id);
-                let pointer_state = self.state_for_pointer(&device_id);
-
-                // Generate the mouse event
-                let pointer_state = pointer_state.clone();
-                vec![DrawEvent::Pointer(PointerAction::Enter, pointer_id, pointer_state)]
-            }
-
-            CursorLeft { device_id } => {
-                // Generate the 'entered' event with the current pointer state
-                let pointer_id = self.id_for_pointer(&device_id);
-                let pointer_state = self.state_for_pointer(&device_id);
-
-                // Generate the mouse event
-                let pointer_state = pointer_state.clone();
-                vec![DrawEvent::Pointer(PointerAction::Leave, pointer_id, pointer_state)]
-            }
-
-            MouseInput { device_id, state, button, .. } => {
-                // Generate the 'entered' event with the current pointer state
-                let pointer_id = self.id_for_pointer(&device_id);
-                let pointer_state = self.state_for_pointer(&device_id);
-
-                // TODO: for modifier keys, generate keydown/up using the modifier state
-
-                // Update the pointe state
-                let button = button_from_winit(&button);
-                let action = match state {
-                    ElementState::Pressed => {
-                        if !pointer_state.buttons.contains(&button) {
-                            pointer_state.buttons.push(button);
-                        }
-
-                        PointerAction::ButtonDown
-                    }
-
-                    ElementState::Released => {
-                        pointer_state.buttons.retain(|item| item != &button);
-
-                        PointerAction::ButtonUp
-                    }
-                };
-
-                // Generate the mouse event
-                let pointer_state = pointer_state.clone();
-                vec![DrawEvent::Pointer(action, pointer_id, pointer_state)]
-            }
-
-            MouseWheel { device_id: _, delta: _, phase: _, .. } => vec![],
-            Ime(_) => vec![],
+        let event = match event {
+            Resized(size) => DrawEvent::Resized(size),
+            CloseRequested => DrawEvent::CloseRequested,
+            Destroyed => DrawEvent::Destroyed,
+            DroppedFile(path) => DrawEvent::DroppedFile(path),
+            HoveredFile(path) => DrawEvent::HoveredFile(path),
+            HoveredFileCancelled => DrawEvent::HoveredFileCancelled,
+            ReceivedCharacter(char) => DrawEvent::ReceivedCharacter(char),
+            Focused(is_focused) => DrawEvent::Focused(is_focused),
+            KeyboardInput {
+                input,
+                is_synthetic,
+                ..
+            } => DrawEvent::KeyboardInput {
+                input,
+                is_synthetic,
+            },
+            ModifiersChanged(modifier_state) => DrawEvent::ModifiersChanged(modifier_state),
+            Ime(ime) => DrawEvent::Ime(ime),
+            CursorMoved { position, .. } => DrawEvent::CursorMoved {
+                state: PointerState::new(position),
+            },
+            CursorEntered { .. } => DrawEvent::CursorEntered,
+            CursorLeft { .. } => DrawEvent::CursorLeft,
+            MouseWheel { delta, phase, .. } => DrawEvent::MouseWheel { delta, phase },
+            MouseInput { state, button, .. } => DrawEvent::MouseInput { state, button },
+            TouchpadMagnify { delta, phase, .. } => DrawEvent::TouchpadMagnify { delta, phase },
+            SmartMagnify { .. } => DrawEvent::SmartMagnify,
+            TouchpadRotate { delta, phase, .. } => DrawEvent::TouchpadRotate { delta, phase },
+            TouchpadPressure {
+                pressure, stage, ..
+            } => DrawEvent::TouchpadPressure { pressure, stage },
+            AxisMotion { axis, value, .. } => DrawEvent::AxisMotion { axis, value },
+            Touch(touch) => DrawEvent::Touch(touch),
+            ScaleFactorChanged {
+                scale_factor,
+                new_inner_size,
+            } => DrawEvent::ScaleFactorChanged {
+                scale_factor,
+                new_inner_size: new_inner_size.clone(),
+            },
+            ThemeChanged(theme) => DrawEvent::ThemeChanged(theme),
+            Occluded(is_occluded) => DrawEvent::Occluded(is_occluded),
+            Moved(position) => DrawEvent::Moved(position),
         };
 
         if let Some(window_data) = self.window_events.get_mut(&window_id) {
             // Dispatch the draw events using a process
-            if draw_events.len() > 0 {
-                // Need to republish the window events so we can share with the process
-                let mut window_events = window_data.event_publisher.republish();
+            // Need to republish the window events so we can share with the process
+            let mut window_events = window_data.event_publisher.republish();
 
-                self.run_process(async move {
-                    for evt in draw_events {
-                        window_events.publish(evt).await;
-                    }
-                });
-            }
+            self.run_process(async move {
+                window_events.publish(event).await;
+            });
         }
     }
 
@@ -300,7 +253,11 @@ impl WinitRuntime {
     ///
     /// Handles one of our user events from the WinitThreadEvent enum
     ///
-    fn handle_thread_event(&mut self, event: WinitThreadEvent, window_target: &EventLoopWindowTarget<WinitThreadEvent>) {
+    fn handle_thread_event(
+        &mut self,
+        event: WinitThreadEvent,
+        window_target: &EventLoopWindowTarget<WinitThreadEvent>,
+    ) {
         use WinitThreadEvent::*;
 
         match event {
@@ -311,7 +268,11 @@ impl WinitRuntime {
                 let fullscreen = window_properties.fullscreen().get();
                 let decorations = window_properties.has_decorations().get();
 
-                let fullscreen = if fullscreen { Some(Fullscreen::Borderless(None)) } else { None };
+                let fullscreen = if fullscreen {
+                    Some(Fullscreen::Borderless(None))
+                } else {
+                    None
+                };
 
                 // Create a window
                 let window_builder = winit::window::WindowBuilder::new()
@@ -339,8 +300,17 @@ impl WinitRuntime {
                 // Run the window as a process on this thread
                 self.run_process(async move {
                     // Send the initial events for this window (set the size and the DPI)
-                    initial_events.publish(DrawEvent::Resize(size.width as f64, size.height as f64)).await;
-                    initial_events.publish(DrawEvent::Scale(scale)).await;
+                    initial_events
+                        .publish(DrawEvent::Resized(
+                            (size.width as f64, size.height as f64).into(),
+                        ))
+                        .await;
+                    initial_events
+                        .publish(DrawEvent::ScaleFactorChanged {
+                            scale_factor: scale,
+                            new_inner_size: (size.width, size.height).into(),
+                        })
+                        .await;
                     initial_events.publish(DrawEvent::Redraw).await;
 
                     let window_events = initial_events;
@@ -372,7 +342,8 @@ impl WinitRuntime {
 
             PresentSurface(window_id, surface_texture, completed) => {
                 // Store this present event
-                self.pending_redraws.insert(window_id, (surface_texture, completed));
+                self.pending_redraws
+                    .insert(window_id, (surface_texture, completed));
 
                 // Trigger a redraw on the window
                 if let Some(window_data) = self.window_events.get(&window_id) {
@@ -401,7 +372,7 @@ impl WinitRuntime {
     ///
     /// Runs a process in the context of this runtime
     ///
-    fn run_process<Fut: 'static + Future<Output=()>>(&mut self, future: Fut) {
+    fn run_process<Fut: 'static + Future<Output = ()>>(&mut self, future: Fut) {
         // Box the future for polling
         let future = future.boxed_local();
 
@@ -421,7 +392,9 @@ impl WinitRuntime {
     fn poll_future(&mut self, future_id: u64) {
         if let Some(future) = self.futures.get_mut(&future_id) {
             // Create a context to poll this future in
-            let winit_waker = WinitFutureWaker { future_id: Mutex::new(Some(future_id)) };
+            let winit_waker = WinitFutureWaker {
+                future_id: Mutex::new(Some(future_id)),
+            };
             let winit_waker = task::waker(Arc::new(winit_waker));
             let mut winit_context = task::Context::from_waker(&winit_waker);
 

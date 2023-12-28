@@ -1,3 +1,9 @@
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
 use super::scanline_transform::*;
 
 use crate::edgeplan::*;
@@ -25,7 +31,7 @@ pub struct ScanlineIntercept<'a> {
 ///
 #[derive(Debug)]
 pub struct ScanlineInterceptState<'a> {
-    /// The currently active shapes, with the most recent one 
+    /// The currently active shapes, with the most recent one
     active_shapes: Vec<ScanlineIntercept<'a>>,
 
     /// The current z-floor
@@ -164,7 +170,12 @@ impl<'a> ScanlineInterceptState<'a> {
     /// Adds or removes from the active shapes after an intercept
     ///
     #[inline]
-    pub fn add_intercept(&mut self, intercept: &EdgePlanIntercept, transform: &ScanlineTransform, descriptor: Option<&'a ShapeDescriptor>) {
+    pub fn add_intercept(
+        &mut self,
+        intercept: &EdgePlanIntercept,
+        transform: &ScanlineTransform,
+        descriptor: Option<&'a ShapeDescriptor>,
+    ) {
         if let Some(descriptor) = descriptor {
             let (z_index, is_opaque) = (descriptor.z_index, descriptor.is_opaque);
 
@@ -220,12 +231,15 @@ impl<'a> ScanlineInterceptState<'a> {
                         self.z_floor = self.z_floor.max(z_index);
                     }
 
-                    self.active_shapes.insert(following_idx, ScanlineIntercept {
-                        count: count,
-                        start_x: transform.source_x_to_pixels(intercept.x_pos),
-                        shape_id: intercept.shape,
-                        descriptor: descriptor,
-                    })
+                    self.active_shapes.insert(
+                        following_idx,
+                        ScanlineIntercept {
+                            count: count,
+                            start_x: transform.source_x_to_pixels(intercept.x_pos),
+                            shape_id: intercept.shape,
+                            descriptor: descriptor,
+                        },
+                    )
                 }
             }
         }

@@ -1,3 +1,9 @@
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
 use super::coefficients::*;
 use crate::geo::*;
 
@@ -91,7 +97,7 @@ pub trait Line2D {
     ///
     /// Finds the angle in radians between this line and another at the point they intersect, moving clockwise
     ///
-    fn angle_to(&self, other_line: &impl Line<Point=Self::Point>) -> f64;
+    fn angle_to(&self, other_line: &impl Line<Point = Self::Point>) -> f64;
 
     ///
     /// Finds the angle of this line from the x-axis
@@ -100,8 +106,8 @@ pub trait Line2D {
 }
 
 impl<Point> Geo for (Point, Point)
-    where
-        Point: Coordinate + Clone,
+where
+    Point: Coordinate + Clone,
 {
     type Point = Point;
 }
@@ -110,8 +116,8 @@ impl<Point> Geo for (Point, Point)
 /// Simplest line is just a tuple of two points
 ///
 impl<Point> Line for (Point, Point)
-    where
-        Point: Coordinate + Clone,
+where
+    Point: Coordinate + Clone,
 {
     ///
     /// Creates a new line from points
@@ -131,9 +137,9 @@ impl<Point> Line for (Point, Point)
 }
 
 impl<L> Line2D for L
-    where
-        L: Line,
-        L::Point: Coordinate2D + Coordinate + Clone,
+where
+    L: Line,
+    L::Point: Coordinate2D + Coordinate + Clone,
 {
     type Point = L::Point;
 
@@ -161,7 +167,9 @@ impl<L> Line2D for L
     fn which_side(&self, p: &Self::Point) -> i8 {
         let (start, end) = self.points();
 
-        let side = ((p.x() - start.x()) * (end.y() - start.y()) - (p.y() - start.y()) * (end.x() - start.x())).signum();
+        let side = ((p.x() - start.x()) * (end.y() - start.y())
+            - (p.y() - start.y()) * (end.x() - start.x()))
+        .signum();
 
         if side < 0.0 {
             -1
@@ -208,7 +216,7 @@ impl<L> Line2D for L
     /// Finds the angle in radians between this line and another at the point they intersect, moving clockwise
     ///
     #[inline]
-    fn angle_to(&self, other_line: &impl Line<Point=Self::Point>) -> f64 {
+    fn angle_to(&self, other_line: &impl Line<Point = Self::Point>) -> f64 {
         let angle1 = self.angle();
         let angle2 = other_line.angle();
 

@@ -1,13 +1,27 @@
-use flo_curves::*;
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
 use flo_curves::bezier::*;
-use flo_draw::*;
+use flo_curves::*;
 use flo_draw::canvas::*;
+use flo_draw::*;
 
 fn main() {
     with_2d_graphics(|| {
         let canvas = create_canvas_window("Bezier curve walking demo");
-        let curve_1 = Curve::from_points(Coord2(100.0, 500.0), (Coord2(400.0, 2000.0), Coord2(1500.5, 1200.0)), Coord2(1400.0, 900.0));
-        let curve_2 = Curve::from_points(Coord2(100.0, 100.0), (Coord2(400.0, 1600.0), Coord2(1500.5, 800.0)), Coord2(1400.0, 500.0));
+        let curve_1 = Curve::from_points(
+            Coord2(100.0, 500.0),
+            (Coord2(400.0, 2000.0), Coord2(1500.5, 1200.0)),
+            Coord2(1400.0, 900.0),
+        );
+        let curve_2 = Curve::from_points(
+            Coord2(100.0, 100.0),
+            (Coord2(400.0, 1600.0), Coord2(1500.5, 800.0)),
+            Coord2(1400.0, 500.0),
+        );
 
         canvas.draw(|gc| {
             gc.clear_canvas(Color::Rgba(1.0, 1.0, 1.0, 1.0));
@@ -18,13 +32,19 @@ fn main() {
             gc.line_width(2.0);
 
             gc.new_path();
-            gc.move_to(curve_1.start_point().x() as _, curve_1.start_point().y() as _);
+            gc.move_to(
+                curve_1.start_point().x() as _,
+                curve_1.start_point().y() as _,
+            );
             gc.bezier_curve(&curve_1);
             gc.stroke_color(Color::Rgba(0.0, 0.0, 0.6, 1.0));
             gc.stroke();
 
             gc.new_path();
-            gc.move_to(curve_2.start_point().x() as _, curve_2.start_point().y() as _);
+            gc.move_to(
+                curve_2.start_point().x() as _,
+                curve_2.start_point().y() as _,
+            );
             gc.bezier_curve(&curve_2);
             gc.stroke_color(Color::Rgba(0.0, 0.0, 0.6, 1.0));
             gc.stroke();
@@ -37,8 +57,14 @@ fn main() {
                 let unit_normal = curve_1.normal_at_pos(t_max).to_unit_vector();
 
                 gc.new_path();
-                gc.move_to((pos.x() + unit_normal.x() * 12.0) as _, (pos.y() + unit_normal.y() * 12.0) as _);
-                gc.line_to((pos.x() - unit_normal.x() * 12.0) as _, (pos.y() - unit_normal.y() * 12.0) as _);
+                gc.move_to(
+                    (pos.x() + unit_normal.x() * 12.0) as _,
+                    (pos.y() + unit_normal.y() * 12.0) as _,
+                );
+                gc.line_to(
+                    (pos.x() - unit_normal.x() * 12.0) as _,
+                    (pos.y() - unit_normal.y() * 12.0) as _,
+                );
                 gc.stroke();
 
                 gc.new_path();
@@ -52,8 +78,14 @@ fn main() {
                 let unit_normal = curve_2.normal_at_pos(t_max).to_unit_vector();
 
                 gc.new_path();
-                gc.move_to((pos.x() + unit_normal.x() * 12.0) as _, (pos.y() + unit_normal.y() * 12.0) as _);
-                gc.line_to((pos.x() - unit_normal.x() * 12.0) as _, (pos.y() - unit_normal.y() * 12.0) as _);
+                gc.move_to(
+                    (pos.x() + unit_normal.x() * 12.0) as _,
+                    (pos.y() + unit_normal.y() * 12.0) as _,
+                );
+                gc.line_to(
+                    (pos.x() - unit_normal.x() * 12.0) as _,
+                    (pos.y() - unit_normal.y() * 12.0) as _,
+                );
                 gc.stroke();
 
                 gc.new_path();

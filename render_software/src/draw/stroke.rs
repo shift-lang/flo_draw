@@ -1,11 +1,17 @@
-use super::canvas_drawing::*;
-use super::drawing_state::*;
-
-use crate::edges::*;
-use crate::edgeplan::*;
-use crate::pixel::*;
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
 
 use flo_canvas::curves::bezier::path::*;
+
+use crate::edgeplan::*;
+use crate::edges::*;
+use crate::pixel::*;
+
+use super::canvas_drawing::*;
+use super::drawing_state::*;
 
 impl DrawingState {
     ///
@@ -30,22 +36,26 @@ impl DrawingState {
 }
 
 impl<TPixel, const N: usize> CanvasDrawing<TPixel, N>
-    where
-        TPixel: 'static + Send + Sync + Pixel<N>,
+where
+    TPixel: 'static + Send + Sync + Pixel<N>,
 {
     ///
     /// Creates a stroke of the current path
     ///
     pub(super) fn stroke(&mut self) {
         // Fetch or create the fill shape descriptor
-        let mut shape_descriptor = if let Some(shape_descriptor) = &mut self.current_state.stroke_program {
-            shape_descriptor.clone()
-        } else {
-            let shape_descriptor = self.create_shape_descriptor(&&self.current_state.next_stroke_brush.clone(), self.current_state.blend_mode);
-            self.current_state.stroke_program = Some(shape_descriptor.clone());
+        let mut shape_descriptor =
+            if let Some(shape_descriptor) = &mut self.current_state.stroke_program {
+                shape_descriptor.clone()
+            } else {
+                let shape_descriptor = self.create_shape_descriptor(
+                    &&self.current_state.next_stroke_brush.clone(),
+                    self.current_state.blend_mode,
+                );
+                self.current_state.stroke_program = Some(shape_descriptor.clone());
 
-            shape_descriptor
-        };
+                shape_descriptor
+            };
 
         // Retrieve the current layer
         let layers = &mut self.layers;
@@ -66,7 +76,9 @@ impl<TPixel, const N: usize> CanvasDrawing<TPixel, N>
 
         // Write the edges using this program
         let shape_id = ShapeId::new();
-        current_layer.edges.declare_shape_description(shape_id, shape_descriptor);
+        current_layer
+            .edges
+            .declare_shape_description(shape_id, shape_descriptor);
 
         // Create the stroke options
         let stroke_options = StrokeOptions::default()
@@ -78,8 +90,16 @@ impl<TPixel, const N: usize> CanvasDrawing<TPixel, N>
         let width = current_state.stroke_width;
 
         // Create the edge
-        let stroke_edge = FlattenedLineStrokeEdge::new(shape_id, current_state.path_edges.clone(), current_state.subpaths.clone(), width, stroke_options);
-        current_state.clip_shape(shape_id, vec![stroke_edge]).into_iter()
+        let stroke_edge = FlattenedLineStrokeEdge::new(
+            shape_id,
+            current_state.path_edges.clone(),
+            current_state.subpaths.clone(),
+            width,
+            stroke_options,
+        );
+        current_state
+            .clip_shape(shape_id, vec![stroke_edge])
+            .into_iter()
             .for_each(|edge| current_layer.edges.add_edge(edge));
         self.prepared_layers.remove(self.current_layer.0);
     }

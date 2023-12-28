@@ -1,8 +1,14 @@
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
 use super::job::*;
 
-use std::mem;
-use futures::future::{Future, FutureObj, FutureExt};
+use futures::future::{Future, FutureExt, FutureObj};
 use futures::task::{Context, Poll};
+use std::mem;
 
 enum JobState<TFn> {
     /// Need to call the function to create the underlying future
@@ -16,8 +22,10 @@ enum JobState<TFn> {
 }
 
 impl<TFn, TFuture> JobState<TFn>
-    where TFn: FnOnce() -> TFuture + Send,
-          TFuture: 'static + Send + Future<Output=()> {
+where
+    TFn: FnOnce() -> TFuture + Send,
+    TFuture: 'static + Send + Future<Output = ()>,
+{
     fn take(&mut self) -> Option<FutureObj<'static, ()>> {
         // Move the value out of this object
         let mut value = JobState::Completed;
@@ -32,7 +40,7 @@ impl<TFn, TFuture> JobState<TFn>
             JobState::WaitingForFuture(future) => Some(future),
 
             // The future has gone away in the completed state
-            JobState::Completed => None
+            JobState::Completed => None,
         }
     }
 }
@@ -45,16 +53,22 @@ pub struct FutureJob<TFn> {
 }
 
 impl<TFn, TFuture> FutureJob<TFn>
-    where TFn: FnOnce() -> TFuture + Send,
-          TFuture: 'static + Send + Future<Output=()> {
+where
+    TFn: FnOnce() -> TFuture + Send,
+    TFuture: 'static + Send + Future<Output = ()>,
+{
     pub fn new(create_future: TFn) -> FutureJob<TFn> {
-        FutureJob { action: JobState::FutureNotCreated(create_future) }
+        FutureJob {
+            action: JobState::FutureNotCreated(create_future),
+        }
     }
 }
 
 impl<TFn, TFuture> ScheduledJob for FutureJob<TFn>
-    where TFn: FnOnce() -> TFuture + Send,
-          TFuture: 'static + Send + Future<Output=()> {
+where
+    TFn: FnOnce() -> TFuture + Send,
+    TFuture: 'static + Send + Future<Output = ()>,
+{
     fn run(&mut self, context: &mut Context) -> Poll<()> {
         // Consume the action when it's run
         let action = self.action.take();

@@ -1,12 +1,19 @@
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
 use std::collections::HashMap;
 use std::sync::*;
 
-use flo_binding::*;
 use flo_stream::*;
 use futures::channel::mpsc;
 use futures::channel::oneshot;
 use futures::prelude::*;
 use futures::stream;
+
+use flo_binding::*;
 
 use crate::context::*;
 use crate::entity_channel::*;
@@ -41,9 +48,12 @@ enum FollowAllEvent<TValue> {
 ///
 /// Follows the values set for all properties of a particular name and type across an entire scene
 ///
-pub fn properties_follow_all<TValue>(context: &Arc<SceneContext>, property_name: &str) -> impl Stream<Item=FollowAll<TValue>>
-    where
-        TValue: 'static + PartialEq + Clone + Send + Sized,
+pub fn properties_follow_all<TValue>(
+    context: &Arc<SceneContext>,
+    property_name: &str,
+) -> impl Stream<Item = FollowAll<TValue>>
+where
+    TValue: 'static + PartialEq + Clone + Send + Sized,
 {
     // Set up the state
     let property_name = property_name.to_string();
@@ -64,7 +74,12 @@ pub fn properties_follow_all<TValue>(context: &Arc<SceneContext>, property_name:
 
         // Track the properties across all entities
         let (sender, receiver) = SimpleEntityChannel::new(current_entity, 1);
-        let send_ok = channel.send(PropertyRequest::TrackPropertiesWithName(property_name.clone(), sender.boxed())).await;
+        let send_ok = channel
+            .send(PropertyRequest::TrackPropertiesWithName(
+                property_name.clone(),
+                sender.boxed(),
+            ))
+            .await;
 
         // Create a stream of streams, and flatten it. We can send new streams to follow_streams and they'll get processed in our main loop
         let (follow_streams, follow_values) = mpsc::channel(10);
@@ -77,7 +92,8 @@ pub fn properties_follow_all<TValue>(context: &Arc<SceneContext>, property_name:
         };
 
         // Now we can track when properties are actually created and destroyed, and follow their values too
-        let follow_values = follow_values.map(|(owner, value)| FollowAllEvent::NewValue(owner, value));
+        let follow_values =
+            follow_values.map(|(owner, value)| FollowAllEvent::NewValue(owner, value));
         let receiver = receiver.map(|update| FollowAllEvent::PropertyUpdate(update));
         let mut receiver = stream::select(follow_values, receiver);
         let mut follow_streams = follow_streams;
@@ -89,7 +105,9 @@ pub fn properties_follow_all<TValue>(context: &Arc<SceneContext>, property_name:
             match update {
                 FollowAllEvent::PropertyUpdate(Created(PropertyReference { owner, .. })) => {
                     // Attempt to fetch the property
-                    if let Ok(property) = context.property_bind::<TValue>(owner, &property_name).await {
+                    if let Ok(property) =
+                        context.property_bind::<TValue>(owner, &property_name).await
+                    {
                         let (signal_finished, on_finished) = oneshot::channel::<()>();
                         let value_stream = follow(property).map(move |value| (owner, value));
                         let value_stream = value_stream.take_until(on_finished);

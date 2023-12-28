@@ -1,7 +1,13 @@
-use super::curve::*;
-use super::basis::*;
-use super::derivative::*;
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
 use super::super::geo::*;
+use super::basis::*;
+use super::curve::*;
+use super::derivative::*;
 
 // TODO: normalize should be a trait associated with coordinate rather than bezier curves (move outwards)
 
@@ -78,8 +84,8 @@ pub trait NormalCurve: BezierCurve {
 }
 
 impl<Curve: BezierCurve> NormalCurve for Curve
-    where
-        Curve::Point: Normalize,
+where
+    Curve::Point: Normalize,
 {
     fn tangent_at_pos(&self, t: f64) -> Curve::Point {
         // Extract the points that make up this curve
@@ -87,7 +93,7 @@ impl<Curve: BezierCurve> NormalCurve for Curve
         let (w2, w3) = self.control_points();
         let w4 = self.end_point();
 
-        // If w1 == w2 or w3 == w4 there will be an anomaly at t=0.0 and t=1.0 
+        // If w1 == w2 or w3 == w4 there will be an anomaly at t=0.0 and t=1.0
         // (it's probably mathematically correct to say there's no tangent at these points but the result is surprising and probably useless in a practical sense)
         let t = if t == 0.0 { f64::EPSILON } else { t };
         let t = if t == 1.0 { 1.0 - f64::EPSILON } else { t };
@@ -107,7 +113,7 @@ impl<Curve: BezierCurve> NormalCurve for Curve
         let (w2, w3) = self.control_points();
         let w4 = self.end_point();
 
-        // If w1 == w2 or w3 == w4 there will be an anomaly at t=0.0 and t=1.0 
+        // If w1 == w2 or w3 == w4 there will be an anomaly at t=0.0 and t=1.0
         // (it's probably mathematically correct to say there's no normal at these points but the result is surprising and probably useless in a practical sense)
         let t = if t == 0.0 { f64::EPSILON } else { t };
         let t = if t == 1.0 { 1.0 - f64::EPSILON } else { t };

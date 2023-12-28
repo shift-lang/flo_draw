@@ -1,3 +1,9 @@
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
 use crate::color::*;
 use crate::context::*;
 use crate::draw::*;
@@ -119,8 +125,8 @@ impl Canvas {
     /// Provides a way to draw on this canvas via a GC
     ///
     pub fn draw<FnAction>(&self, action: FnAction)
-        where
-            FnAction: Send + FnOnce(&mut CanvasGraphicsContext) -> (),
+    where
+        FnAction: Send + FnOnce(&mut CanvasGraphicsContext) -> (),
     {
         self.core.sync(move |core| {
             let mut graphics_context = CanvasGraphicsContext {
@@ -135,7 +141,7 @@ impl Canvas {
     ///
     /// Creates a stream for reading the instructions from this canvas
     ///
-    pub fn stream(&self) -> impl Stream<Item=Draw> + Send {
+    pub fn stream(&self) -> impl Stream<Item = Draw> + Send {
         // Create a new canvas stream
         let new_core = Arc::new(Desync::new(DrawStreamCore::new()));
         let new_stream = DrawStream::with_core(&new_core);
@@ -968,23 +974,23 @@ mod test {
             assert!(
                 stream.next().await
                     == Some(Draw::Gradient(
-                    GradientId(2),
-                    GradientOp::Create(Color::Rgba(0.0, 0.1, 0.2, 0.3)),
-                ))
+                        GradientId(2),
+                        GradientOp::Create(Color::Rgba(0.0, 0.1, 0.2, 0.3)),
+                    ))
             );
             assert!(
                 stream.next().await
                     == Some(Draw::Gradient(
-                    GradientId(2),
-                    GradientOp::AddStop(0.5, Color::Rgba(0.4, 0.5, 0.6, 1.0)),
-                ))
+                        GradientId(2),
+                        GradientOp::AddStop(0.5, Color::Rgba(0.4, 0.5, 0.6, 1.0)),
+                    ))
             );
             assert!(
                 stream.next().await
                     == Some(Draw::Gradient(
-                    GradientId(2),
-                    GradientOp::AddStop(1.0, Color::Rgba(0.7, 0.8, 0.9, 1.0)),
-                ))
+                        GradientId(2),
+                        GradientOp::AddStop(1.0, Color::Rgba(0.7, 0.8, 0.9, 1.0)),
+                    ))
             );
 
             assert!(stream.next().await == Some(Draw::Layer(LayerId(1))));
@@ -1023,23 +1029,23 @@ mod test {
             assert!(
                 stream.next().await
                     == Some(Draw::Gradient(
-                    GradientId(2),
-                    GradientOp::Create(Color::Rgba(0.0, 0.1, 0.2, 0.3)),
-                ))
+                        GradientId(2),
+                        GradientOp::Create(Color::Rgba(0.0, 0.1, 0.2, 0.3)),
+                    ))
             );
             assert!(
                 stream.next().await
                     == Some(Draw::Gradient(
-                    GradientId(2),
-                    GradientOp::AddStop(0.5, Color::Rgba(0.4, 0.5, 0.6, 1.0)),
-                ))
+                        GradientId(2),
+                        GradientOp::AddStop(0.5, Color::Rgba(0.4, 0.5, 0.6, 1.0)),
+                    ))
             );
             assert!(
                 stream.next().await
                     == Some(Draw::Gradient(
-                    GradientId(2),
-                    GradientOp::AddStop(1.0, Color::Rgba(0.7, 0.8, 0.9, 1.0)),
-                ))
+                        GradientId(2),
+                        GradientOp::AddStop(1.0, Color::Rgba(0.7, 0.8, 0.9, 1.0)),
+                    ))
             );
 
             assert!(stream.next().await == Some(Draw::Layer(LayerId(1))));
@@ -1080,23 +1086,23 @@ mod test {
             assert!(
                 stream.next().await
                     == Some(Draw::Gradient(
-                    GradientId(2),
-                    GradientOp::Create(Color::Rgba(0.0, 0.1, 0.2, 0.3)),
-                ))
+                        GradientId(2),
+                        GradientOp::Create(Color::Rgba(0.0, 0.1, 0.2, 0.3)),
+                    ))
             );
             assert!(
                 stream.next().await
                     == Some(Draw::Gradient(
-                    GradientId(2),
-                    GradientOp::AddStop(0.5, Color::Rgba(0.4, 0.5, 0.6, 1.0)),
-                ))
+                        GradientId(2),
+                        GradientOp::AddStop(0.5, Color::Rgba(0.4, 0.5, 0.6, 1.0)),
+                    ))
             );
             assert!(
                 stream.next().await
                     == Some(Draw::Gradient(
-                    GradientId(2),
-                    GradientOp::AddStop(1.0, Color::Rgba(0.7, 0.8, 0.9, 1.0)),
-                ))
+                        GradientId(2),
+                        GradientOp::AddStop(1.0, Color::Rgba(0.7, 0.8, 0.9, 1.0)),
+                    ))
             );
 
             assert!(stream.next().await == Some(Draw::Layer(LayerId(1))));
@@ -1140,23 +1146,23 @@ mod test {
             assert!(
                 stream.next().await
                     == Some(Draw::Gradient(
-                    GradientId(2),
-                    GradientOp::Create(Color::Rgba(0.0, 0.1, 0.2, 0.3)),
-                ))
+                        GradientId(2),
+                        GradientOp::Create(Color::Rgba(0.0, 0.1, 0.2, 0.3)),
+                    ))
             );
             assert!(
                 stream.next().await
                     == Some(Draw::Gradient(
-                    GradientId(2),
-                    GradientOp::AddStop(0.5, Color::Rgba(0.4, 0.5, 0.6, 1.0)),
-                ))
+                        GradientId(2),
+                        GradientOp::AddStop(0.5, Color::Rgba(0.4, 0.5, 0.6, 1.0)),
+                    ))
             );
             assert!(
                 stream.next().await
                     == Some(Draw::Gradient(
-                    GradientId(2),
-                    GradientOp::AddStop(1.0, Color::Rgba(0.7, 0.8, 0.9, 1.0)),
-                ))
+                        GradientId(2),
+                        GradientOp::AddStop(1.0, Color::Rgba(0.7, 0.8, 0.9, 1.0)),
+                    ))
             );
 
             assert!(
@@ -1167,23 +1173,23 @@ mod test {
             assert!(
                 stream.next().await
                     == Some(Draw::Gradient(
-                    GradientId(2),
-                    GradientOp::Create(Color::Rgba(0.0, 0.1, 0.2, 0.3)),
-                ))
+                        GradientId(2),
+                        GradientOp::Create(Color::Rgba(0.0, 0.1, 0.2, 0.3)),
+                    ))
             );
             assert!(
                 stream.next().await
                     == Some(Draw::Gradient(
-                    GradientId(2),
-                    GradientOp::AddStop(0.5, Color::Rgba(0.4, 0.5, 0.6, 1.0)),
-                ))
+                        GradientId(2),
+                        GradientOp::AddStop(0.5, Color::Rgba(0.4, 0.5, 0.6, 1.0)),
+                    ))
             );
             assert!(
                 stream.next().await
                     == Some(Draw::Gradient(
-                    GradientId(2),
-                    GradientOp::AddStop(1.0, Color::Rgba(0.7, 0.8, 0.9, 1.0)),
-                ))
+                        GradientId(2),
+                        GradientOp::AddStop(1.0, Color::Rgba(0.7, 0.8, 0.9, 1.0)),
+                    ))
             );
 
             assert!(stream.next().await == Some(Draw::Layer(LayerId(1))));

@@ -1,13 +1,19 @@
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
+use super::blend_mode::*;
 use super::color::*;
 use super::identities::*;
-use super::blend_mode::*;
+use super::render_target_type::*;
 use super::shader_type::*;
 use super::texture_filter::*;
-use super::render_target_type::*;
 
 use crate::buffer::*;
 
-use std::ops::{Range};
+use std::ops::Range;
 use std::sync::*;
 
 ///
@@ -115,7 +121,7 @@ pub enum RenderAction {
     ///
     /// Creates an 8-bit BGRA 2D texture of the specified size
     ///
-    CreateTextureBgra(TextureId, Size2D),           // TODO: I think everything except WGPU seems to wind up working as an RGBA texture (actually, this is determined by WriteTextureData: textures are BGRA but are read as RGBA)
+    CreateTextureBgra(TextureId, Size2D), // TODO: I think everything except WGPU seems to wind up working as an RGBA texture (actually, this is determined by WriteTextureData: textures are BGRA but are read as RGBA)
 
     ///
     /// Creates an 8-bit monochrome 2D texture of the specified size
@@ -197,31 +203,37 @@ impl Default for FrameBufferRegion {
 impl FrameBufferRegion {
     #[inline]
     fn clip(val: f32) -> f32 {
-        if val < -1.0 { -1.0 } else if val > 1.0 { 1.0 } else { val }
+        if val < -1.0 {
+            -1.0
+        } else if val > 1.0 {
+            1.0
+        } else {
+            val
+        }
     }
 
     /// Returns the minimum X coordinate (-1 to 1)
     #[inline]
     pub fn min_x(&self) -> f32 {
-        Self::clip(self.0.0)
+        Self::clip(self.0 .0)
     }
 
     /// Returns the minimum Y coordinate (-1 to 1)
     #[inline]
     pub fn min_y(&self) -> f32 {
-        Self::clip(self.0.1)
+        Self::clip(self.0 .1)
     }
 
     /// Returns the maximum X coordinate (-1 to 1)
     #[inline]
     pub fn max_x(&self) -> f32 {
-        Self::clip(self.1.0)
+        Self::clip(self.1 .0)
     }
 
     /// Returns the maximum Y coordinate (-1 to 1)
     #[inline]
     pub fn max_y(&self) -> f32 {
-        Self::clip(self.1.1)
+        Self::clip(self.1 .1)
     }
 }
 
@@ -234,31 +246,72 @@ impl RenderAction {
 
         match self {
             SetTransform(matrix) => format!("SetTransform({:?})", matrix),
-            CreateVertex2DBuffer(buffer_id, vertices) => format!("CreateVertex2DBuffer({:?}, [{} vertices])", buffer_id, vertices.len()),
-            CreateIndexBuffer(buffer_id, indexes) => format!("CreateIndexBuffer({:?}, [{} indexes])", buffer_id, indexes.len()),
+            CreateVertex2DBuffer(buffer_id, vertices) => format!(
+                "CreateVertex2DBuffer({:?}, [{} vertices])",
+                buffer_id,
+                vertices.len()
+            ),
+            CreateIndexBuffer(buffer_id, indexes) => format!(
+                "CreateIndexBuffer({:?}, [{} indexes])",
+                buffer_id,
+                indexes.len()
+            ),
             FreeVertexBuffer(buffer_id) => format!("FreeVertexBuffer({:?})", buffer_id),
             FreeIndexBuffer(buffer_id) => format!("FreeIndexBuffer({:?})", buffer_id),
             BlendMode(blend_mode) => format!("BlendMode({:?})", blend_mode),
-            CreateRenderTarget(render_id, texture_id, size, target_type) => format!("CreateRenderTarget({:?}, {:?}, {:?}, {:?})", render_id, texture_id, size, target_type),
+            CreateRenderTarget(render_id, texture_id, size, target_type) => format!(
+                "CreateRenderTarget({:?}, {:?}, {:?}, {:?})",
+                render_id, texture_id, size, target_type
+            ),
             FreeRenderTarget(render_id) => format!("FreeRenderTarget({:?})", render_id),
             SelectRenderTarget(render_id) => format!("SelectRenderTarget({:?})", render_id),
             RenderToFrameBuffer => format!("RenderToFrameBuffer"),
             ShowFrameBuffer => format!("ShowFrameBuffer"),
-            DrawFrameBuffer(render_id, region, alpha) => format!("DrawFrameBuffer({:?}, {:?}, {:?})", render_id, region, alpha),
-            CreateTextureBgra(texture_id, size) => format!("CreateTextureBgra({:?}, {:?})", texture_id, size),
-            CreateTextureMono(texture_id, size) => format!("CreateTextureMono({:?}, {:?})", texture_id, size),
-            Create1DTextureBgra(texture_id, w) => format!("Create1DTextureBgra({:?}, {:?})", texture_id, w),
-            Create1DTextureMono(texture_id, w) => format!("Create1DTextureMono({:?}, {:?})", texture_id, w),
-            WriteTextureData(texture_id, pos, size, bytes) => format!("WriteTextureData({:?}, {:?}, {:?}, [{} bytes])", texture_id, pos, size, bytes.len()),
-            WriteTexture1D(texture_id, x, w, bytes) => format!("WriteTexture1D({:?}, {:?}, {:?}, [{} bytes])", texture_id, x, w, bytes.len()),
+            DrawFrameBuffer(render_id, region, alpha) => format!(
+                "DrawFrameBuffer({:?}, {:?}, {:?})",
+                render_id, region, alpha
+            ),
+            CreateTextureBgra(texture_id, size) => {
+                format!("CreateTextureBgra({:?}, {:?})", texture_id, size)
+            }
+            CreateTextureMono(texture_id, size) => {
+                format!("CreateTextureMono({:?}, {:?})", texture_id, size)
+            }
+            Create1DTextureBgra(texture_id, w) => {
+                format!("Create1DTextureBgra({:?}, {:?})", texture_id, w)
+            }
+            Create1DTextureMono(texture_id, w) => {
+                format!("Create1DTextureMono({:?}, {:?})", texture_id, w)
+            }
+            WriteTextureData(texture_id, pos, size, bytes) => format!(
+                "WriteTextureData({:?}, {:?}, {:?}, [{} bytes])",
+                texture_id,
+                pos,
+                size,
+                bytes.len()
+            ),
+            WriteTexture1D(texture_id, x, w, bytes) => format!(
+                "WriteTexture1D({:?}, {:?}, {:?}, [{} bytes])",
+                texture_id,
+                x,
+                w,
+                bytes.len()
+            ),
             CreateMipMaps(texture_id) => format!("CreateMipMaps({:?})", texture_id),
-            FilterTexture(texture_id, filter) => format!("FilterTexture({:?}, {:?})", texture_id, filter),
+            FilterTexture(texture_id, filter) => {
+                format!("FilterTexture({:?}, {:?})", texture_id, filter)
+            }
             CopyTexture(id1, id2) => format!("CopyTexture({:?}, {:?})", id1, id2),
             FreeTexture(texture_id) => format!("FreeTexture({:?})", texture_id),
             Clear(bg_col) => format!("Clear({:?})", bg_col),
             UseShader(shader_type) => format!("UseShader({:?})", shader_type),
-            DrawTriangles(buffer_id, range) => format!("DrawTriangles({:?}, {:?})", buffer_id, range),
-            DrawIndexedTriangles(buffer_id, index_id, len) => format!("DrawIndexedTriangles({:?}, {:?}, {:?})", buffer_id, index_id, len),
+            DrawTriangles(buffer_id, range) => {
+                format!("DrawTriangles({:?}, {:?})", buffer_id, range)
+            }
+            DrawIndexedTriangles(buffer_id, index_id, len) => format!(
+                "DrawIndexedTriangles({:?}, {:?}, {:?})",
+                buffer_id, index_id, len
+            ),
         }
     }
 }

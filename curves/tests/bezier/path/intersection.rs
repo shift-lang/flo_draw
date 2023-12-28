@@ -1,7 +1,13 @@
-use flo_curves::*;
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
 use flo_curves::arc::*;
-use flo_curves::bezier::*;
 use flo_curves::bezier::path::*;
+use flo_curves::bezier::*;
+use flo_curves::*;
 
 use std::f64;
 
@@ -122,7 +128,12 @@ fn circle_intersects_circle() {
         let point1 = curves1[*index1].point_at_pos(*t1);
         let point2 = curves2[*index2].point_at_pos(*t2);
 
-        println!("{:?} {:?} {:?}", point1, point2, point1.distance_to(&point2));
+        println!(
+            "{:?} {:?} {:?}",
+            point1,
+            point2,
+            point1.distance_to(&point2)
+        );
     }
 
     for ((index1, t1), (index2, t2)) in intersections.iter() {

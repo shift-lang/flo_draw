@@ -1,8 +1,14 @@
-use flo_curves::*;
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
 use flo_curves::arc::*;
 use flo_curves::bezier::path::*;
-use flo_draw::*;
+use flo_curves::*;
 use flo_draw::canvas::*;
+use flo_draw::*;
 
 use std::f64;
 use std::thread;
@@ -24,12 +30,16 @@ fn main() {
             let amplitude = (since_start / (f64::consts::PI * 1_000_000_000.0)).cos() * 200.0;
 
             // Create some circles
-            let path1 = Circle::new(Coord2(500.0 + amplitude, 500.0), 100.0).to_path::<SimpleBezierPath>();
-            let path2 = Circle::new(Coord2(500.0 - amplitude, 500.0), 100.0).to_path::<SimpleBezierPath>();
-            let path3 = Circle::new(Coord2(500.0, 500.0 - amplitude), 60.0).to_path::<SimpleBezierPath>();
+            let path1 =
+                Circle::new(Coord2(500.0 + amplitude, 500.0), 100.0).to_path::<SimpleBezierPath>();
+            let path2 =
+                Circle::new(Coord2(500.0 - amplitude, 500.0), 100.0).to_path::<SimpleBezierPath>();
+            let path3 =
+                Circle::new(Coord2(500.0, 500.0 - amplitude), 60.0).to_path::<SimpleBezierPath>();
 
             // Add and subtract them to generate the final path
-            let path = path_add::<SimpleBezierPath>(&vec![path1.clone()], &vec![path2.clone()], 0.1);
+            let path =
+                path_add::<SimpleBezierPath>(&vec![path1.clone()], &vec![path2.clone()], 0.1);
             let path = path_sub::<SimpleBezierPath>(&path, &vec![path3.clone()], 0.1);
 
             canvas.draw(|gc| {

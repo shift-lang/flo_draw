@@ -1,14 +1,20 @@
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
 use super::path_contour::*;
 use super::sampled_approx_distance_field_cache::*;
-use crate::geo::*;
-use crate::bezier::*;
 use crate::bezier::path::*;
 use crate::bezier::vectorize::*;
+use crate::bezier::*;
+use crate::geo::*;
 
 use smallvec::*;
 
-use std::rc::{Rc};
-use std::cell::{RefCell};
+use std::cell::RefCell;
+use std::rc::Rc;
 
 ///
 /// Approximates a distance field generated from a path
@@ -24,25 +30,43 @@ impl PathDistanceField {
     /// Creates a (approximated) distance field from a bezier path
     ///
     pub fn from_path<TPath>(path: Vec<TPath>, size: ContourSize) -> Self
-        where
-            TPath: 'static + BezierPath,
-            TPath::Point: Coordinate + Coordinate2D,
+    where
+        TPath: 'static + BezierPath,
+        TPath::Point: Coordinate + Coordinate2D,
     {
         // Generate the distance field cache: need to walk the perimeter of the curve to find evenly-spaced points
-        let curves = path.iter().flat_map(|subpath| subpath.to_curves::<Curve<_>>()).collect::<Vec<_>>();
-        let points = curves.iter().enumerate()
-            .flat_map(|(curve_idx, curve)| walk_curve_evenly_map(*curve, 0.5, 0.1, move |section| (curve_idx, section.point_at_pos(1.0), section.t_for_t(1.0))))
-            .flat_map(|(curve_idx, point_guess, t_guess)| refine_nearby_points(&curves[curve_idx], point_guess, t_guess));
+        let curves = path
+            .iter()
+            .flat_map(|subpath| subpath.to_curves::<Curve<_>>())
+            .collect::<Vec<_>>();
+        let points = curves
+            .iter()
+            .enumerate()
+            .flat_map(|(curve_idx, curve)| {
+                walk_curve_evenly_map(*curve, 0.5, 0.1, move |section| {
+                    (curve_idx, section.point_at_pos(1.0), section.t_for_t(1.0))
+                })
+            })
+            .flat_map(|(curve_idx, point_guess, t_guess)| {
+                refine_nearby_points(&curves[curve_idx], point_guess, t_guess)
+            });
 
         // The path contour can be used both as the actual path contour and as a way to determine if a point is inside the path
         let path_contour = PathContour::from_path(path, size);
         let path_contour = Rc::new(path_contour);
 
         // The approximate distance field uses distances to points to estimate the distance at each point (cheaper than actually calculating the nearest point on every path, but less accurate)
-        let approx_distance_field = SampledApproxDistanceFieldCache::from_points(points, (0..size.height()).map(|y| path_contour.intercepts_on_line(y as _)), size);
+        let approx_distance_field = SampledApproxDistanceFieldCache::from_points(
+            points,
+            (0..size.height()).map(|y| path_contour.intercepts_on_line(y as _)),
+            size,
+        );
         let approx_distance_field = RefCell::new(approx_distance_field);
 
-        PathDistanceField { path_contour, approx_distance_field }
+        PathDistanceField {
+            path_contour,
+            approx_distance_field,
+        }
     }
 
     ///
@@ -51,12 +75,13 @@ impl PathDistanceField {
     /// The coordinate returned is the offset of the resulting distance field (add to the coordinates to get the coordinates on the original path)
     ///
     pub fn center_path<TPath>(path: Vec<TPath>, border: usize) -> (Self, TPath::Point)
-        where
-            TPath: 'static + BezierPath + BezierPathFactory,
-            TPath::Point: Coordinate + Coordinate2D,
+    where
+        TPath: 'static + BezierPath + BezierPathFactory,
+        TPath::Point: Coordinate + Coordinate2D,
     {
         // Figure out the bounding box of the path
-        let bounds = path.iter()
+        let bounds = path
+            .iter()
             .map(|subpath| subpath.bounding_box::<Bounds<_>>())
             .reduce(|a, b| a.union_bounds(b))
             .unwrap_or_else(|| Bounds::empty());
@@ -92,26 +117,40 @@ impl PathDistanceField {
 ///
 /// Takes a known point on the curve and refines both it and the surrounding points
 ///
-fn refine_nearby_points<TPoint>(curve: &Curve<TPoint>, point_guess: TPoint, t_guess: f64) -> SmallVec<[(ContourPosition, TPoint); 9]>
-    where
-        TPoint: Coordinate + Coordinate2D,
+fn refine_nearby_points<TPoint>(
+    curve: &Curve<TPoint>,
+    point_guess: TPoint,
+    t_guess: f64,
+) -> SmallVec<[(ContourPosition, TPoint); 9]>
+where
+    TPoint: Coordinate + Coordinate2D,
 {
     // Refine the central point to start with
     let mut points = smallvec![];
-    let (center_pos, center_point) = if let Some(point) = refine_closest_point(curve, point_guess, t_guess) { point } else { return smallvec![]; };
+    let (center_pos, center_point) =
+        if let Some(point) = refine_closest_point(curve, point_guess, t_guess) {
+            point
+        } else {
+            return smallvec![];
+        };
 
     points.push((center_pos, center_point));
 
     // Create the surrounding points
     for y_offset in -1..=1 {
         for x_offset in -1..=1 {
-            if y_offset == 0 && x_offset == 0 { continue; }
+            if y_offset == 0 && x_offset == 0 {
+                continue;
+            }
 
             let x_offset = x_offset as f64;
             let y_offset = y_offset as f64;
 
             // Try to refine a guess here
-            let new_point = TPoint::from_components(&[center_point.x() + x_offset, center_point.y() + y_offset]);
+            let new_point = TPoint::from_components(&[
+                center_point.x() + x_offset,
+                center_point.y() + y_offset,
+            ]);
             if let Some(new_point) = refine_closest_point(curve, new_point, t_guess) {
                 points.push(new_point);
             }
@@ -124,9 +163,13 @@ fn refine_nearby_points<TPoint>(curve: &Curve<TPoint>, point_guess: TPoint, t_gu
 ///
 /// Takes a known point on the curve, and uses it to refine a nearby point that's exactly on the grid and close to this point
 ///
-fn refine_closest_point<TPoint>(curve: &Curve<TPoint>, point_guess: TPoint, t_guess: f64) -> Option<(ContourPosition, TPoint)>
-    where
-        TPoint: Coordinate + Coordinate2D,
+fn refine_closest_point<TPoint>(
+    curve: &Curve<TPoint>,
+    point_guess: TPoint,
+    t_guess: f64,
+) -> Option<(ContourPosition, TPoint)>
+where
+    TPoint: Coordinate + Coordinate2D,
 {
     // Grid position is the rounded version of the point
     let grid_x = point_guess.x().round();
@@ -142,7 +185,12 @@ fn refine_closest_point<TPoint>(curve: &Curve<TPoint>, point_guess: TPoint, t_gu
         // Create a refined t value using a few rounds of newton-raphson that's near to the grid point
         // TODO: singularities and very tight curves might produce absurd answers here (`nearest_point_on_curve_bezier_root_finder` will work in these cases)
         // TODO: at the very ends of the curve, it's possible the nearest point is on a different curve. This might not matter if both curves are inspected for the same grid point
-        let refined_t = nearest_point_on_curve_newton_raphson_with_estimate(curve, &TPoint::from_components(&[grid_x, grid_y]), t_guess, 3);
+        let refined_t = nearest_point_on_curve_newton_raphson_with_estimate(
+            curve,
+            &TPoint::from_components(&[grid_x, grid_y]),
+            t_guess,
+            3,
+        );
 
         // Generate this as the nearest point
         let nearest_point = curve.point_at_pos(refined_t);
@@ -161,7 +209,10 @@ impl SampledSignedDistanceField for PathDistanceField {
 
     #[inline]
     fn distance_at_point(&self, pos: ContourPosition) -> f64 {
-        let distance_squared = self.approx_distance_field.borrow_mut().distance_squared_at_point(pos);
+        let distance_squared = self
+            .approx_distance_field
+            .borrow_mut()
+            .distance_squared_at_point(pos);
 
         if distance_squared < 0.0 {
             -((-distance_squared).sqrt())

@@ -1,3 +1,9 @@
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
 use flo_curves::bezier::*;
 
 #[test]
@@ -17,12 +23,15 @@ fn basis_solve_many() {
             let t_values = solve_basis_for_t(w1, w2, w3, w4, p);
 
             // Computing the points for these values should result in a valid curve
-            let pos_for_t = t_values.iter()
+            let pos_for_t = t_values
+                .iter()
                 .map(|t| basis(*t, w1, w2, w3, w4))
                 .collect::<Vec<_>>();
 
             // Should all evaluate to positions on the curve
-            pos_for_t.iter().for_each(|pos| assert!((pos - p).abs() < 0.01));
+            pos_for_t
+                .iter()
+                .for_each(|pos| assert!((pos - p).abs() < 0.01));
         }
     }
 
@@ -33,7 +42,11 @@ fn basis_solve_many() {
 
 #[test]
 fn solve_t_for_pos() {
-    let curve1 = Curve::from_points(Coord2(10.0, 100.0), (Coord2(90.0, 30.0), Coord2(40.0, 140.0)), Coord2(220.0, 220.0));
+    let curve1 = Curve::from_points(
+        Coord2(10.0, 100.0),
+        (Coord2(90.0, 30.0), Coord2(40.0, 140.0)),
+        Coord2(220.0, 220.0),
+    );
 
     let point_at_one_third = curve1.point_at_pos(0.3333);
     let solved = curve1.t_for_point(&point_at_one_third);
@@ -44,7 +57,11 @@ fn solve_t_for_pos() {
 
 #[test]
 fn solve_t_for_start() {
-    let curve1 = Curve::from_points(Coord2(10.0, 100.0), (Coord2(90.0, 30.0), Coord2(40.0, 140.0)), Coord2(220.0, 220.0));
+    let curve1 = Curve::from_points(
+        Coord2(10.0, 100.0),
+        (Coord2(90.0, 30.0), Coord2(40.0, 140.0)),
+        Coord2(220.0, 220.0),
+    );
 
     let solved = curve1.t_for_point(&Coord2(10.0, 100.0));
 
@@ -54,7 +71,11 @@ fn solve_t_for_start() {
 
 #[test]
 fn solve_t_for_end() {
-    let curve1 = Curve::from_points(Coord2(10.0, 100.0), (Coord2(90.0, 30.0), Coord2(40.0, 140.0)), Coord2(220.0, 220.0));
+    let curve1 = Curve::from_points(
+        Coord2(10.0, 100.0),
+        (Coord2(90.0, 30.0), Coord2(40.0, 140.0)),
+        Coord2(220.0, 220.0),
+    );
 
     let solved = curve1.t_for_point(&Coord2(220.0, 220.0));
 
@@ -64,7 +85,11 @@ fn solve_t_for_end() {
 
 #[test]
 fn solve_t_for_many_positions() {
-    let curve1 = Curve::from_points(Coord2(10.0, 100.0), (Coord2(90.0, 30.0), Coord2(40.0, 140.0)), Coord2(220.0, 220.0));
+    let curve1 = Curve::from_points(
+        Coord2(10.0, 100.0),
+        (Coord2(90.0, 30.0), Coord2(40.0, 140.0)),
+        Coord2(220.0, 220.0),
+    );
 
     for p in 0..10 {
         let p = (p as f64) / 10.0;
@@ -78,7 +103,11 @@ fn solve_t_for_many_positions() {
 
 #[test]
 fn solve_t_for_out_of_bounds() {
-    let curve1 = Curve::from_points(Coord2(10.0, 100.0), (Coord2(90.0, 30.0), Coord2(40.0, 140.0)), Coord2(220.0, 220.0));
+    let curve1 = Curve::from_points(
+        Coord2(10.0, 100.0),
+        (Coord2(90.0, 30.0), Coord2(40.0, 140.0)),
+        Coord2(220.0, 220.0),
+    );
 
     let solved = curve1.t_for_point(&Coord2(45.0, 23.0));
     assert!(solved.is_none());

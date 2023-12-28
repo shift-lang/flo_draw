@@ -1,18 +1,24 @@
-use super::ColumnSampledContour;
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
 use super::distance_field::*;
 use super::sampled_contour::*;
+use super::ColumnSampledContour;
 
 use smallvec::*;
 
-use std::cell::{RefCell};
-use std::ops::{Range};
+use std::cell::RefCell;
+use std::ops::Range;
 
 ///
 /// Describes a shape as a distance field made up by 'daubing' discrete brush shapes over a canvas
 ///
-/// Each brush shape - 'daub' - is itself a distance field, and can be placed at any integer position on the canvas (to 
-/// position at subpixels, they will need to be separately resampled). By combining these shapes, a distance field 
-/// describing a brush stroke can be constructed, which can be converted into a vector using 
+/// Each brush shape - 'daub' - is itself a distance field, and can be placed at any integer position on the canvas (to
+/// position at subpixels, they will need to be separately resampled). By combining these shapes, a distance field
+/// describing a brush stroke can be constructed, which can be converted into a vector using
 /// `trace_contours_from_distance_field()`
 ///
 /// Note that for just creating a thick line, `offset_lms_sampling()` is much faster but it can only offset along a
@@ -45,18 +51,21 @@ struct DaubPosition {
 }
 
 impl<TDaub> DaubBrushDistanceField<TDaub>
-    where
-        TDaub: SampledSignedDistanceField,
+where
+    TDaub: SampledSignedDistanceField,
 {
     ///
     /// Creates a daub brush distance field from a list of daubs and their positions
     ///
-    pub fn from_daubs(daubs: impl IntoIterator<Item=(TDaub, ContourPosition)>) -> DaubBrushDistanceField<TDaub> {
+    pub fn from_daubs(
+        daubs: impl IntoIterator<Item = (TDaub, ContourPosition)>,
+    ) -> DaubBrushDistanceField<TDaub> {
         // Collect the daubs
         let mut daubs = daubs.into_iter().collect::<Vec<_>>();
 
         // Size is the outer extent of all the daubs
-        let size = daubs.iter()
+        let size = daubs
+            .iter()
             .fold(ContourSize(0, 0), |last_size, (next_daub, next_pos)| {
                 let ContourPosition(x, y) = next_pos;
                 let ContourSize(w, h) = last_size;
@@ -72,12 +81,16 @@ impl<TDaub> DaubBrushDistanceField<TDaub>
         daubs.sort_by_key(|(_, ContourPosition(_, y))| *y);
 
         // Figure out which daubs are on each line
-        let daubs_for_line = Self::create_daubs_for_positions(daubs.iter().map(|(daub, pos)| {
-            DaubPosition {
-                pos: (pos.1)..(pos.1 + daub.field_size().height()),
-                covered_pixels: (pos.0)..(pos.0 + daub.field_size().width()),
-            }
-        }).collect(), size.height());
+        let daubs_for_line = Self::create_daubs_for_positions(
+            daubs
+                .iter()
+                .map(|(daub, pos)| DaubPosition {
+                    pos: (pos.1)..(pos.1 + daub.field_size().height()),
+                    covered_pixels: (pos.0)..(pos.0 + daub.field_size().width()),
+                })
+                .collect(),
+            size.height(),
+        );
         let daubs_for_column = RefCell::new(None);
 
         DaubBrushDistanceField {
@@ -94,17 +107,23 @@ impl<TDaub> DaubBrushDistanceField<TDaub>
     fn calculate_daubs_for_column(&self) -> Vec<Vec<usize>> {
         // Get the indexes of the daubs sorted by x position
         let mut idx_sorted_by_x = (0..self.daubs.len()).collect::<Vec<_>>();
-        idx_sorted_by_x.sort_by_key(|idx| self.daubs[*idx].1.0);
+        idx_sorted_by_x.sort_by_key(|idx| self.daubs[*idx].1 .0);
 
         // Figure out the daubs on each column
-        let mut daubs_for_column = Self::create_daubs_for_positions(idx_sorted_by_x.iter().map(|idx| {
-            let (daub, pos) = &self.daubs[*idx];
+        let mut daubs_for_column = Self::create_daubs_for_positions(
+            idx_sorted_by_x
+                .iter()
+                .map(|idx| {
+                    let (daub, pos) = &self.daubs[*idx];
 
-            DaubPosition {
-                pos: (pos.0)..(pos.0 + daub.field_size().width()),
-                covered_pixels: (pos.1)..(pos.1 + daub.field_size().height()),
-            }
-        }).collect(), self.size.width());
+                    DaubPosition {
+                        pos: (pos.0)..(pos.0 + daub.field_size().width()),
+                        covered_pixels: (pos.1)..(pos.1 + daub.field_size().height()),
+                    }
+                })
+                .collect(),
+            self.size.width(),
+        );
 
         // Remap the indexes into the daubs array
         for row in daubs_for_column.iter_mut() {
@@ -120,7 +139,10 @@ impl<TDaub> DaubBrushDistanceField<TDaub>
     ///
     /// Creates the cache of daubs for each line or column in this brush stroke
     ///
-    fn create_daubs_for_positions(ordered_daub_positions: Vec<DaubPosition>, size: usize) -> Vec<Vec<usize>> {
+    fn create_daubs_for_positions(
+        ordered_daub_positions: Vec<DaubPosition>,
+        size: usize,
+    ) -> Vec<Vec<usize>> {
         let mut daubs_for_line = Vec::with_capacity(size);
         let mut pos = 0;
         let mut next_daub = 0;
@@ -138,13 +160,20 @@ impl<TDaub> DaubBrushDistanceField<TDaub>
             // Add any daubs that first appear at the current y position
             let mut new_daubs = vec![];
 
-            while next_daub < ordered_daub_positions.len() && ordered_daub_positions[next_daub].pos.start == pos {
+            while next_daub < ordered_daub_positions.len()
+                && ordered_daub_positions[next_daub].pos.start == pos
+            {
                 new_daubs.push(next_daub);
                 next_daub += 1;
             }
 
             // Order by x index
-            new_daubs.sort_by(|a, b| ordered_daub_positions[*a].covered_pixels.start.cmp(&ordered_daub_positions[*b].covered_pixels.start));
+            new_daubs.sort_by(|a, b| {
+                ordered_daub_positions[*a]
+                    .covered_pixels
+                    .start
+                    .cmp(&ordered_daub_positions[*b].covered_pixels.start)
+            });
 
             if current_line.len() == 0 {
                 current_line = new_daubs;
@@ -160,7 +189,8 @@ impl<TDaub> DaubBrushDistanceField<TDaub>
                 loop {
                     match (current_next, new_next) {
                         (Some(current_idx), Some(new_idx)) => {
-                            let current_x = ordered_daub_positions[current_idx].covered_pixels.start;
+                            let current_x =
+                                ordered_daub_positions[current_idx].covered_pixels.start;
                             let new_x = ordered_daub_positions[new_idx].covered_pixels.start;
 
                             if current_x < new_x {
@@ -182,7 +212,9 @@ impl<TDaub> DaubBrushDistanceField<TDaub>
                             new_next = new_iter.next();
                         }
 
-                        (None, None) => { break; }
+                        (None, None) => {
+                            break;
+                        }
                     }
                 }
 
@@ -201,8 +233,8 @@ impl<TDaub> DaubBrushDistanceField<TDaub>
 }
 
 impl<TDaub> SampledContour for DaubBrushDistanceField<TDaub>
-    where
-        TDaub: SampledSignedDistanceField,
+where
+    TDaub: SampledSignedDistanceField,
 {
     #[inline]
     fn contour_size(&self) -> ContourSize {
@@ -226,7 +258,9 @@ impl<TDaub> SampledContour for DaubBrushDistanceField<TDaub>
 
                 for intercept in daub.as_contour().intercepts_on_line(y - posy).into_iter() {
                     // Strip empty ranges if they occur
-                    if intercept.start >= intercept.end { continue; }
+                    if intercept.start >= intercept.end {
+                        continue;
+                    }
 
                     // Offset the intercept by the position of this daub
                     let intercept = (posx + intercept.start)..(posx + intercept.end);
@@ -235,7 +269,8 @@ impl<TDaub> SampledContour for DaubBrushDistanceField<TDaub>
                     if intercepts.len() == 0 {
                         // First intercept
                         intercepts.push(intercept);
-                    } else if intercepts[intercepts.len() - 1].end.floor() < intercept.start.ceil() {
+                    } else if intercepts[intercepts.len() - 1].end.floor() < intercept.start.ceil()
+                    {
                         // Beyond the end of the last intercept
                         intercepts.push(intercept);
                     } else {
@@ -250,7 +285,9 @@ impl<TDaub> SampledContour for DaubBrushDistanceField<TDaub>
 
                                 found_overlap = true;
                                 break;
-                            } else if intercepts[idx].start.floor() <= intercept.end.ceil() && intercepts[idx].end.ceil() >= intercept.start.floor() {
+                            } else if intercepts[idx].start.floor() <= intercept.end.ceil()
+                                && intercepts[idx].end.ceil() >= intercept.start.floor()
+                            {
                                 // Ranges overlap
                                 intercepts[idx].end = intercepts[idx].end.max(intercept.end);
 
@@ -262,10 +299,16 @@ impl<TDaub> SampledContour for DaubBrushDistanceField<TDaub>
                                     to_remove.clear();
 
                                     for overlap_idx in (0..idx).into_iter().rev() {
-                                        if intercepts[overlap_idx].start <= intercepts[idx].end && intercepts[overlap_idx].end >= intercepts[idx].start {
+                                        if intercepts[overlap_idx].start <= intercepts[idx].end
+                                            && intercepts[overlap_idx].end >= intercepts[idx].start
+                                        {
                                             to_remove.push(overlap_idx);
-                                            intercepts[idx].start = intercepts[idx].start.min(intercepts[overlap_idx].start);
-                                            intercepts[idx].end = intercepts[idx].end.max(intercepts[overlap_idx].end);
+                                            intercepts[idx].start = intercepts[idx]
+                                                .start
+                                                .min(intercepts[overlap_idx].start);
+                                            intercepts[idx].end = intercepts[idx]
+                                                .end
+                                                .max(intercepts[overlap_idx].end);
                                         } else {
                                             break;
                                         }
@@ -295,9 +338,9 @@ impl<TDaub> SampledContour for DaubBrushDistanceField<TDaub>
 }
 
 impl<TDaub> ColumnSampledContour for DaubBrushDistanceField<TDaub>
-    where
-        TDaub: SampledSignedDistanceField,
-        TDaub::Contour: ColumnSampledContour,
+where
+    TDaub: SampledSignedDistanceField,
+    TDaub::Contour: ColumnSampledContour,
 {
     fn intercepts_on_column(&self, x: f64) -> SmallVec<[Range<f64>; 4]> {
         let mut intercepts: SmallVec<[Range<f64>; 4]> = smallvec![];
@@ -324,7 +367,9 @@ impl<TDaub> ColumnSampledContour for DaubBrushDistanceField<TDaub>
 
                 for intercept in daub.as_contour().intercepts_on_column(x - posx).into_iter() {
                     // Strip empty ranges if they occur
-                    if intercept.start >= intercept.end { continue; }
+                    if intercept.start >= intercept.end {
+                        continue;
+                    }
 
                     // Offset the intercept by the position of this daub
                     let intercept = (posy + intercept.start)..(posy + intercept.end);
@@ -333,7 +378,8 @@ impl<TDaub> ColumnSampledContour for DaubBrushDistanceField<TDaub>
                     if intercepts.len() == 0 {
                         // First intercept
                         intercepts.push(intercept);
-                    } else if intercepts[intercepts.len() - 1].end.floor() < intercept.start.ceil() {
+                    } else if intercepts[intercepts.len() - 1].end.floor() < intercept.start.ceil()
+                    {
                         // Beyond the end of the last intercept
                         intercepts.push(intercept);
                     } else {
@@ -348,7 +394,9 @@ impl<TDaub> ColumnSampledContour for DaubBrushDistanceField<TDaub>
 
                                 found_overlap = true;
                                 break;
-                            } else if intercepts[idx].start.floor() <= intercept.end.ceil() && intercepts[idx].end.ceil() >= intercept.start.floor() {
+                            } else if intercepts[idx].start.floor() <= intercept.end.ceil()
+                                && intercepts[idx].end.ceil() >= intercept.start.floor()
+                            {
                                 // Ranges overlap
                                 intercepts[idx].end = intercepts[idx].end.max(intercept.end);
 
@@ -360,10 +408,16 @@ impl<TDaub> ColumnSampledContour for DaubBrushDistanceField<TDaub>
                                     to_remove.clear();
 
                                     for overlap_idx in (0..idx).into_iter().rev() {
-                                        if intercepts[overlap_idx].start <= intercepts[idx].end && intercepts[overlap_idx].end >= intercepts[idx].start {
+                                        if intercepts[overlap_idx].start <= intercepts[idx].end
+                                            && intercepts[overlap_idx].end >= intercepts[idx].start
+                                        {
                                             to_remove.push(overlap_idx);
-                                            intercepts[idx].start = intercepts[idx].start.min(intercepts[overlap_idx].start);
-                                            intercepts[idx].end = intercepts[idx].end.max(intercepts[overlap_idx].end);
+                                            intercepts[idx].start = intercepts[idx]
+                                                .start
+                                                .min(intercepts[overlap_idx].start);
+                                            intercepts[idx].end = intercepts[idx]
+                                                .end
+                                                .max(intercepts[overlap_idx].end);
                                         } else {
                                             break;
                                         }
@@ -393,8 +447,8 @@ impl<TDaub> ColumnSampledContour for DaubBrushDistanceField<TDaub>
 }
 
 impl<TDaub> SampledSignedDistanceField for DaubBrushDistanceField<TDaub>
-    where
-        TDaub: SampledSignedDistanceField,
+where
+    TDaub: SampledSignedDistanceField,
 {
     type Contour = DaubBrushDistanceField<TDaub>;
 

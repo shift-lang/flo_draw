@@ -1,8 +1,14 @@
-use super::layer_state::*;
-use super::layer_bounds::*;
-use super::render_entity::*;
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
 
 use flo_canvas as canvas;
+
+use super::layer_bounds::*;
+use super::layer_state::*;
+use super::render_entity::*;
 
 ///
 /// Definition of a layer in the canvas
@@ -45,7 +51,8 @@ impl Layer {
             self.update_scale_factor();
 
             // Add a 'set transform' to the rendering for this layer
-            self.render_order.push(RenderEntity::SetTransform(*active_transform));
+            self.render_order
+                .push(RenderEntity::SetTransform(*active_transform));
         }
     }
 
@@ -77,7 +84,8 @@ impl Layer {
         let old_scale_factor = self.state.scale_factor;
 
         // Pop the state from the layer
-        self.stored_states.pop()
+        self.stored_states
+            .pop()
             .map(|restored_state| self.state = restored_state);
 
         // Keep the matrix/scale factor from before so `update_transform` will do the right thing later on (see PopState: note that the transform is popped independently of the layer state)

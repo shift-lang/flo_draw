@@ -1,3 +1,9 @@
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
 ///
 /// Describes the direction of an edge intercept
 ///
@@ -19,14 +25,14 @@ pub enum EdgeInterceptDirection {
     Toggle,
 
     ///
-    /// Adds 1 to the intercept count for the shape when passing the edge left-to-right. If the 
+    /// Adds 1 to the intercept count for the shape when passing the edge left-to-right. If the
     /// intercept count is non-zero after this, then the RHS is inside the shape, otherwise it is
     /// outside.
     ///
     DirectionOut,
 
     ///
-    /// Subtracts 1 from the intercept count for the shape when passing the edge left-to-right. If the 
+    /// Subtracts 1 from the intercept count for the shape when passing the edge left-to-right. If the
     /// intercept count is non-zero after this, then the RHS is inside the shape, otherwise it is
     /// outside.
     ///

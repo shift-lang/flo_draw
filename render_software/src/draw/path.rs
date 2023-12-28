@@ -1,19 +1,25 @@
-use super::canvas_drawing::*;
-use super::drawing_state::*;
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
 
-use crate::edges::*;
+use std::sync::*;
+
+use itertools::*;
+use smallvec::*;
+
+use flo_canvas as canvas;
+use flo_canvas::curves::bezier::*;
+use flo_canvas::curves::line::*;
+
 use crate::edgeplan::*;
+use crate::edges::*;
 use crate::pixel::*;
 use crate::pixel_programs::*;
 
-use flo_canvas as canvas;
-use flo_canvas::curves::line::*;
-use flo_canvas::curves::bezier::*;
-
-use smallvec::*;
-use itertools::*;
-
-use std::sync::*;
+use super::canvas_drawing::*;
+use super::drawing_state::*;
 
 impl DrawingState {
     ///
@@ -27,7 +33,9 @@ impl DrawingState {
             NewPath => self.path_new(),
             Move(x, y) => self.path_move(x, y),
             Line(x, y) => self.path_line(x, y),
-            BezierCurve(((cp1x, cp1y), (cp2x, cp2y)), (dx, dy)) => self.path_bezier_curve((cp1x, cp1y), (cp2x, cp2y), (dx, dy)),
+            BezierCurve(((cp1x, cp1y), (cp2x, cp2y)), (dx, dy)) => {
+                self.path_bezier_curve((cp1x, cp1y), (cp2x, cp2y), (dx, dy))
+            }
             ClosePath => self.path_close(),
         }
     }
@@ -123,26 +131,39 @@ impl DrawingState {
     /// Makes a shape from the current set of subpaths
     ///
     #[inline]
-    pub(crate) fn create_path_shape<TEdge>(&self, make_edge: impl Fn(BezierSubpath) -> TEdge) -> Vec<TEdge>
-        where
-            TEdge: EdgeDescriptor
+    pub(crate) fn create_path_shape<TEdge>(
+        &self,
+        make_edge: impl Fn(BezierSubpath) -> TEdge,
+    ) -> Vec<TEdge>
+    where
+        TEdge: EdgeDescriptor,
     {
-        use std::iter;
         use flo_canvas::curves::bezier::path::*;
+        use std::iter;
 
         let mut edges = vec![];
 
-        for (start_idx, end_idx) in self.subpaths.iter().copied().chain(iter::once(self.path_edges.len())).tuple_windows() {
-            if start_idx >= end_idx { continue; }
+        for (start_idx, end_idx) in self
+            .subpaths
+            .iter()
+            .copied()
+            .chain(iter::once(self.path_edges.len()))
+            .tuple_windows()
+        {
+            if start_idx >= end_idx {
+                continue;
+            }
 
             // Use a path builder to create a simple bezier path
-            let mut path = BezierPathBuilder::<BezierSubpath>::start(self.path_edges[start_idx].start_point());
+            let mut path =
+                BezierPathBuilder::<BezierSubpath>::start(self.path_edges[start_idx].start_point());
             for curve in self.path_edges[start_idx..end_idx].iter() {
                 path = path.curve_to(curve.control_points(), curve.end_point());
             }
 
             // Close if unclosed
-            if self.path_edges[start_idx].start_point() != self.path_edges[end_idx - 1].end_point() {
+            if self.path_edges[start_idx].start_point() != self.path_edges[end_idx - 1].end_point()
+            {
                 path = path.line_to(self.path_edges[start_idx].start_point());
             }
 
@@ -156,17 +177,21 @@ impl DrawingState {
 }
 
 impl<TPixel, const N: usize> CanvasDrawing<TPixel, N>
-    where
-        TPixel: 'static + Send + Sync + Pixel<N>,
+where
+    TPixel: 'static + Send + Sync + Pixel<N>,
 {
     ///
     /// Creates a shape descriptor from a brush
     ///
     /// The z-index of this descriptor will be set to 0: this should be updated later on
     ///
-    pub(super) fn create_shape_descriptor(&mut self, brush: &Brush, operation: AlphaOperation) -> ShapeDescriptor
-        where
-            TPixel: 'static + Send + Sync + Pixel<N>,
+    pub(super) fn create_shape_descriptor(
+        &mut self,
+        brush: &Brush,
+        operation: AlphaOperation,
+    ) -> ShapeDescriptor
+    where
+        TPixel: 'static + Send + Sync + Pixel<N>,
     {
         use Brush::*;
 
@@ -176,7 +201,11 @@ impl<TPixel, const N: usize> CanvasDrawing<TPixel, N>
 
         let descriptor = match (operation, brush) {
             (AlphaOperation::SourceOver, OpaqueSolidColor(color)) => {
-                let brush_data = program_cache.program_cache.store_program_data(&program_cache.solid_color, data_cache, SolidColorData(TPixel::from_color(*color, gamma)));
+                let brush_data = program_cache.program_cache.store_program_data(
+                    &program_cache.solid_color,
+                    data_cache,
+                    SolidColorData(TPixel::from_color(*color, gamma)),
+                );
 
                 ShapeDescriptor {
                     programs: smallvec![brush_data],
@@ -186,7 +215,11 @@ impl<TPixel, const N: usize> CanvasDrawing<TPixel, N>
             }
 
             (AlphaOperation::SourceOver, TransparentSolidColor(color)) => {
-                let brush_data = program_cache.program_cache.store_program_data(&program_cache.source_over_color, data_cache, SolidColorData(TPixel::from_color(*color, gamma)));
+                let brush_data = program_cache.program_cache.store_program_data(
+                    &program_cache.source_over_color,
+                    data_cache,
+                    SolidColorData(TPixel::from_color(*color, gamma)),
+                );
 
                 ShapeDescriptor {
                     programs: smallvec![brush_data],
@@ -196,7 +229,11 @@ impl<TPixel, const N: usize> CanvasDrawing<TPixel, N>
             }
 
             (_, OpaqueSolidColor(color)) | (_, TransparentSolidColor(color)) => {
-                let brush_data = program_cache.program_cache.store_program_data(&program_cache.blend_color, data_cache, BlendColorData(operation, TPixel::from_color(*color, gamma)));
+                let brush_data = program_cache.program_cache.store_program_data(
+                    &program_cache.blend_color,
+                    data_cache,
+                    BlendColorData(operation, TPixel::from_color(*color, gamma)),
+                );
 
                 ShapeDescriptor {
                     programs: smallvec![brush_data],
@@ -207,7 +244,11 @@ impl<TPixel, const N: usize> CanvasDrawing<TPixel, N>
 
             (_, TransparentTexture(texture, transform)) => {
                 let texture_data = TextureData::with_texture(Arc::clone(texture), transform);
-                let brush_data = program_cache.program_cache.store_program_data(&program_cache.basic_texture, data_cache, texture_data);
+                let brush_data = program_cache.program_cache.store_program_data(
+                    &program_cache.basic_texture,
+                    data_cache,
+                    texture_data,
+                );
 
                 ShapeDescriptor {
                     programs: smallvec![brush_data],
@@ -225,14 +266,18 @@ impl<TPixel, const N: usize> CanvasDrawing<TPixel, N>
     ///
     pub(super) fn fill(&mut self) {
         // Fetch or create the fill shape descriptor
-        let mut shape_descriptor = if let Some(shape_descriptor) = &mut self.current_state.fill_program {
-            shape_descriptor.clone()
-        } else {
-            let shape_descriptor = self.create_shape_descriptor(&self.current_state.next_fill_brush.clone(), self.current_state.blend_mode);
-            self.current_state.fill_program = Some(shape_descriptor.clone());
+        let mut shape_descriptor =
+            if let Some(shape_descriptor) = &mut self.current_state.fill_program {
+                shape_descriptor.clone()
+            } else {
+                let shape_descriptor = self.create_shape_descriptor(
+                    &self.current_state.next_fill_brush.clone(),
+                    self.current_state.blend_mode,
+                );
+                self.current_state.fill_program = Some(shape_descriptor.clone());
 
-            shape_descriptor
-        };
+                shape_descriptor
+            };
 
         // Retrieve the current layer
         let layers = &mut self.layers;
@@ -253,15 +298,25 @@ impl<TPixel, const N: usize> CanvasDrawing<TPixel, N>
 
         // Write the edges using this program
         let shape_id = ShapeId::new();
-        current_layer.edges.declare_shape_description(shape_id, shape_descriptor);
+        current_layer
+            .edges
+            .declare_shape_description(shape_id, shape_descriptor);
 
         // Create bezier subpaths
         let edges = match current_state.winding_rule {
-            canvas::WindingRule::EvenOdd => current_state.clip_shape(shape_id, current_state.create_path_shape(|path| path.to_flattened_even_odd_edge(shape_id))),
-            canvas::WindingRule::NonZero => current_state.clip_shape(shape_id, current_state.create_path_shape(|path| path.to_flattened_non_zero_edge(shape_id))),
+            canvas::WindingRule::EvenOdd => current_state.clip_shape(
+                shape_id,
+                current_state.create_path_shape(|path| path.to_flattened_even_odd_edge(shape_id)),
+            ),
+            canvas::WindingRule::NonZero => current_state.clip_shape(
+                shape_id,
+                current_state.create_path_shape(|path| path.to_flattened_non_zero_edge(shape_id)),
+            ),
         };
 
-        edges.into_iter().for_each(|edge| current_layer.edges.add_edge(edge));
+        edges
+            .into_iter()
+            .for_each(|edge| current_layer.edges.add_edge(edge));
         self.prepared_layers.remove(self.current_layer.0);
     }
 
@@ -276,32 +331,47 @@ impl<TPixel, const N: usize> CanvasDrawing<TPixel, N>
             canvas::WindingRule::EvenOdd => {
                 // Create the clipping shape (shape ID doesn't matter for this)
                 let shape_id = ShapeId::new();
-                let mut shape = current_state.create_path_shape(|path| path.to_flattened_even_odd_edge(shape_id));
+                let mut shape = current_state
+                    .create_path_shape(|path| path.to_flattened_even_odd_edge(shape_id));
 
                 // Turn into a clip region
                 shape.iter_mut().for_each(|edge| edge.prepare_to_render());
 
                 current_state.clip_path = match &current_state.clip_path {
-                    DrawingClipRegion::None => DrawingClipRegion::EvenOdd(Arc::new(ClipRegion::new(shape))),
+                    DrawingClipRegion::None => {
+                        DrawingClipRegion::EvenOdd(Arc::new(ClipRegion::new(shape)))
+                    }
 
                     DrawingClipRegion::EvenOdd(old_region) => {
                         let old_region = (&**old_region).clone().to_object();
                         let shape = shape_to_object(shape);
-                        let region = ClipRegion::new(vec![ClippedShapeEdge::new(shape_id, Arc::new(old_region), shape)]);
+                        let region = ClipRegion::new(vec![ClippedShapeEdge::new(
+                            shape_id,
+                            Arc::new(old_region),
+                            shape,
+                        )]);
 
                         DrawingClipRegion::Nested(Arc::new(region))
                     }
                     DrawingClipRegion::NonZero(old_region) => {
                         let old_region = (&**old_region).clone().to_object();
                         let shape = shape_to_object(shape);
-                        let region = ClipRegion::new(vec![ClippedShapeEdge::new(shape_id, Arc::new(old_region), shape)]);
+                        let region = ClipRegion::new(vec![ClippedShapeEdge::new(
+                            shape_id,
+                            Arc::new(old_region),
+                            shape,
+                        )]);
 
                         DrawingClipRegion::Nested(Arc::new(region))
                     }
                     DrawingClipRegion::Nested(old_region) => {
                         let old_region = (&**old_region).clone().to_object();
                         let shape = shape_to_object(shape);
-                        let region = ClipRegion::new(vec![ClippedShapeEdge::new(shape_id, Arc::new(old_region), shape)]);
+                        let region = ClipRegion::new(vec![ClippedShapeEdge::new(
+                            shape_id,
+                            Arc::new(old_region),
+                            shape,
+                        )]);
 
                         DrawingClipRegion::Nested(Arc::new(region))
                     }
@@ -311,32 +381,47 @@ impl<TPixel, const N: usize> CanvasDrawing<TPixel, N>
             canvas::WindingRule::NonZero => {
                 // Create the clipping shape (shape ID doesn't matter for this)
                 let shape_id = ShapeId::new();
-                let mut shape = current_state.create_path_shape(|path| path.to_flattened_non_zero_edge(shape_id));
+                let mut shape = current_state
+                    .create_path_shape(|path| path.to_flattened_non_zero_edge(shape_id));
 
                 // Turn into a clip region
                 shape.iter_mut().for_each(|edge| edge.prepare_to_render());
 
                 current_state.clip_path = match &current_state.clip_path {
-                    DrawingClipRegion::None => DrawingClipRegion::NonZero(Arc::new(ClipRegion::new(shape))),
+                    DrawingClipRegion::None => {
+                        DrawingClipRegion::NonZero(Arc::new(ClipRegion::new(shape)))
+                    }
 
                     DrawingClipRegion::EvenOdd(old_region) => {
                         let old_region = (&**old_region).clone().to_object();
                         let shape = shape_to_object(shape);
-                        let region = ClipRegion::new(vec![ClippedShapeEdge::new(shape_id, Arc::new(old_region), shape)]);
+                        let region = ClipRegion::new(vec![ClippedShapeEdge::new(
+                            shape_id,
+                            Arc::new(old_region),
+                            shape,
+                        )]);
 
                         DrawingClipRegion::Nested(Arc::new(region))
                     }
                     DrawingClipRegion::NonZero(old_region) => {
                         let old_region = (&**old_region).clone().to_object();
                         let shape = shape_to_object(shape);
-                        let region = ClipRegion::new(vec![ClippedShapeEdge::new(shape_id, Arc::new(old_region), shape)]);
+                        let region = ClipRegion::new(vec![ClippedShapeEdge::new(
+                            shape_id,
+                            Arc::new(old_region),
+                            shape,
+                        )]);
 
                         DrawingClipRegion::Nested(Arc::new(region))
                     }
                     DrawingClipRegion::Nested(old_region) => {
                         let old_region = (&**old_region).clone().to_object();
                         let shape = shape_to_object(shape);
-                        let region = ClipRegion::new(vec![ClippedShapeEdge::new(shape_id, Arc::new(old_region), shape)]);
+                        let region = ClipRegion::new(vec![ClippedShapeEdge::new(
+                            shape_id,
+                            Arc::new(old_region),
+                            shape,
+                        )]);
 
                         DrawingClipRegion::Nested(Arc::new(region))
                     }
@@ -355,10 +440,11 @@ impl<TPixel, const N: usize> CanvasDrawing<TPixel, N>
 }
 
 fn shape_to_object<TEdge>(shape: Vec<TEdge>) -> Vec<Arc<dyn EdgeDescriptor>>
-    where
-        TEdge: 'static + EdgeDescriptor,
+where
+    TEdge: 'static + EdgeDescriptor,
 {
-    shape.into_iter()
+    shape
+        .into_iter()
         .map(|edge| {
             let result: Arc<dyn EdgeDescriptor> = Arc::new(edge);
             result

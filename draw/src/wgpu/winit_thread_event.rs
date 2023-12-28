@@ -1,3 +1,9 @@
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
 use std::fmt;
 use std::fmt::*;
 
@@ -18,7 +24,11 @@ use crate::window_properties::*;
 ///
 pub enum WinitThreadEvent {
     /// Creates a window that will render the specified actions
-    CreateRenderWindow(BoxStream<'static, Vec<RenderAction>>, Publisher<DrawEvent>, WindowProperties),
+    CreateRenderWindow(
+        BoxStream<'static, Vec<RenderAction>>,
+        Publisher<DrawEvent>,
+        WindowProperties,
+    ),
 
     /// Runs a future on the winit thread
     RunProcess(Box<dyn Send + FnOnce() -> LocalBoxFuture<'static, ()>>),

@@ -1,9 +1,15 @@
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
 #[cfg(feature = "render_term")]
 mod term_render {
     use super::super::image_render::*;
-    use super::super::renderer::*;
     use super::super::render_slice::*;
     use super::super::render_target_trait::*;
+    use super::super::renderer::*;
 
     use crate::pixel::*;
 
@@ -22,16 +28,18 @@ mod term_render {
         /// Creates a terminal rendering target
         ///
         pub fn new(width: usize, height: usize) -> Self {
-            TerminalRenderTarget {
-                width,
-                height,
-            }
+            TerminalRenderTarget { width, height }
         }
     }
 
     impl<'a, TPixel> RenderTarget<TPixel> for TerminalRenderTarget
-        where
-            TPixel: 'static + Send + Copy + Default + AlphaBlend + ToGammaColorSpace<U8RgbaPremultipliedPixel>,
+    where
+        TPixel: 'static
+            + Send
+            + Copy
+            + Default
+            + AlphaBlend
+            + ToGammaColorSpace<U8RgbaPremultipliedPixel>,
     {
         #[inline]
         fn width(&self) -> usize {
@@ -43,19 +51,23 @@ mod term_render {
             self.height
         }
 
-        fn render<TRegionRenderer>(&mut self, region_renderer: TRegionRenderer, source_data: &TRegionRenderer::Source)
-            where
-                TRegionRenderer: Renderer<Region=RenderSlice, Dest=[TPixel]>
+        fn render<TRegionRenderer>(
+            &mut self,
+            region_renderer: TRegionRenderer,
+            source_data: &TRegionRenderer::Source,
+        ) where
+            TRegionRenderer: Renderer<Region = RenderSlice, Dest = [TPixel]>,
         {
-            use base64::engine::{Engine};
             use base64::engine::general_purpose;
+            use base64::engine::Engine;
 
             // Create the png data
             let mut png_data: Vec<u8> = vec![];
 
             // Render as PNG data
             {
-                let mut png_render = PngRenderTarget::from_stream(&mut png_data, self.width, self.height, 2.2);
+                let mut png_render =
+                    PngRenderTarget::from_stream(&mut png_data, self.width, self.height, 2.2);
                 png_render.render(region_renderer, source_data);
             }
 

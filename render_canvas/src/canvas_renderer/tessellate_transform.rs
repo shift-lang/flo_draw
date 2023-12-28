@@ -1,8 +1,14 @@
-use super::canvas_renderer::*;
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
+use flo_canvas as canvas;
 
 use crate::render_entity::*;
 
-use flo_canvas as canvas;
+use super::canvas_renderer::*;
 
 impl CanvasRenderer {
     /// Reset the transformation to the identity transformation
@@ -64,7 +70,9 @@ impl CanvasRenderer {
                 layer.state.current_matrix = new_transform;
                 layer.update_scale_factor();
 
-                layer.render_order.push(RenderEntity::SetTransform(new_transform));
+                layer
+                    .render_order
+                    .push(RenderEntity::SetTransform(new_transform));
             });
         }
     }

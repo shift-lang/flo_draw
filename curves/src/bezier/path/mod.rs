@@ -1,3 +1,9 @@
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
 //!
 //! # Manipulates multiple Bezier curves joined into a path
 //!
@@ -6,7 +12,7 @@
 //! # use flo_curves::arc::*;
 //! # use flo_curves::bezier;
 //! # use flo_curves::bezier::path::*;
-//! # 
+//! #
 //! let rectangle = BezierPathBuilder::<SimpleBezierPath>::start(Coord2(1.0, 1.0))
 //!     .line_to(Coord2(5.0, 1.0))
 //!     .line_to(Coord2(5.0, 5.0))
@@ -22,7 +28,7 @@
 //! as a convenient default implementation of this trait. These paths represent a single perimeter of a region.
 //!
 //! The arithmetic operations such as `path_sub()`, `path_add()`, `path_intersect()` all work with collections of these
-//! perimeters, stored in a `Vec`. A path with a hole in the middle will have two perimeters, for example. 
+//! perimeters, stored in a `Vec`. A path with a hole in the middle will have two perimeters, for example.
 //!
 //! These perimeters must not be self-intersecting: `flo_curves` doesn't use a winding rule as such but instead considers
 //! all edges to be exterior edges (which is very similar to an even-odd winding rule). A couple of methods are provided
@@ -35,26 +41,26 @@
 //! implementation of the flood fill algorithm, returning a path that fills a space defined by a ray-casting function.
 //!
 
-mod path;
-mod to_curves;
-mod ray;
-mod point;
-mod bounds;
-mod intersection;
-mod path_builder;
-mod graph_path;
-mod is_clockwise;
-mod arithmetic;
-mod stroke;
 pub mod algorithms;
+mod arithmetic;
+mod bounds;
+mod graph_path;
+mod intersection;
+mod is_clockwise;
+mod path;
+mod path_builder;
+mod point;
+mod ray;
+mod stroke;
+mod to_curves;
 
-pub use self::path::*;
-pub use self::to_curves::*;
-pub use self::point::*;
-pub use self::bounds::*;
-pub use self::intersection::*;
-pub use self::path_builder::*;
-pub use self::graph_path::*;
-pub use self::is_clockwise::*;
 pub use self::arithmetic::*;
+pub use self::bounds::*;
+pub use self::graph_path::*;
+pub use self::intersection::*;
+pub use self::is_clockwise::*;
+pub use self::path::*;
+pub use self::path_builder::*;
+pub use self::point::*;
 pub use self::stroke::*;
+pub use self::to_curves::*;

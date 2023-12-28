@@ -1,7 +1,13 @@
-use std::ops::{Range};
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
+use std::ops::Range;
 
 ///
-/// A buffer stack is used to store a list of 
+/// A buffer stack is used to store a list of
 ///
 pub struct BufferStack<'a, TPixel> {
     /// The raw stack entry for this buffer stack
@@ -15,8 +21,8 @@ pub struct BufferStack<'a, TPixel> {
 }
 
 impl<'a, TPixel> BufferStack<'a, TPixel>
-    where
-        TPixel: Copy,
+where
+    TPixel: Copy,
 {
     ///
     /// Creates a new buffer stack

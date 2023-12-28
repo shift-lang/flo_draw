@@ -1,7 +1,13 @@
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
 use gl;
 
-use std::ops::{Deref};
-use std::ffi::{CString};
+use std::ffi::CString;
+use std::ops::Deref;
 
 ///
 /// The types of shader that we can create
@@ -24,11 +30,22 @@ impl Shader {
     ///
     /// Compiles a shader program with a set of defines
     ///
-    pub fn compile_with_defines(program: &str, attributes: &Vec<&str>, shader_type: GlShaderType, defines: &Vec<&str>) -> Shader {
-        let program = format!("{}\n\n{}\n{}\n",
-                              "#version 330 core",
-                              defines.iter().map(|defn| format!("#define {}\n", defn)).collect::<Vec<_>>().join(""),
-                              program);
+    pub fn compile_with_defines(
+        program: &str,
+        attributes: &Vec<&str>,
+        shader_type: GlShaderType,
+        defines: &Vec<&str>,
+    ) -> Shader {
+        let program = format!(
+            "{}\n\n{}\n{}\n",
+            "#version 330 core",
+            defines
+                .iter()
+                .map(|defn| format!("#define {}\n", defn))
+                .collect::<Vec<_>>()
+                .join(""),
+            program
+        );
 
         Self::compile(&program, shader_type, attributes.iter().map(|s| *s))
     }
@@ -36,12 +53,16 @@ impl Shader {
     ///
     /// Compiles a shader program
     ///
-    pub fn compile<'a, AttributeIter: IntoIterator<Item=&'a str>>(program: &str, shader_type: GlShaderType, attributes: AttributeIter) -> Shader {
+    pub fn compile<'a, AttributeIter: IntoIterator<Item = &'a str>>(
+        program: &str,
+        shader_type: GlShaderType,
+        attributes: AttributeIter,
+    ) -> Shader {
         unsafe {
             // Create the shader
             let shader_type = match shader_type {
                 GlShaderType::Vertex => gl::VERTEX_SHADER,
-                GlShaderType::Fragment => gl::FRAGMENT_SHADER
+                GlShaderType::Fragment => gl::FRAGMENT_SHADER,
             };
 
             let shader = gl::CreateShader(shader_type);
@@ -66,7 +87,10 @@ impl Shader {
 
                 // Convert to a string (despite gl using i8s we can just read them as u8s...)
                 let len = len as usize;
-                let logs = logs[0..len].into_iter().map(|c| *c as u8).collect::<Vec<_>>();
+                let logs = logs[0..len]
+                    .into_iter()
+                    .map(|c| *c as u8)
+                    .collect::<Vec<_>>();
                 let logs = String::from_utf8_lossy(&logs);
 
                 println!("=== Shader errors\n {}\n===", logs);
@@ -74,7 +98,8 @@ impl Shader {
             }
 
             // Store the attributes as C-Strings
-            let attributes = attributes.into_iter()
+            let attributes = attributes
+                .into_iter()
                 .map(|attr| CString::new(attr).unwrap())
                 .collect();
 

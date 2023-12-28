@@ -1,9 +1,15 @@
-use super::texture_filter_request::*;
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
+use lyon::tessellation::VertexBuffers;
 
 use flo_canvas as canvas;
 use flo_render as render;
 
-use lyon::tessellation::{VertexBuffers};
+use super::texture_filter_request::*;
 
 ///
 /// How a vertex buffer is intended to be used
@@ -36,7 +42,12 @@ pub enum RenderEntity {
     RenderSprite(usize, canvas::SpriteId, canvas::Transform2D),
 
     /// Render a sprite to an off-screen texture and then apply a filter to it
-    RenderSpriteWithFilters(usize, canvas::SpriteId, canvas::Transform2D, Vec<TextureFilterRequest>),
+    RenderSpriteWithFilters(
+        usize,
+        canvas::SpriteId,
+        canvas::Transform2D,
+        Vec<TextureFilterRequest>,
+    ),
 
     /// Updates the transformation matrix for the layer
     SetTransform(canvas::Transform2D),

@@ -1,3 +1,9 @@
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
 use crate::color::*;
 use crate::draw::*;
 use crate::gradient::*;
@@ -45,11 +51,11 @@ pub enum PathAttribute {
 ///
 pub fn drawing_to_paths<BezierPath, InStream>(
     draw_stream: InStream,
-) -> impl Send + Unpin + Stream<Item=Vec<BezierPath>>
-    where
-        InStream: 'static + Send + Unpin + Stream<Item=Draw>,
-        BezierPath: 'static + Send + BezierPathFactory,
-        BezierPath::Point: Send + Coordinate2D,
+) -> impl Send + Unpin + Stream<Item = Vec<BezierPath>>
+where
+    InStream: 'static + Send + Unpin + Stream<Item = Draw>,
+    BezierPath: 'static + Send + BezierPathFactory,
+    BezierPath::Point: Send + Coordinate2D,
 {
     generator_stream(move |yield_value| async move {
         use self::PathOp::*;
@@ -188,11 +194,11 @@ pub fn drawing_to_paths<BezierPath, InStream>(
 ///
 pub fn drawing_to_attributed_paths<BezierPath, InStream>(
     draw_stream: InStream,
-) -> impl Send + Unpin + Stream<Item=(Vec<PathAttribute>, Vec<BezierPath>)>
-    where
-        InStream: 'static + Send + Unpin + Stream<Item=Draw>,
-        BezierPath: 'static + Send + BezierPathFactory,
-        BezierPath::Point: Send + Coordinate2D,
+) -> impl Send + Unpin + Stream<Item = (Vec<PathAttribute>, Vec<BezierPath>)>
+where
+    InStream: 'static + Send + Unpin + Stream<Item = Draw>,
+    BezierPath: 'static + Send + BezierPathFactory,
+    BezierPath::Point: Send + Coordinate2D,
 {
     generator_stream(move |yield_value| async move {
         use self::PathOp::*;
@@ -378,12 +384,12 @@ pub fn drawing_to_attributed_paths<BezierPath, InStream>(
 
                 Draw::PopState => {
                     if let Some((
-                                    new_fill_color,
-                                    new_stroke_color,
-                                    new_line_width,
-                                    new_line_width_pixels,
-                                    new_transform,
-                                )) = state_stack.pop()
+                        new_fill_color,
+                        new_stroke_color,
+                        new_line_width,
+                        new_line_width_pixels,
+                        new_transform,
+                    )) = state_stack.pop()
                     {
                         fill_color = new_fill_color;
                         stroke_color = new_stroke_color;

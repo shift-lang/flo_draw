@@ -1,3 +1,9 @@
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
 use crate::draw::*;
 use crate::draw_resource::*;
 
@@ -401,7 +407,7 @@ impl DrawStreamCore {
     ///
     /// Writes a stream of instructions to this drawing stream
     ///
-    pub fn write<DrawIter: Iterator<Item=Draw>>(&mut self, drawing: DrawIter) {
+    pub fn write<DrawIter: Iterator<Item = Draw>>(&mut self, drawing: DrawIter) {
         let mut drawing_cleared = false;
         let mut balance_frames = false;
         let mut has_stack_ops = false;
@@ -515,7 +521,7 @@ impl DrawStreamCore {
     ///
     /// Returns the pending drawing operations in this core
     ///
-    pub fn get_pending_drawing<'a>(&'a self) -> impl 'a + Iterator<Item=Draw> {
+    pub fn get_pending_drawing<'a>(&'a self) -> impl 'a + Iterator<Item = Draw> {
         self.pending_drawing
             .iter()
             .map(|(_, drawing)| drawing)

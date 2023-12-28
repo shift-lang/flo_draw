@@ -1,9 +1,18 @@
-use flo_curves::*;
-use flo_curves::bezier::*;
-use flo_curves::bezier::path::*;
-use flo_curves::bezier::path::algorithms::*;
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
 
-fn circle_ray_cast(circle_center: Coord2, radius: f64) -> impl Fn(Coord2, Coord2) -> Vec<RayCollision<Coord2, ()>> {
+use flo_curves::bezier::path::algorithms::*;
+use flo_curves::bezier::path::*;
+use flo_curves::bezier::*;
+use flo_curves::*;
+
+fn circle_ray_cast(
+    circle_center: Coord2,
+    radius: f64,
+) -> impl Fn(Coord2, Coord2) -> Vec<RayCollision<Coord2, ()>> {
     move |from: Coord2, to: Coord2| {
         let from = from - circle_center;
         let to = to - circle_center;
@@ -19,13 +28,16 @@ fn circle_ray_cast(circle_center: Coord2, radius: f64) -> impl Fn(Coord2, Coord2
 
         let d = x1 * y2 - x2 * y1;
 
-        let xc1 = (d * dy + (dy.signum() * dx * ((radius * radius * dr * dr - d * d).sqrt()))) / (dr * dr);
-        let xc2 = (d * dy - (dy.signum() * dx * ((radius * radius * dr * dr - d * d).sqrt()))) / (dr * dr);
+        let xc1 = (d * dy + (dy.signum() * dx * ((radius * radius * dr * dr - d * d).sqrt())))
+            / (dr * dr);
+        let xc2 = (d * dy - (dy.signum() * dx * ((radius * radius * dr * dr - d * d).sqrt())))
+            / (dr * dr);
         let yc1 = (-d * dx + (dy.abs() * ((radius * radius * dr * dr - d * d).sqrt()))) / (dr * dr);
         let yc2 = (-d * dx - (dy.abs() * ((radius * radius * dr * dr - d * d).sqrt()))) / (dr * dr);
 
         vec![
-            RayCollision::new(Coord2(xc1, yc1) + circle_center, ()), RayCollision::new(Coord2(xc2, yc2) + circle_center, ()),
+            RayCollision::new(Coord2(xc1, yc1) + circle_center, ()),
+            RayCollision::new(Coord2(xc2, yc2) + circle_center, ()),
         ]
     }
 }
@@ -45,7 +57,11 @@ fn trace_convex_circle() {
 
     // Points should be no more that 4.0 pixels apart and should be the correct distance from the circle
     for point_idx in 0..outline.len() {
-        let next_point_idx = if point_idx + 1 >= outline.len() { 0 } else { point_idx + 1 };
+        let next_point_idx = if point_idx + 1 >= outline.len() {
+            0
+        } else {
+            point_idx + 1
+        };
         let point = &outline[point_idx];
         let next_point = &outline[next_point_idx];
 
@@ -64,7 +80,8 @@ fn fill_convex_circle() {
     let circle_ray_cast = circle_ray_cast(circle_center, radius);
 
     // Flood-fill this curve
-    let path: Option<SimpleBezierPath> = flood_fill_convex(circle_center, &FillSettings::default(), circle_ray_cast);
+    let path: Option<SimpleBezierPath> =
+        flood_fill_convex(circle_center, &FillSettings::default(), circle_ray_cast);
 
     assert!(path.is_some());
 
@@ -87,7 +104,8 @@ fn trace_convex_doughnut() {
     let outer_circle = circle_ray_cast(circle_center, outer_radius);
     let inner_circle = circle_ray_cast(circle_center, inner_radius);
     let doughnut = |from: Coord2, to: Coord2| {
-        outer_circle(from.clone(), to.clone()).into_iter()
+        outer_circle(from.clone(), to.clone())
+            .into_iter()
             .chain(inner_circle(from, to))
     };
 
@@ -101,8 +119,10 @@ fn trace_convex_doughnut() {
     for point_idx in 0..outline.len() {
         let point = &outline[point_idx];
 
-        assert!((point.position.distance_to(&circle_center) - outer_radius).abs() < 1.0
-            || (point.position.distance_to(&circle_center) - inner_radius).abs() < 1.0);
+        assert!(
+            (point.position.distance_to(&circle_center) - outer_radius).abs() < 1.0
+                || (point.position.distance_to(&circle_center) - inner_radius).abs() < 1.0
+        );
     }
 
     assert!(outline.len() > 8);
@@ -117,13 +137,18 @@ fn fill_convex_doughnut() {
     let outer_circle = circle_ray_cast(circle_center, outer_radius);
     let inner_circle = circle_ray_cast(circle_center, inner_radius);
     let doughnut = |from: Coord2, to: Coord2| {
-        outer_circle(from.clone(), to.clone()).into_iter()
+        outer_circle(from.clone(), to.clone())
+            .into_iter()
             .chain(inner_circle(from, to))
     };
 
     // Flood-fill this curve
     let start_point = circle_center + Coord2(inner_radius + 10.0, 0.0);
-    let path = flood_fill_convex::<SimpleBezierPath, _, _, _, _>(start_point, &FillSettings::default(), doughnut);
+    let path = flood_fill_convex::<SimpleBezierPath, _, _, _, _>(
+        start_point,
+        &FillSettings::default(),
+        doughnut,
+    );
 
     assert!(path.is_some());
 

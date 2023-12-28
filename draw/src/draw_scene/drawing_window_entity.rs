@@ -1,15 +1,21 @@
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
 use std::pin::*;
 use std::sync::*;
 
-use flo_scene::*;
 use flo_stream::*;
 use futures::prelude::*;
 use futures::task::{Context, Poll};
 
-use flo_canvas::*;
 use flo_canvas::scenery::*;
+use flo_canvas::*;
 use flo_canvas_events::*;
 use flo_render_canvas::*;
+use flo_scene::*;
 
 ///
 /// Combines rendering and event messages into one enum
@@ -25,9 +31,9 @@ enum DrawingOrEvent {
 /// Drawing stream may be suspended while we wait for new frames, and the event stream has priority at all other times
 ///
 struct DrawingEventStream<TDrawStream, TEventStream>
-    where
-        TDrawStream: Unpin + Stream<Item=DrawingOrEvent>,
-        TEventStream: Unpin + Stream<Item=DrawingOrEvent>,
+where
+    TDrawStream: Unpin + Stream<Item = DrawingOrEvent>,
+    TEventStream: Unpin + Stream<Item = DrawingOrEvent>,
 {
     // If set to true, the stream will not attempt to poll the drawing stream
     waiting_for_new_frame: bool,
@@ -60,9 +66,9 @@ struct RendererState {
 }
 
 impl<TDrawStream, TEventStream> Stream for DrawingEventStream<TDrawStream, TEventStream>
-    where
-        TDrawStream: Unpin + Stream<Item=DrawingOrEvent>,
-        TEventStream: Unpin + Stream<Item=DrawingOrEvent>,
+where
+    TDrawStream: Unpin + Stream<Item = DrawingOrEvent>,
+    TEventStream: Unpin + Stream<Item = DrawingOrEvent>,
 {
     type Item = DrawingOrEvent;
 
@@ -118,10 +124,10 @@ fn handle_window_event<'a, SendFuture, SendRenderActionsFn>(
     state: &'a mut RendererState,
     event: DrawEvent,
     send_render_actions: &'a mut SendRenderActionsFn,
-) -> impl 'a + Send + Future<Output=Vec<DrawEvent>>
-    where
-        SendRenderActionsFn: Send + FnMut(Vec<RenderAction>) -> SendFuture,
-        SendFuture: Send + Future<Output=()>,
+) -> impl 'a + Send + Future<Output = Vec<DrawEvent>>
+where
+    SendRenderActionsFn: Send + FnMut(Vec<RenderAction>) -> SendFuture,
+    SendFuture: Send + Future<Output = ()>,
 {
     async move {
         match event {
@@ -138,8 +144,8 @@ fn handle_window_event<'a, SendFuture, SendRenderActionsFn>(
                 vec![DrawEvent::CanvasTransform(window_transform)]
             }
 
-            DrawEvent::Scale(new_scale) => {
-                state.scale = new_scale;
+            DrawEvent::ScaleFactorChanged { scale_factor, .. } => {
+                state.scale = scale_factor;
 
                 let width = state.width as f32;
                 let height = state.height as f32;
@@ -152,9 +158,9 @@ fn handle_window_event<'a, SendFuture, SendRenderActionsFn>(
                 vec![]
             }
 
-            DrawEvent::Resize(width, height) => {
-                state.width = width;
-                state.height = height;
+            DrawEvent::Resized(size) => {
+                state.width = size.width as _;
+                state.height = size.height as _;
 
                 let width = state.width as f32;
                 let height = state.height as f32;
@@ -167,22 +173,7 @@ fn handle_window_event<'a, SendFuture, SendRenderActionsFn>(
                 vec![]
             }
 
-            DrawEvent::NewFrame => {
-                vec![]
-            }
-            DrawEvent::Closed => {
-                vec![]
-            }
-            DrawEvent::CanvasTransform(_) => {
-                vec![]
-            }
-            DrawEvent::Pointer(_, _, _) => {
-                vec![]
-            }
-            DrawEvent::KeyDown(_, _) => {
-                vec![]
-            }
-            DrawEvent::KeyUp(_, _) => {
+            _ => {
                 vec![]
             }
         }
@@ -211,8 +202,8 @@ impl RendererState {
     ///
     async fn draw(
         &mut self,
-        draw_actions: impl Send + Iterator<Item=&Draw>,
-        render_target: &mut (impl 'static + EntityChannel<Message=RenderWindowRequest>),
+        draw_actions: impl Send + Iterator<Item = &Draw>,
+        render_target: &mut (impl 'static + EntityChannel<Message = RenderWindowRequest>),
     ) {
         let render_actions = self
             .renderer
@@ -234,7 +225,7 @@ impl RendererState {
 pub fn create_drawing_window_entity(
     context: &Arc<SceneContext>,
     entity_id: EntityId,
-    render_target: impl 'static + EntityChannel<Message=RenderWindowRequest>,
+    render_target: impl 'static + EntityChannel<Message = RenderWindowRequest>,
 ) -> Result<SimpleEntityChannel<DrawingWindowRequest>, CreateEntityError> {
     // This window can accept a couple of converted messages
     context.convert_message::<DrawingRequest, DrawingWindowRequest>()?;
@@ -384,19 +375,18 @@ pub fn create_drawing_window_entity(
 
                             match &evt_message {
                                 // TODO: StartFrame/ShowFrame based on the 'NewFrame' event
-                                DrawEvent::Pointer(action, pointer_id, pointer_state) => {
+                                DrawEvent::CursorMoved { state } => {
                                     // Rewrite pointer events before republishing them
-                                    let mut pointer_state = pointer_state.clone();
+                                    let mut state = state.clone();
 
                                     if let Some(window_transform) = &render_state.window_transform {
-                                        let (x, y) = pointer_state.location_in_window;
+                                        let (x, y) = state.location_in_window;
                                         let (x, y) = (x as _, y as _);
                                         let (cx, cy) = window_transform.transform_point(x, y);
-                                        pointer_state.location_in_canvas = Some((cx as _, cy as _));
+                                        state.location_in_canvas = Some((cx as _, cy as _));
                                     }
 
-                                    evt_message =
-                                        DrawEvent::Pointer(*action, *pointer_id, pointer_state);
+                                    evt_message = DrawEvent::CursorMoved { state };
                                 }
 
                                 DrawEvent::Redraw => {
@@ -412,7 +402,7 @@ pub fn create_drawing_window_entity(
                                     }
                                 }
 
-                                DrawEvent::Closed => {
+                                DrawEvent::CloseRequested => {
                                     // Close events terminate the loop (after we've finshed processing the events)
                                     closed = true;
                                 }
@@ -453,7 +443,7 @@ pub fn create_drawing_window_entity(
                                     }
                                 },
                             )
-                                .await;
+                            .await;
                         }
 
                         // The entity stops when the window is closed

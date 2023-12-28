@@ -1,8 +1,14 @@
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
 use gl;
 
+use std::ffi::c_void;
 use std::mem;
-use std::ops::{Deref};
-use std::ffi::{c_void};
+use std::ops::Deref;
 
 ///
 /// Abstraction of an OpenGL buffer object
@@ -20,9 +26,7 @@ impl Buffer {
             let mut new_buffer = 0;
             gl::GenBuffers(1, &mut new_buffer);
 
-            Buffer {
-                buffer: new_buffer
-            }
+            Buffer { buffer: new_buffer }
         }
     }
 
@@ -30,14 +34,17 @@ impl Buffer {
     /// Fills the buffer with static draw data
     ///
     pub fn static_draw<TData>(&mut self, data: &[TData])
-        where TData: Sized {
+    where
+        TData: Sized,
+    {
         unsafe {
             gl::BindBuffer(gl::ARRAY_BUFFER, self.buffer);
             gl::BufferData(
                 gl::ARRAY_BUFFER,
                 (mem::size_of::<TData>() * data.len()) as isize,
                 data.as_ptr() as *const c_void,
-                gl::STATIC_DRAW);
+                gl::STATIC_DRAW,
+            );
         }
     }
 }

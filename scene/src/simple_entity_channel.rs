@@ -1,27 +1,33 @@
-use crate::error::*;
-use crate::entity_id::*;
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
 use crate::entity_channel::*;
+use crate::entity_id::*;
+use crate::error::*;
 use crate::immediate_entity_channel::*;
 
 use ::desync::scheduler::*;
 
+use futures::future::BoxFuture;
 use futures::prelude::*;
-use futures::future::{BoxFuture};
 use futures::task;
 use futures::task::{Context, Poll};
 
+use std::collections::VecDeque;
 use std::mem;
 use std::pin::*;
-use std::sync::*;
 use std::sync::atomic::{AtomicUsize, Ordering};
-use std::collections::{VecDeque};
+use std::sync::*;
 
 lazy_static! {
-    static ref NEXT_TICKET_ID: AtomicUsize = AtomicUsize::new(0); 
+    static ref NEXT_TICKET_ID: AtomicUsize = AtomicUsize::new(0);
 }
 
 ///
-/// A ticket ID is used to ensure that 
+/// A ticket ID is used to ensure that
 ///
 #[derive(Clone, Copy, PartialEq, Eq)]
 struct TicketId(pub usize);
@@ -99,8 +105,8 @@ struct SimpleEntityChannelReceiver<TMessage> {
 }
 
 impl<TMessage> SimpleEntityChannelCore<TMessage>
-    where
-        TMessage: 'static + Send,
+where
+    TMessage: 'static + Send,
 {
     ///
     /// Creates a new simple entity channel core, set up to have 1 open channel
@@ -120,7 +126,11 @@ impl<TMessage> SimpleEntityChannelCore<TMessage>
     ///
     /// Sends a message to the core in immediate mode
     ///
-    fn send_message_now(_entity_id: EntityId, arc_self: &Arc<Mutex<SimpleEntityChannelCore<TMessage>>>, message: TMessage) -> Result<(), EntityChannelError> {
+    fn send_message_now(
+        _entity_id: EntityId,
+        arc_self: &Arc<Mutex<SimpleEntityChannelCore<TMessage>>>,
+        message: TMessage,
+    ) -> Result<(), EntityChannelError> {
         let mut waiting = None;
         let mut err = None;
 
@@ -151,7 +161,9 @@ impl<TMessage> SimpleEntityChannelCore<TMessage>
                 core.waiting_tickets.push_back(ticket);
 
                 // Create a future for when there's space for this message
-                let immediate_queue = core.immediate_queue.get_or_insert_with(|| scheduler().create_job_queue());
+                let immediate_queue = core
+                    .immediate_queue
+                    .get_or_insert_with(|| scheduler().create_job_queue());
                 let waiting_future = WaitingMessage {
                     ticket_id: ticket_id,
                     core: Arc::downgrade(arc_self),
@@ -160,9 +172,7 @@ impl<TMessage> SimpleEntityChannelCore<TMessage>
 
                 // Queue as a future_desync (so we can wait for it synchronously later on)
                 waiting = Some(scheduler().future_desync(&*immediate_queue, move || {
-                    async move {
-                        waiting_future.await
-                    }.boxed()
+                    async move { waiting_future.await }.boxed()
                 }));
 
                 core.receiver_waker.take()
@@ -190,7 +200,11 @@ impl<TMessage> SimpleEntityChannelCore<TMessage>
     ///
     /// Sends a message to the core
     ///
-    fn send_message(_entity_id: EntityId, arc_self: &Arc<Mutex<SimpleEntityChannelCore<TMessage>>>, message: TMessage) -> impl Future<Output=Result<(), EntityChannelError>> {
+    fn send_message(
+        _entity_id: EntityId,
+        arc_self: &Arc<Mutex<SimpleEntityChannelCore<TMessage>>>,
+        message: TMessage,
+    ) -> impl Future<Output = Result<(), EntityChannelError>> {
         let mut waiting = None;
         let mut err = None;
 
@@ -257,11 +271,18 @@ impl<TMessage> SimpleEntityChannelCore<TMessage>
 impl<TMessage> Future for WaitingMessage<TMessage> {
     type Output = Result<(), EntityChannelError>;
 
-    fn poll(mut self: Pin<&mut Self>, context: &mut Context) -> Poll<Result<(), EntityChannelError>> {
+    fn poll(
+        mut self: Pin<&mut Self>,
+        context: &mut Context,
+    ) -> Poll<Result<(), EntityChannelError>> {
         let ticket_id = self.ticket_id;
 
         // Acquire the core, assuming it still exists
-        let core = if let Some(core) = self.core.upgrade() { core } else { return Poll::Ready(Err(EntityChannelError::NoLongerListening)); };
+        let core = if let Some(core) = self.core.upgrade() {
+            core
+        } else {
+            return Poll::Ready(Err(EntityChannelError::NoLongerListening));
+        };
 
         // See if this ticket is ready to be sent, and return early if it's not
         let (receiver_waker, next_ticket_waker) = {
@@ -272,7 +293,9 @@ impl<TMessage> Future for WaitingMessage<TMessage> {
                 return Poll::Ready(Err(EntityChannelError::NoLongerListening));
             }
 
-            if core.ready_messages.len() >= core.buf_size || core.waiting_tickets.front().map(|first| first.id) != Some(ticket_id) {
+            if core.ready_messages.len() >= core.buf_size
+                || core.waiting_tickets.front().map(|first| first.id) != Some(ticket_id)
+            {
                 // There's no space in the buffer, or this is not the first ticket
                 for ticket in core.waiting_tickets.iter_mut() {
                     if ticket.id == ticket_id {
@@ -296,7 +319,10 @@ impl<TMessage> Future for WaitingMessage<TMessage> {
 
             // Need to wake the receiver and the next ticket
             let receiver_waker = core.receiver_waker.take();
-            let next_ticket_waker = core.waiting_tickets.front_mut().and_then(|next_ticket| next_ticket.waker.take());
+            let next_ticket_waker = core
+                .waiting_tickets
+                .front_mut()
+                .and_then(|next_ticket| next_ticket.waker.take());
 
             (receiver_waker, next_ticket_waker)
         };
@@ -323,11 +349,14 @@ impl<TMessage> Drop for WaitingMessage<TMessage> {
 
                 // Remove this ticket from the core, if the message is not sent
                 if !self.completed {
-                    core.waiting_tickets.retain(|ticket| ticket.id != self.ticket_id);
+                    core.waiting_tickets
+                        .retain(|ticket| ticket.id != self.ticket_id);
                 }
 
                 // Wake the first ticket to avoid a potential race where this was awoken just before it dropped
-                core.waiting_tickets.front_mut().and_then(|next_ticket| next_ticket.waker.take())
+                core.waiting_tickets
+                    .front_mut()
+                    .and_then(|next_ticket| next_ticket.waker.take())
             };
 
             if let Some(waker) = next_ticket_waker {
@@ -348,7 +377,12 @@ impl<TMessage> Stream for SimpleEntityChannelReceiver<TMessage> {
             // Try to retrieve a message
             if let Some(message) = core.ready_messages.pop_front() {
                 // We've got a message to send
-                (Some(message), core.waiting_tickets.front_mut().and_then(|ticket| ticket.waker.take()))
+                (
+                    Some(message),
+                    core.waiting_tickets
+                        .front_mut()
+                        .and_then(|ticket| ticket.waker.take()),
+                )
             } else if core.closed {
                 // Return 'closed' as soon as the ready messages are empty
                 return Poll::Ready(None);
@@ -356,7 +390,12 @@ impl<TMessage> Stream for SimpleEntityChannelReceiver<TMessage> {
                 // The core is empty (need to wake the first ticket to send its message if it's not awake at the moment)
                 core.receiver_waker = Some(context.waker().clone());
 
-                (None, core.waiting_tickets.front_mut().and_then(|ticket| ticket.waker.take()))
+                (
+                    None,
+                    core.waiting_tickets
+                        .front_mut()
+                        .and_then(|ticket| ticket.waker.take()),
+                )
             }
         };
 
@@ -386,7 +425,8 @@ impl<TMessage> Drop for SimpleEntityChannelReceiver<TMessage> {
             core.ready_messages = VecDeque::new();
 
             // Take the wakers for all of the tickets
-            let wakers = core.waiting_tickets
+            let wakers = core
+                .waiting_tickets
                 .iter_mut()
                 .flat_map(|ticket| ticket.waker.take())
                 .collect::<Vec<_>>();
@@ -399,8 +439,7 @@ impl<TMessage> Drop for SimpleEntityChannelReceiver<TMessage> {
         };
 
         // Wake all of the tickets so they can return errors (now the core is closed)
-        wakers.into_iter()
-            .for_each(|waker| waker.wake());
+        wakers.into_iter().for_each(|waker| waker.wake());
 
         // Drop the old tickets outside of the lock
         mem::drop(old_tickets);
@@ -423,20 +462,26 @@ pub struct SimpleEntityChannel<TMessage> {
 }
 
 impl<TMessage> SimpleEntityChannel<TMessage>
-    where
-        TMessage: 'static + Send,
+where
+    TMessage: 'static + Send,
 {
     ///
     /// Creates a new entity channel
     ///
-    pub fn new(entity_id: EntityId, buf_size: usize) -> (SimpleEntityChannel<TMessage>, impl 'static + Send + Stream<Item=TMessage>) {
+    pub fn new(
+        entity_id: EntityId,
+        buf_size: usize,
+    ) -> (
+        SimpleEntityChannel<TMessage>,
+        impl 'static + Send + Stream<Item = TMessage>,
+    ) {
         // Create the core
         let core = SimpleEntityChannelCore::new(buf_size);
         let core = Arc::new(Mutex::new(core));
 
         // Create the receiver
         let receiver = SimpleEntityChannelReceiver {
-            core: Arc::clone(&core)
+            core: Arc::clone(&core),
         };
 
         // Create the channel
@@ -459,7 +504,8 @@ impl<TMessage> SimpleEntityChannel<TMessage>
             core.closed = true;
 
             // Take the wakers for all of the tickets
-            let wakers = core.waiting_tickets
+            let wakers = core
+                .waiting_tickets
                 .iter_mut()
                 .flat_map(|ticket| ticket.waker.take())
                 .collect::<Vec<_>>();
@@ -475,13 +521,15 @@ impl<TMessage> SimpleEntityChannel<TMessage>
             receiver_waker.wake();
         }
 
-        ticket_wakers.into_iter().for_each(|ticket_waker| ticket_waker.wake());
+        ticket_wakers
+            .into_iter()
+            .for_each(|ticket_waker| ticket_waker.wake());
     }
 }
 
 impl<TMessage> ImmediateEntityChannel for SimpleEntityChannel<TMessage>
-    where
-        TMessage: 'static + Send,
+where
+    TMessage: 'static + Send,
 {
     #[inline]
     fn send_immediate(&mut self, message: Self::Message) -> Result<(), EntityChannelError> {
@@ -491,8 +539,8 @@ impl<TMessage> ImmediateEntityChannel for SimpleEntityChannel<TMessage>
 }
 
 impl<TMessage> EntityChannel for SimpleEntityChannel<TMessage>
-    where
-        TMessage: 'static + Send,
+where
+    TMessage: 'static + Send,
 {
     type Message = TMessage;
 
@@ -504,7 +552,10 @@ impl<TMessage> EntityChannel for SimpleEntityChannel<TMessage>
         self.core.lock().unwrap().closed
     }
 
-    fn send(&mut self, message: Self::Message) -> BoxFuture<'static, Result<(), EntityChannelError>> {
+    fn send(
+        &mut self,
+        message: Self::Message,
+    ) -> BoxFuture<'static, Result<(), EntityChannelError>> {
         // Send the message to the channel
         let future = SimpleEntityChannelCore::send_message(self.entity_id, &self.core, message);
 
@@ -512,7 +563,8 @@ impl<TMessage> EntityChannel for SimpleEntityChannel<TMessage>
             future.await?;
 
             Ok(())
-        }.boxed()
+        }
+        .boxed()
     }
 }
 
@@ -556,8 +608,8 @@ impl<TMessage> Drop for SimpleEntityChannel<TMessage> {
 mod test {
     use super::*;
 
-    use futures::future;
     use futures::executor;
+    use futures::future;
 
     #[test]
     fn receive_from_buffer() {
@@ -569,7 +621,8 @@ mod test {
             let msg = channel.send(());
             async move {
                 msg.await.unwrap();
-            }.boxed()
+            }
+            .boxed()
         });
         let results = async move {
             let mut receiver = receiver;
@@ -579,7 +632,10 @@ mod test {
             }
         };
 
-        let all_futures = vec![results.boxed()].into_iter().chain(requests).collect::<Vec<_>>();
+        let all_futures = vec![results.boxed()]
+            .into_iter()
+            .chain(requests)
+            .collect::<Vec<_>>();
 
         executor::block_on(async move {
             future::join_all(all_futures).await;
@@ -596,7 +652,8 @@ mod test {
             let msg = channel.send(());
             async move {
                 msg.await.unwrap();
-            }.boxed()
+            }
+            .boxed()
         });
         let results = async move {
             let mut receiver = receiver;
@@ -606,7 +663,10 @@ mod test {
             }
         };
 
-        let all_futures = vec![results.boxed()].into_iter().chain(requests).collect::<Vec<_>>();
+        let all_futures = vec![results.boxed()]
+            .into_iter()
+            .chain(requests)
+            .collect::<Vec<_>>();
 
         executor::block_on(async move {
             future::join_all(all_futures).await;
@@ -623,7 +683,8 @@ mod test {
             let msg = channel.send(i);
             async move {
                 msg.await.unwrap();
-            }.boxed()
+            }
+            .boxed()
         });
         let results = async move {
             let mut receiver = receiver;
@@ -635,7 +696,10 @@ mod test {
             }
         };
 
-        let all_futures = vec![results.boxed()].into_iter().chain(requests).collect::<Vec<_>>();
+        let all_futures = vec![results.boxed()]
+            .into_iter()
+            .chain(requests)
+            .collect::<Vec<_>>();
 
         executor::block_on(async move {
             future::join_all(all_futures).await;

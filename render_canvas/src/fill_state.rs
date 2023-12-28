@@ -1,7 +1,13 @@
-use super::matrix::*;
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
 
 use flo_canvas as canvas;
 use flo_render as render;
+
+use super::matrix::*;
 
 ///
 /// The ways the next path can be filled
@@ -21,12 +27,24 @@ pub enum FillState {
     ///
     /// Fill with a particular texture
     ///
-    Texture(render::TextureId, canvas::TextureId, render::Matrix, bool, f32),
+    Texture(
+        render::TextureId,
+        canvas::TextureId,
+        render::Matrix,
+        bool,
+        f32,
+    ),
 
     ///
     /// Fill with a particular gradient
     ///
-    LinearGradient(render::TextureId, canvas::GradientId, render::Matrix, bool, f32),
+    LinearGradient(
+        render::TextureId,
+        canvas::GradientId,
+        render::Matrix,
+        bool,
+        f32,
+    ),
 }
 
 impl FillState {
@@ -38,14 +56,22 @@ impl FillState {
             FillState::None => render::Rgba8([0, 0, 0, 255]),
             FillState::Color(color) => *color,
             FillState::Texture(_, _, _, _, _) => render::Rgba8([0, 0, 0, 255]),
-            FillState::LinearGradient(_, _, _, _, _) => render::Rgba8([0, 0, 0, 255])
+            FillState::LinearGradient(_, _, _, _, _) => render::Rgba8([0, 0, 0, 255]),
         }
     }
 
     ///
-    /// Creates a texture fill 
+    /// Creates a texture fill
     ///
-    pub fn texture_fill(render_texture: render::TextureId, canvas_texture: canvas::TextureId, x1: f32, y1: f32, x2: f32, y2: f32, alpha: f32) -> FillState {
+    pub fn texture_fill(
+        render_texture: render::TextureId,
+        canvas_texture: canvas::TextureId,
+        x1: f32,
+        y1: f32,
+        x2: f32,
+        y2: f32,
+        alpha: f32,
+    ) -> FillState {
         // Avoid division by zero
         let x2 = if x2 == x1 { x1 + 0.0000001 } else { x2 };
         let y2 = if y2 == y1 { y1 + 0.0000001 } else { y2 };
@@ -63,7 +89,7 @@ impl FillState {
             [a, b, 0.0, c],
             [d, e, 0.0, f],
             [0.0, 0.0, 1.0, 0.0],
-            [0.0, 0.0, 0.0, 1.0]
+            [0.0, 0.0, 0.0, 1.0],
         ]);
 
         // Create the fill-state for this matrix
@@ -73,7 +99,14 @@ impl FillState {
     ///
     /// Creates a linear gradient fill
     ///
-    pub fn linear_gradient_fill(render_texture: render::TextureId, canvas_gradient: canvas::GradientId, x1: f32, y1: f32, x2: f32, y2: f32) -> FillState {
+    pub fn linear_gradient_fill(
+        render_texture: render::TextureId,
+        canvas_gradient: canvas::GradientId,
+        x1: f32,
+        y1: f32,
+        x2: f32,
+        y2: f32,
+    ) -> FillState {
         // Avoid division by zero
         let x2 = if x2 == x1 { x1 + 0.0000001 } else { x2 };
         let y2 = if y2 == y1 { y1 + 0.0000001 } else { y2 };
@@ -100,7 +133,7 @@ impl FillState {
             [a, b, 0.0, c],
             [d, e, 0.0, f],
             [0.0, 0.0, 1.0, 0.0],
-            [0.0, 0.0, 0.0, 1.0]
+            [0.0, 0.0, 0.0, 1.0],
         ]);
 
         // Create the fill-state for this matrix
@@ -115,7 +148,7 @@ impl FillState {
             FillState::None => None,
             FillState::Color(_) => None,
             FillState::Texture(_, texture_id, _, _, _) => Some(*texture_id),
-            FillState::LinearGradient(_, _, _, _, _) => None
+            FillState::LinearGradient(_, _, _, _, _) => None,
         }
     }
 
@@ -126,8 +159,16 @@ impl FillState {
         match self {
             FillState::None => self.clone(),
             FillState::Color(_) => self.clone(),
-            FillState::Texture(render_texture, canvas_texture, matrix, repeat, _) => FillState::Texture(*render_texture, *canvas_texture, *matrix, *repeat, new_alpha),
-            FillState::LinearGradient(_, _, _, _, _) => self.clone()
+            FillState::Texture(render_texture, canvas_texture, matrix, repeat, _) => {
+                FillState::Texture(
+                    *render_texture,
+                    *canvas_texture,
+                    *matrix,
+                    *repeat,
+                    new_alpha,
+                )
+            }
+            FillState::LinearGradient(_, _, _, _, _) => self.clone(),
         }
     }
 
@@ -140,8 +181,24 @@ impl FillState {
         match self {
             FillState::None => self.clone(),
             FillState::Color(_) => self.clone(),
-            FillState::Texture(render_texture, canvas_texture, matrix, repeat, alpha) => FillState::Texture(*render_texture, *canvas_texture, (*matrix).multiply(transform_matrix), *repeat, *alpha),
-            FillState::LinearGradient(render_texture, canvas_gradient, matrix, repeat, alpha) => FillState::LinearGradient(*render_texture, *canvas_gradient, (*matrix).multiply(transform_matrix), *repeat, *alpha)
+            FillState::Texture(render_texture, canvas_texture, matrix, repeat, alpha) => {
+                FillState::Texture(
+                    *render_texture,
+                    *canvas_texture,
+                    (*matrix).multiply(transform_matrix),
+                    *repeat,
+                    *alpha,
+                )
+            }
+            FillState::LinearGradient(render_texture, canvas_gradient, matrix, repeat, alpha) => {
+                FillState::LinearGradient(
+                    *render_texture,
+                    *canvas_gradient,
+                    (*matrix).multiply(transform_matrix),
+                    *repeat,
+                    *alpha,
+                )
+            }
         }
     }
 }

@@ -1,3 +1,9 @@
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
 use std::time::Duration;
 
 use futures::executor;
@@ -47,20 +53,24 @@ pub fn test_scene(scene: Scene) {
 
     // The result future causes the test to actually run
     let (results, results_stream) = SimpleEntityChannel::new(TEST_ENTITY, 1);
-    let (results, results_stream) = PanicEntityChannel::new(results, results_stream, SceneTestResult::Panicked);
+    let (results, results_stream) =
+        PanicEntityChannel::new(results, results_stream, SceneTestResult::Panicked);
     let mut channel = scene.send_to(TEST_ENTITY).unwrap();
     let result = async move {
         // Ask the test entity to run the tests
-        channel.send(SceneTestRequest(results.boxed()))
+        channel
+            .send(SceneTestRequest(results.boxed()))
             .await
             .unwrap();
 
         // Collect the results
         results_stream.collect::<Vec<_>>().await
-    }.boxed();
+    }
+    .boxed();
 
     // Run the scene
-    let scene = scene.run()
+    let scene = scene
+        .run()
         .map(|_| vec![SceneTestResult::SceneStopped])
         .boxed();
 
@@ -68,7 +78,13 @@ pub fn test_scene(scene: Scene) {
     let test_result = future::select_all(vec![timeout, result, scene]);
     let (test_result, _, _) = executor::block_on(test_result);
 
-    assert!(test_result.iter().all(|result| result == &SceneTestResult::Ok), "Scene test failed: {:?}", test_result);
+    assert!(
+        test_result
+            .iter()
+            .all(|result| result == &SceneTestResult::Ok),
+        "Scene test failed: {:?}",
+        test_result
+    );
 }
 
 ///
@@ -80,8 +96,11 @@ pub fn test_scene_with_recipe(scene: Scene, recipe: Recipe) {
     // Fetch the context and create a future to run the recipe
     let context = scene.context();
     let result = async move {
-        recipe.run_with_timeout(&context, Duration::from_secs(10)).await
-    }.boxed_local();
+        recipe
+            .run_with_timeout(&context, Duration::from_secs(10))
+            .await
+    }
+    .boxed_local();
 
     // Run the scene alongside the recipe
     let scene = scene.run().map(|_| Err(RecipeError::SceneStopped)).boxed();
@@ -89,5 +108,9 @@ pub fn test_scene_with_recipe(scene: Scene, recipe: Recipe) {
     let test_result = future::select_all(vec![result, scene]);
     let (test_result, _, _) = executor::block_on(test_result);
 
-    assert!(test_result.is_ok(), "Test recipe failed: {:?}", test_result.unwrap_err());
+    assert!(
+        test_result.is_ok(),
+        "Test recipe failed: {:?}",
+        test_result.unwrap_err()
+    );
 }

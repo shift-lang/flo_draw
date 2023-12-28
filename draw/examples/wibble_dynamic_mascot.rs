@@ -1,17 +1,23 @@
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
 use std::f64;
 use std::thread;
 use std::time::{Duration, Instant};
 
-use flo_curves::*;
-use flo_curves::bezier::*;
-use flo_curves::bezier::path::*;
 use futures::executor;
 use futures::prelude::*;
 use futures::stream;
 use rayon::iter::*;
 
-use flo_draw::*;
+use flo_curves::bezier::path::*;
+use flo_curves::bezier::*;
+use flo_curves::*;
 use flo_draw::canvas::*;
+use flo_draw::*;
 
 ///
 /// Draws a distorted mascot onto a dynamic sprite, then uses that to draw a lot of copies of the same thing
@@ -19,7 +25,9 @@ use flo_draw::canvas::*;
 pub fn main() {
     with_2d_graphics(|| {
         // Decode the mascot rendering
-        let mascot = decode_drawing(MASCOT.chars()).collect::<Result<Vec<Draw>, _>>().unwrap();
+        let mascot = decode_drawing(MASCOT.chars())
+            .collect::<Result<Vec<Draw>, _>>()
+            .unwrap();
 
         // Create a window
         let canvas = create_drawing_window("Wibbling mascot using a dynamic texture");
@@ -27,7 +35,8 @@ pub fn main() {
         // Convert the mascot to a set of paths (note we skip the setup steps here so the paths are not affected by the initial transformation matrix)
         let render_mascot = stream::iter(mascot.into_iter().skip(4));
         let mascot_paths = drawing_to_attributed_paths::<SimpleBezierPath, _>(render_mascot);
-        let mascot_paths = executor::block_on(async move { mascot_paths.collect::<Vec<_>>().await });
+        let mascot_paths =
+            executor::block_on(async move { mascot_paths.collect::<Vec<_>>().await });
 
         // Draw the mascot with a moving distortion
         let start_time = Instant::now();
@@ -47,16 +56,43 @@ pub fn main() {
             gc.clear_sprite();
 
             // Turn the sprite into a dynamic texture: this will be updated whenever we update the sprite, or if the window geometry changes
-            gc.create_dynamic_texture(TextureId(0), SpriteId(0), 0.0, 0.0, 1024.0, 1024.0, 200.0, 200.0);
+            gc.create_dynamic_texture(
+                TextureId(0),
+                SpriteId(0),
+                0.0,
+                0.0,
+                1024.0,
+                1024.0,
+                200.0,
+                200.0,
+            );
 
-            // Create another copy of the image, this time with a blur applied to it (this is used for the 'shadows': 
-            // note that the blur radius is in texture coordinates for dynamic textures so the effect doesn't change 
+            // Create another copy of the image, this time with a blur applied to it (this is used for the 'shadows':
+            // note that the blur radius is in texture coordinates for dynamic textures so the effect doesn't change
             // when the window is resized)
-            gc.create_dynamic_texture(TextureId(1), SpriteId(0), 0.0, 0.0, 1024.0, 1024.0, 200.0, 200.0);
+            gc.create_dynamic_texture(
+                TextureId(1),
+                SpriteId(0),
+                0.0,
+                0.0,
+                1024.0,
+                1024.0,
+                200.0,
+                200.0,
+            );
             gc.gaussian_blur_texture(TextureId(1), 4.0);
 
             // Re-rendering from a sprite is much cheaper than re-rendering everything so we can create another texture with a different blur factor
-            gc.create_dynamic_texture(TextureId(2), SpriteId(0), 0.0, 0.0, 1024.0, 1024.0, 200.0, 200.0);
+            gc.create_dynamic_texture(
+                TextureId(2),
+                SpriteId(0),
+                0.0,
+                0.0,
+                1024.0,
+                1024.0,
+                200.0,
+                200.0,
+            );
             gc.gaussian_blur_texture(TextureId(2), 12.0);
 
             // Layer 0 will be where we draw the textures containing the mascot
@@ -66,25 +102,49 @@ pub fn main() {
             // As the texture is dynamic, we only need to render the contents of layer 0 once and it'll update when the sprite is updated
             gc.new_path();
             gc.rect(-1000.0, -1000.0, 2000.0, 2000.0);
-            gc.fill_texture(TextureId(2), 512.0 - 100.0 - 48.0, 384.0 - 100.0 - 48.0, 512.0 + 100.0 - 48.0, 384.0 + 100.0 - 48.0);
+            gc.fill_texture(
+                TextureId(2),
+                512.0 - 100.0 - 48.0,
+                384.0 - 100.0 - 48.0,
+                512.0 + 100.0 - 48.0,
+                384.0 + 100.0 - 48.0,
+            );
             gc.set_texture_fill_alpha(TextureId(2), 0.2);
             gc.fill();
 
             gc.new_path();
             gc.rect(-1000.0, -1000.0, 2000.0, 2000.0);
-            gc.fill_texture(TextureId(2), 512.0 - 100.0 - 32.0, 384.0 - 100.0 - 32.0, 512.0 + 100.0 - 32.0, 384.0 + 100.0 - 32.0);
+            gc.fill_texture(
+                TextureId(2),
+                512.0 - 100.0 - 32.0,
+                384.0 - 100.0 - 32.0,
+                512.0 + 100.0 - 32.0,
+                384.0 + 100.0 - 32.0,
+            );
             gc.set_texture_fill_alpha(TextureId(2), 0.4);
             gc.fill();
 
             gc.new_path();
             gc.rect(-1000.0, -1000.0, 2000.0, 2000.0);
-            gc.fill_texture(TextureId(1), 512.0 - 100.0 - 16.0, 384.0 - 100.0 - 16.0, 512.0 + 100.0 - 16.0, 384.0 + 100.0 - 16.0);
+            gc.fill_texture(
+                TextureId(1),
+                512.0 - 100.0 - 16.0,
+                384.0 - 100.0 - 16.0,
+                512.0 + 100.0 - 16.0,
+                384.0 + 100.0 - 16.0,
+            );
             gc.set_texture_fill_alpha(TextureId(1), 0.6);
             gc.fill();
 
             gc.new_path();
             gc.rect(-1000.0, -1000.0, 2000.0, 2000.0);
-            gc.fill_texture(TextureId(0), 512.0 - 100.0, 384.0 - 100.0, 512.0 + 100.0, 384.0 + 100.0);
+            gc.fill_texture(
+                TextureId(0),
+                512.0 - 100.0,
+                384.0 - 100.0,
+                512.0 + 100.0,
+                384.0 + 100.0,
+            );
             gc.set_texture_fill_alpha(TextureId(0), 1.0);
             gc.fill();
         });
@@ -96,19 +156,44 @@ pub fn main() {
             let amplitude = 12.0;
 
             // Distort each of the paths in turn
-            let distorted_mascot = mascot_paths.par_iter()
-                .map(|(attributes, path_set)| (attributes, path_set.iter()
-                    .map(move |path: &SimpleBezierPath| distort_path::<_, _, SimpleBezierPath>(path, |point: Coord2, _curve, _t| {
-                        let distance = point.magnitude();
-                        let ripple_1 = (since_start / (f64::consts::PI * 500_000_000.0)) * 10.0;
-                        let ripple_2 = (since_start / (f64::consts::PI * 400_000_000.0)) * 10.0;
+            let distorted_mascot = mascot_paths
+                .par_iter()
+                .map(|(attributes, path_set)| {
+                    (
+                        attributes,
+                        path_set
+                            .iter()
+                            .map(move |path: &SimpleBezierPath| {
+                                distort_path::<_, _, SimpleBezierPath>(
+                                    path,
+                                    |point: Coord2, _curve, _t| {
+                                        let distance = point.magnitude();
+                                        let ripple_1 = (since_start
+                                            / (f64::consts::PI * 500_000_000.0))
+                                            * 10.0;
+                                        let ripple_2 = (since_start
+                                            / (f64::consts::PI * 400_000_000.0))
+                                            * 10.0;
 
-                        let offset_x = (distance / (f64::consts::PI * 5.0) + ripple_1).sin() * amplitude * 0.5;
-                        let offset_y = (distance / (f64::consts::PI * 4.0) + ripple_2).cos() * amplitude * 0.5;
+                                        let offset_x =
+                                            (distance / (f64::consts::PI * 5.0) + ripple_1).sin()
+                                                * amplitude
+                                                * 0.5;
+                                        let offset_y =
+                                            (distance / (f64::consts::PI * 4.0) + ripple_2).cos()
+                                                * amplitude
+                                                * 0.5;
 
-                        Coord2(point.x() + offset_x, point.y() + offset_y)
-                    }, 2.0, 1.0).unwrap())
-                    .collect::<Vec<_>>()))
+                                        Coord2(point.x() + offset_x, point.y() + offset_y)
+                                    },
+                                    2.0,
+                                    1.0,
+                                )
+                                .unwrap()
+                            })
+                            .collect::<Vec<_>>(),
+                    )
+                })
                 .collect::<Vec<_>>();
 
             // Render the current frame

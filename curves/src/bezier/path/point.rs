@@ -1,10 +1,16 @@
-use super::ray::*;
-use super::path::*;
-use super::to_curves::*;
-use super::graph_path::*;
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
+use super::super::super::geo::*;
 use super::super::curve::*;
 use super::super::normal::*;
-use super::super::super::geo::*;
+use super::graph_path::*;
+use super::path::*;
+use super::ray::*;
+use super::to_curves::*;
 
 use smallvec::*;
 
@@ -26,7 +32,7 @@ impl<Curve: BezierCurve> BezierCurve for ReversableCurve<Curve> {
     fn start_point(&self) -> Curve::Point {
         match self {
             ReversableCurve::Forward(curve) => curve.start_point(),
-            ReversableCurve::Reversed(curve) => curve.end_point()
+            ReversableCurve::Reversed(curve) => curve.end_point(),
         }
     }
 
@@ -34,7 +40,7 @@ impl<Curve: BezierCurve> BezierCurve for ReversableCurve<Curve> {
     fn end_point(&self) -> Curve::Point {
         match self {
             ReversableCurve::Forward(curve) => curve.end_point(),
-            ReversableCurve::Reversed(curve) => curve.start_point()
+            ReversableCurve::Reversed(curve) => curve.start_point(),
         }
     }
 
@@ -51,8 +57,8 @@ impl<Curve: BezierCurve> BezierCurve for ReversableCurve<Curve> {
 }
 
 impl<Curve: BezierCurve> RayPath for Vec<Curve>
-    where
-        Curve::Point: Coordinate2D,
+where
+    Curve::Point: Coordinate2D,
 {
     type Curve = ReversableCurve<Curve>;
     type Point = Curve::Point;
@@ -70,15 +76,27 @@ impl<Curve: BezierCurve> RayPath for Vec<Curve>
     #[inline]
     fn reverse_edges_for_point(&self, point_idx: usize) -> SmallVec<[GraphEdgeRef; 8]> {
         if point_idx == 0 {
-            smallvec![GraphEdgeRef { start_idx: self.len()-1, edge_idx: 0, reverse: true }]
+            smallvec![GraphEdgeRef {
+                start_idx: self.len() - 1,
+                edge_idx: 0,
+                reverse: true
+            }]
         } else {
-            smallvec![GraphEdgeRef { start_idx: point_idx-1, edge_idx: 0, reverse: true }]
+            smallvec![GraphEdgeRef {
+                start_idx: point_idx - 1,
+                edge_idx: 0,
+                reverse: true
+            }]
         }
     }
 
     #[inline]
     fn edges_for_point(&self, point_idx: usize) -> SmallVec<[GraphEdgeRef; 8]> {
-        smallvec![GraphEdgeRef { start_idx: point_idx, edge_idx: 0, reverse: false }]
+        smallvec![GraphEdgeRef {
+            start_idx: point_idx,
+            edge_idx: 0,
+            reverse: false
+        }]
     }
 
     #[inline]
@@ -92,7 +110,11 @@ impl<Curve: BezierCurve> RayPath for Vec<Curve>
 
     #[inline]
     fn get_next_edge(&self, edge: GraphEdgeRef) -> (GraphEdgeRef, Self::Curve) {
-        let next_ref = GraphEdgeRef { start_idx: self.edge_end_point_idx(edge), edge_idx: 0, reverse: edge.reverse };
+        let next_ref = GraphEdgeRef {
+            start_idx: self.edge_end_point_idx(edge),
+            edge_idx: 0,
+            reverse: edge.reverse,
+        };
         (next_ref, self.get_edge(next_ref))
     }
 
@@ -134,10 +156,13 @@ impl<Curve: BezierCurve> RayPath for Vec<Curve>
 ///
 /// The return value is `(curve_index, t_value, distance, point)` of the point that was found
 ///
-pub fn path_closest_point<TPath>(path: &TPath, point: &TPath::Point) -> (usize, f64, f64, TPath::Point)
-    where
-        TPath: BezierPath,
-        TPath::Point: Coordinate + Coordinate2D,
+pub fn path_closest_point<TPath>(
+    path: &TPath,
+    point: &TPath::Point,
+) -> (usize, f64, f64, TPath::Point)
+where
+    TPath: BezierPath,
+    TPath::Point: Coordinate + Coordinate2D,
 {
     let mut curve_index = 0;
     let mut t_value = 0.0;
@@ -160,7 +185,12 @@ pub fn path_closest_point<TPath>(path: &TPath, point: &TPath::Point) -> (usize, 
         }
     }
 
-    (curve_index, t_value, min_distance_squared.sqrt(), closest_point)
+    (
+        curve_index,
+        t_value,
+        min_distance_squared.sqrt(),
+        closest_point,
+    )
 }
 
 ///
@@ -169,18 +199,25 @@ pub fn path_closest_point<TPath>(path: &TPath, point: &TPath::Point) -> (usize, 
 /// If checking a lot of points against a path, consider using the `PathContour` type
 ///
 pub fn path_contains_point<P: BezierPath>(path: &P, point: &P::Point) -> bool
-    where
-        P::Point: Coordinate2D,
+where
+    P::Point: Coordinate2D,
 {
     // We want to cast a ray from the outer edge of the bounds to our point
     let (min_bounds, max_bounds) = path.bounding_box();
 
-    if min_bounds.x() > point.x() || max_bounds.x() < point.x() || min_bounds.y() > point.y() || max_bounds.y() < point.y() {
+    if min_bounds.x() > point.x()
+        || max_bounds.x() < point.x()
+        || min_bounds.y() > point.y()
+        || max_bounds.y() < point.y()
+    {
         // Point is outside the bounds of the path
         false
     } else {
         // Ray is from the top of the bounds to our point
-        let ray = (max_bounds + P::Point::from_components(&[0.01, 0.01]), *point);
+        let ray = (
+            max_bounds + P::Point::from_components(&[0.01, 0.01]),
+            *point,
+        );
         let ray_direction = ray.1 - ray.0;
 
         // Call through to ray_collisions to get the collisions
@@ -192,7 +229,9 @@ pub fn path_contains_point<P: BezierPath>(path: &P, point: &P::Point) -> bool
 
         for (collision, curve_t, line_t, _pos) in collisions {
             // Stop once the ray reaches the desired point
-            if line_t > 1.0 { break; }
+            if line_t > 1.0 {
+                break;
+            }
 
             // Curve this collision was is just the start index of the edge
             let curve_idx = collision.edge().start_idx;

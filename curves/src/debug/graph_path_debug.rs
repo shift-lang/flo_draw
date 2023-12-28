@@ -1,21 +1,39 @@
-use super::super::bezier::*;
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
 use super::super::bezier::path::*;
+use super::super::bezier::*;
 
 use std::fmt::Write;
 
 ///
 /// Writes out the graph path as an SVG string
 ///
-pub fn graph_path_svg_string<P: Coordinate + Coordinate2D>(path: &GraphPath<P, PathLabel>, rays: Vec<(P, P)>) -> String {
+pub fn graph_path_svg_string<P: Coordinate + Coordinate2D>(
+    path: &GraphPath<P, PathLabel>,
+    rays: Vec<(P, P)>,
+) -> String {
     let mut result = String::new();
 
-    let bounds = path.all_edges().fold(Bounds::empty(), |a, b| a.union_bounds(b.bounding_box()));
+    let bounds = path
+        .all_edges()
+        .fold(Bounds::empty(), |a, b| a.union_bounds(b.bounding_box()));
     let offset = bounds.min();
     let scale = 1000.0 / (bounds.max() - bounds.min()).x();
 
     let mut index = 0;
 
-    for kinds in vec![vec![GraphPathEdgeKind::Uncategorised, GraphPathEdgeKind::Visited, GraphPathEdgeKind::Interior], vec![GraphPathEdgeKind::Exterior]] {
+    for kinds in vec![
+        vec![
+            GraphPathEdgeKind::Uncategorised,
+            GraphPathEdgeKind::Visited,
+            GraphPathEdgeKind::Interior,
+        ],
+        vec![GraphPathEdgeKind::Exterior],
+    ] {
         for edge in path.all_edges() {
             if !kinds.contains(&edge.kind()) {
                 continue;
@@ -41,7 +59,7 @@ pub fn graph_path_svg_string<P: Coordinate + Coordinate2D>(path: &GraphPath<P, P
                 GraphPathEdgeKind::Uncategorised => "yellow",
                 GraphPathEdgeKind::Visited => "red",
                 GraphPathEdgeKind::Exterior => "blue",
-                GraphPathEdgeKind::Interior => "green"
+                GraphPathEdgeKind::Interior => "green",
             };
 
             writeln!(result, "<path d=\"M {} {} C {} {}, {} {}, {} {}\" fill=\"transparent\" stroke-width=\"1\" stroke=\"{}\" />",
@@ -50,16 +68,39 @@ pub fn graph_path_svg_string<P: Coordinate + Coordinate2D>(path: &GraphPath<P, P
                      cp2.x(), cp2.y(),
                      end_point.x(), end_point.y(),
                      kind).unwrap();
-            writeln!(result, "<circle cx=\"{}\" cy=\"{}\" r=\"1.0\" fill=\"transparent\" stroke=\"magenta\" />", end_point.x(), end_point.y()).unwrap();
+            writeln!(
+                result,
+                "<circle cx=\"{}\" cy=\"{}\" r=\"1.0\" fill=\"transparent\" stroke=\"magenta\" />",
+                end_point.x(),
+                end_point.y()
+            )
+            .unwrap();
 
-            writeln!(result, "<text style=\"font-size: 8pt\" dx=\"{}\" dy=\"{}\">{} &lt;- {} - {}</text>", end_point.x() + 4.0, end_point.y() + 8.0, edge.end_point_index(), edge.start_point_index(), index).unwrap();
+            writeln!(
+                result,
+                "<text style=\"font-size: 8pt\" dx=\"{}\" dy=\"{}\">{} &lt;- {} - {}</text>",
+                end_point.x() + 4.0,
+                end_point.y() + 8.0,
+                edge.end_point_index(),
+                edge.start_point_index(),
+                index
+            )
+            .unwrap();
 
             index += 1;
         }
     }
 
     for (p1, p2) in rays {
-        writeln!(result, "<!-- Ray (Coord2({}, {}), Coord2({}, {})) -->", p1.x(), p1.y(), p2.x(), p2.y()).unwrap();
+        writeln!(
+            result,
+            "<!-- Ray (Coord2({}, {}), Coord2({}, {})) -->",
+            p1.x(),
+            p1.y(),
+            p2.x(),
+            p2.y()
+        )
+        .unwrap();
         let collisions = path.ray_collisions(&(p1, p2));
         write!(result, "<!-- {} collisions -->", collisions.len()).unwrap();
 
@@ -70,9 +111,15 @@ pub fn graph_path_svg_string<P: Coordinate + Coordinate2D>(path: &GraphPath<P, P
         let p1 = p1 - (point_offset * 1000.0);
         let p2 = p2 + (point_offset * 1000.0);
 
-        writeln!(result, "<path d=\"M {} {} L {} {}\" fill=\"transparent\" stroke-width=\"1\" stroke=\"red\" />",
-                 p1.x(), p1.y(),
-                 p2.x(), p2.y()).unwrap();
+        writeln!(
+            result,
+            "<path d=\"M {} {} L {} {}\" fill=\"transparent\" stroke-width=\"1\" stroke=\"red\" />",
+            p1.x(),
+            p1.y(),
+            p2.x(),
+            p2.y()
+        )
+        .unwrap();
 
         let ray_direction = p2 - p1;
         let mut collision_count = 0;
@@ -114,8 +161,23 @@ pub fn graph_path_svg_string<P: Coordinate + Coordinate2D>(path: &GraphPath<P, P
                      cp2.x(), cp2.y(),
                      end_point.x(), end_point.y()).unwrap();
 
-            writeln!(result, "<circle cx=\"{}\" cy=\"{}\" r=\"1.0\" fill=\"transparent\" stroke=\"red\" />", pos.x(), pos.y()).unwrap();
-            writeln!(result, "<text style=\"font-size: 6pt\" dx=\"{}\" dy=\"{}\">{}: C{} ({})</text>", pos.x() + 2.0, pos.y() + 3.0, collision_num, collision_count, side).unwrap();
+            writeln!(
+                result,
+                "<circle cx=\"{}\" cy=\"{}\" r=\"1.0\" fill=\"transparent\" stroke=\"red\" />",
+                pos.x(),
+                pos.y()
+            )
+            .unwrap();
+            writeln!(
+                result,
+                "<text style=\"font-size: 6pt\" dx=\"{}\" dy=\"{}\">{}: C{} ({})</text>",
+                pos.x() + 2.0,
+                pos.y() + 3.0,
+                collision_num,
+                collision_count,
+                side
+            )
+            .unwrap();
         }
     }
 

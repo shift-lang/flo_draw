@@ -1,27 +1,33 @@
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
 // TODO: need to make it safe to drop a suspended queue (well, a suspended Desync)
 
-use super::core::*;
-use super::job::*;
-use super::future_job::*;
-use super::unsafe_job::*;
-use super::scheduler_thread::*;
-use super::job_queue::*;
-use super::queue_state::*;
 use super::active_queue::*;
-use super::sync_future::*;
-use super::scheduler_future::*;
+use super::core::*;
+use super::future_job::*;
+use super::job::*;
+use super::job_queue::*;
 use super::queue_resumer::*;
+use super::queue_state::*;
+use super::scheduler_future::*;
+use super::scheduler_thread::*;
+use super::sync_future::*;
 use super::try_sync_error::*;
+use super::unsafe_job::*;
 
+use std::collections::vec_deque::*;
 use std::fmt;
 use std::mem;
+use std::result::Result;
 use std::sync::*;
-use std::collections::vec_deque::*;
-use std::result::{Result};
 
-use futures::prelude::*;
 use futures::channel::oneshot;
-use futures::future::{Future};
+use futures::future::Future;
+use futures::prelude::*;
 
 #[cfg(not(target_arch = "wasm32"))]
 use num_cpus;
@@ -34,7 +40,7 @@ lazy_static! {
 }
 
 ///
-/// The default maximum number of threads in a scheduler 
+/// The default maximum number of threads in a scheduler
 ///
 #[cfg(not(target_arch = "wasm32"))]
 fn initial_max_threads() -> usize {
@@ -42,7 +48,7 @@ fn initial_max_threads() -> usize {
 }
 
 ///
-/// The default maximum number of threads in a scheduler 
+/// The default maximum number of threads in a scheduler
 ///
 #[cfg(target_arch = "wasm32")]
 fn initial_max_threads() -> usize {
@@ -70,7 +76,7 @@ impl Scheduler {
         };
 
         Scheduler {
-            core: Arc::new(core)
+            core: Arc::new(core),
         }
     }
 
@@ -81,7 +87,9 @@ impl Scheduler {
     #[cfg(not(target_arch = "wasm32"))]
     pub fn set_max_threads(&self, max_threads: usize) {
         // Update the maximum number of threads we can spawn
-        { *self.core.max_threads.lock().expect("Max threads lock") = max_threads };
+        {
+            *self.core.max_threads.lock().expect("Max threads lock") = max_threads
+        };
 
         // Schedule as many threads as we can
         while self.schedule_thread() {}
@@ -117,7 +125,9 @@ impl Scheduler {
         };
 
         // Wait for the threads to despawn
-        to_despawn.into_iter().for_each(|join_handle| { join_handle.join().ok(); });
+        to_despawn.into_iter().for_each(|join_handle| {
+            join_handle.join().ok();
+        });
     }
 
     ///
@@ -140,7 +150,11 @@ impl Scheduler {
     pub fn spawn_thread(&self) {
         let is_busy = Arc::new(Mutex::new(false));
         let new_thread = SchedulerThread::new();
-        self.core.threads.lock().expect("Scheduler threads lock").push((is_busy, new_thread));
+        self.core
+            .threads
+            .lock()
+            .expect("Scheduler threads lock")
+            .push((is_busy, new_thread));
     }
 
     ///
@@ -152,7 +166,7 @@ impl Scheduler {
     }
 
     ///
-    /// Schedules a job on this scheduler, which will run after any jobs that are already 
+    /// Schedules a job on this scheduler, which will run after any jobs that are already
     /// in the specified queue and as soon as a thread is available to run it.
     ///
     #[inline]
@@ -162,7 +176,7 @@ impl Scheduler {
     }
 
     ///
-    /// Schedules a job on this scheduler, which will run after any jobs that are already 
+    /// Schedules a job on this scheduler, which will run after any jobs that are already
     /// in the specified queue and as soon as a thread is available to run it.
     ///
     pub fn desync<TFn: 'static + Send + FnOnce() -> ()>(&self, queue: &Arc<JobQueue>, job: TFn) {
@@ -170,7 +184,7 @@ impl Scheduler {
     }
 
     ///
-    /// Schedules a job on this scheduler, which will run after any jobs that are already 
+    /// Schedules a job on this scheduler, which will run after any jobs that are already
     /// in the specified queue and as soon as a thread is available to run it.
     ///
     fn schedule_job_desync(&self, queue: &Arc<JobQueue>, job: Box<dyn ScheduledJob>) {
@@ -206,7 +220,11 @@ impl Scheduler {
         match schedule_queue {
             ScheduleState::Idle => {
                 // Add the queue to the schedule
-                self.core.schedule.lock().expect("Schedule lock").push_back(queue.clone());
+                self.core
+                    .schedule
+                    .lock()
+                    .expect("Schedule lock")
+                    .push_back(queue.clone());
 
                 // Wake up a thread to run it if we can
                 self.schedule_thread();
@@ -226,11 +244,15 @@ impl Scheduler {
     /// The future will run to completion even if the return value is discarded, and may run in the context of a desync execution
     /// pool (ie, will run even if the current thread is blocked)
     ///
-    pub fn future_desync<TFn, TFuture>(&self, queue: &Arc<JobQueue>, job: TFn) -> SchedulerFuture<TFuture::Output>
-        where
-            TFn: 'static + Send + FnOnce() -> TFuture,
-            TFuture: Send + Future,
-            TFuture::Output: 'static + Send
+    pub fn future_desync<TFn, TFuture>(
+        &self,
+        queue: &Arc<JobQueue>,
+        job: TFn,
+    ) -> SchedulerFuture<TFuture::Output>
+    where
+        TFn: 'static + Send + FnOnce() -> TFuture,
+        TFuture: Send + Future,
+        TFuture::Output: 'static + Send,
     {
         let (receive, send) = SchedulerFuture::new(queue, Arc::clone(&self.core));
 
@@ -258,14 +280,18 @@ impl Scheduler {
     /// Schedules a job to run and returns a future for retrieving the result
     ///
     /// The future will cancel if the return value is discarded, and will run in the current execution context. These futures are
-    /// more complex to schedule than `future_desync` futures, but the callback function has a shorter lifespan making it easier 
+    /// more complex to schedule than `future_desync` futures, but the callback function has a shorter lifespan making it easier
     /// to use when borrowing values.
     ///
-    pub fn future_sync<'a, TFn, TFuture>(&'a self, queue: &Arc<JobQueue>, job: TFn) -> impl 'a + Future<Output=Result<TFuture::Output, oneshot::Canceled>> + Send
-        where
-            TFn: 'a + Send + FnOnce() -> TFuture,
-            TFuture: 'a + Send + Future,
-            TFuture::Output: Send,
+    pub fn future_sync<'a, TFn, TFuture>(
+        &'a self,
+        queue: &Arc<JobQueue>,
+        job: TFn,
+    ) -> impl 'a + Future<Output = Result<TFuture::Output, oneshot::Canceled>> + Send
+    where
+        TFn: 'a + Send + FnOnce() -> TFuture,
+        TFuture: 'a + Send + Future,
+        TFuture::Output: Send,
     {
         // Box the job (so it implements Unpin)
         let job = Box::new(job);
@@ -299,8 +325,15 @@ impl Scheduler {
     /// Pauses a queue until a particular future has completed, before performing a
     /// task with the result of that future
     ///
-    pub fn after<TFn, Res: 'static + Send, Fut: 'static + Future + Send>(&self, queue: &Arc<JobQueue>, after: Fut, job: TFn) -> impl Future<Output=Result<Res, oneshot::Canceled>> + Send
-        where TFn: 'static + Send + FnOnce(Fut::Output) -> Res {
+    pub fn after<TFn, Res: 'static + Send, Fut: 'static + Future + Send>(
+        &self,
+        queue: &Arc<JobQueue>,
+        after: Fut,
+        job: TFn,
+    ) -> impl Future<Output = Result<Res, oneshot::Canceled>> + Send
+    where
+        TFn: 'static + Send + FnOnce(Fut::Output) -> Res,
+    {
         let (receive, send) = SchedulerFuture::new(queue, Arc::clone(&self.core));
 
         // Create a future that will perform the job
@@ -327,8 +360,12 @@ impl Scheduler {
     ///
     /// Requests that a queue be suspended once it has finished all of its active jobs
     ///
-    pub fn suspend(&self, queue: &Arc<JobQueue>) -> impl Future<Output=Result<QueueResumer, oneshot::Canceled>> + Send {
-        let (finished_suspending, notify_finished_suspending) = SchedulerFuture::new(queue, Arc::clone(&self.core));
+    pub fn suspend(
+        &self,
+        queue: &Arc<JobQueue>,
+    ) -> impl Future<Output = Result<QueueResumer, oneshot::Canceled>> + Send {
+        let (finished_suspending, notify_finished_suspending) =
+            SchedulerFuture::new(queue, Arc::clone(&self.core));
 
         // Queue a future (we never await it though)
         self.future_desync(queue, move || {
@@ -343,7 +380,8 @@ impl Scheduler {
 
             // Wait for the queue to resume
             wait_for_resume
-        }).detach();
+        })
+        .detach();
 
         // Return the finished_suspending future
         finished_suspending
@@ -352,8 +390,17 @@ impl Scheduler {
     ///
     /// Runs a sync job immediately on the current thread. Queue must be in Running mode for this to be valid
     ///
-    fn sync_immediate<Result, TFn: FnOnce() -> Result>(&self, queue: &Arc<JobQueue>, job: TFn) -> Result {
-        debug_assert!(queue.core.lock().expect("JobQueue core lock").state.is_running());
+    fn sync_immediate<Result, TFn: FnOnce() -> Result>(
+        &self,
+        queue: &Arc<JobQueue>,
+        job: TFn,
+    ) -> Result {
+        debug_assert!(queue
+            .core
+            .lock()
+            .expect("JobQueue core lock")
+            .state
+            .is_running());
 
         // Set the queue as active
         let _active = ActiveQueue { queue: &*queue };
@@ -371,10 +418,19 @@ impl Scheduler {
     }
 
     ///
-    /// Runs a sync job immediately by running all the jobs in the current queue 
+    /// Runs a sync job immediately by running all the jobs in the current queue
     ///
-    fn sync_drain<Result: Send, TFn: Send + FnOnce() -> Result>(&self, queue: &Arc<JobQueue>, job: TFn) -> Result {
-        debug_assert!(queue.core.lock().expect("JobQueue core lock").state.is_running());
+    fn sync_drain<Result: Send, TFn: Send + FnOnce() -> Result>(
+        &self,
+        queue: &Arc<JobQueue>,
+        job: TFn,
+    ) -> Result {
+        debug_assert!(queue
+            .core
+            .lock()
+            .expect("JobQueue core lock")
+            .state
+            .is_running());
 
         // Set the queue as active
         let _active = ActiveQueue { queue: &*queue };
@@ -395,7 +451,12 @@ impl Scheduler {
         // sync, the task will be done by the time this method is finished, so
         // we use an unsafe job to bypass the normal lifetime checking
         let unsafe_result_job = unsafe { UnsafeJob::new(&mut *result_job) };
-        queue.core.lock().expect("JobQueue core lock").queue.push_back(Box::new(unsafe_result_job));
+        queue
+            .core
+            .lock()
+            .expect("JobQueue core lock")
+            .queue
+            .push_back(Box::new(unsafe_result_job));
 
         // While there is no result, run a job from the queue
         while result.0.lock().expect("Sync queue result lock").is_none() {
@@ -420,9 +481,13 @@ impl Scheduler {
     }
 
     ///
-    /// Queues a sync job and waits for the queue to finish running 
+    /// Queues a sync job and waits for the queue to finish running
     ///
-    fn sync_background<Result: Send, TFn: Send + FnOnce() -> Result>(&self, queue: &Arc<JobQueue>, job: TFn) -> Result {
+    fn sync_background<Result: Send, TFn: Send + FnOnce() -> Result>(
+        &self,
+        queue: &Arc<JobQueue>,
+        job: TFn,
+    ) -> Result {
         // Queue a job that unparks this thread when done
         let wakeup = Arc::new(Condvar::new());
         let ready = Arc::new(Mutex::new(false));
@@ -441,18 +506,27 @@ impl Scheduler {
         }));
 
         // Add our condition variable to the list of wakers scheduled for the queue
-        queue.core.lock().unwrap().wake_blocked.push(Arc::downgrade(&wakeup));
+        queue
+            .core
+            .lock()
+            .unwrap()
+            .wake_blocked
+            .push(Arc::downgrade(&wakeup));
 
         // Unsafe job with unbounded lifetime is needed because stuff on the queue normally needs a static lifetime
         let need_reschedule = {
             // Schedule the job and see if the queue went back to 'idle'. Reschedule if it is.
-            let unsafe_job = Box::new(unsafe { UnsafeJob::new_with_notification(&mut *job, Arc::clone(&wakeup), Arc::clone(&ready)) });
+            let unsafe_job = Box::new(unsafe {
+                UnsafeJob::new_with_notification(&mut *job, Arc::clone(&wakeup), Arc::clone(&ready))
+            });
             let mut core = queue.core.lock().expect("JobQueue core lock");
 
             core.queue.push_back(unsafe_job);
             core.state == QueueState::Idle
         };
-        if need_reschedule { self.reschedule_queue(queue); }
+        if need_reschedule {
+            self.reschedule_queue(queue);
+        }
 
         // Wait for the result to arrive (and the sweet relief of no more unsafe job)
         let final_result = {
@@ -493,7 +567,12 @@ impl Scheduler {
 
         // Clean up the wakers from the queue (should at least free our one)
         mem::drop(wakeup);
-        queue.core.lock().unwrap().wake_blocked.retain(|waker| waker.strong_count() > 0);
+        queue
+            .core
+            .lock()
+            .unwrap()
+            .wake_blocked
+            .retain(|waker| waker.strong_count() > 0);
 
         // Return the result
         final_result
@@ -503,7 +582,11 @@ impl Scheduler {
     /// Schedules a job on this scheduler, which will run after any jobs that are already
     /// in the specified queue. This function will not return until the job has completed.
     ///
-    pub fn sync<Result: Send, TFn: Send + FnOnce() -> Result>(&self, queue: &Arc<JobQueue>, job: TFn) -> Result {
+    pub fn sync<Result: Send, TFn: Send + FnOnce() -> Result>(
+        &self,
+        queue: &Arc<JobQueue>,
+        job: TFn,
+    ) -> Result {
         enum RunAction {
             /// The queue is empty: call the function directly and don't bother with storing a result
             Immediate,
@@ -548,7 +631,7 @@ impl Scheduler {
             RunAction::Immediate => self.sync_immediate(queue, job),
             RunAction::DrainOnThisThread => self.sync_drain(queue, job),
             RunAction::WaitForBackground => self.sync_background(queue, job),
-            RunAction::Panic => panic!("Cannot schedule new jobs on a panicked queue")
+            RunAction::Panic => panic!("Cannot schedule new jobs on a panicked queue"),
         }
     }
 
@@ -558,7 +641,11 @@ impl Scheduler {
     ///
     /// If the queue is waiting to be scheduled rather than idle, this will also return an error.
     ///
-    pub fn try_sync<FnResult: Send, TFn: Send + FnOnce() -> FnResult>(&self, queue: &Arc<JobQueue>, job: TFn) -> Result<FnResult, TrySyncError> {
+    pub fn try_sync<FnResult: Send, TFn: Send + FnOnce() -> FnResult>(
+        &self,
+        queue: &Arc<JobQueue>,
+        job: TFn,
+    ) -> Result<FnResult, TrySyncError> {
         enum RunAction {
             /// The queue is empty: call the function directly and don't bother with storing a result
             Immediate,
@@ -596,7 +683,7 @@ impl Scheduler {
         match run_action {
             RunAction::Immediate => Ok(self.sync_immediate(queue, job)),
             RunAction::Busy => Err(TrySyncError::Busy),
-            RunAction::Panic => panic!("Cannot schedule new jobs on a panicked queue")
+            RunAction::Panic => panic!("Cannot schedule new jobs on a panicked queue"),
         }
     }
 
@@ -604,7 +691,11 @@ impl Scheduler {
     /// Schedules a synchronous event to the queue. Returns false if the queue is not panicked, or true if it is,
     /// but otherwise behaves like sync()
     ///
-    pub(crate) fn sync_no_panic<TFn: Send + FnOnce() -> ()>(&self, queue: &Arc<JobQueue>, job: TFn) -> bool {
+    pub(crate) fn sync_no_panic<TFn: Send + FnOnce() -> ()>(
+        &self,
+        queue: &Arc<JobQueue>,
+        job: TFn,
+    ) -> bool {
         enum RunAction {
             /// The queue is empty: call the function directly and don't bother with storing a result
             Immediate,
@@ -658,7 +749,7 @@ impl Scheduler {
                 self.sync_background(queue, job);
                 false
             }
-            RunAction::Panic => true
+            RunAction::Panic => true,
         }
     }
 }
@@ -667,11 +758,23 @@ impl fmt::Debug for Scheduler {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         let threads = {
             let threads = self.core.threads.lock().expect("Scheduler threads lock");
-            let busyness: String = threads.iter().map(|&(ref busy, _)| { if *busy.lock().expect("Thread busy lock") { 'B' } else { 'I' } }).collect();
+            let busyness: String = threads
+                .iter()
+                .map(|&(ref busy, _)| {
+                    if *busy.lock().expect("Thread busy lock") {
+                        'B'
+                    } else {
+                        'I'
+                    }
+                })
+                .collect();
 
             busyness
         };
-        let queue_size = format!("Pending queue count: {}", self.core.schedule.lock().expect("Schedule lock").len());
+        let queue_size = format!(
+            "Pending queue count: {}",
+            self.core.schedule.lock().expect("Schedule lock").len()
+        );
 
         fmt.write_str(&format!("{} {}", threads, queue_size))
     }
@@ -713,10 +816,15 @@ pub fn desync<TFn: 'static + Send + FnOnce() -> ()>(queue: &Arc<JobQueue>, job: 
 /// The future will run to completion even if the return value is discarded, and may run in the context of a desync execution
 /// pool (ie, will run even if the current thread is blocked)
 ///
-pub fn future_desync<TFn, TFuture>(queue: &Arc<JobQueue>, job: TFn) -> SchedulerFuture<TFuture::Output>
-    where TFn: 'static + Send + FnOnce() -> TFuture,
-          TFuture: Send + Future,
-          TFuture::Output: 'static + Send {
+pub fn future_desync<TFn, TFuture>(
+    queue: &Arc<JobQueue>,
+    job: TFn,
+) -> SchedulerFuture<TFuture::Output>
+where
+    TFn: 'static + Send + FnOnce() -> TFuture,
+    TFuture: Send + Future,
+    TFuture::Output: 'static + Send,
+{
     scheduler().future_desync(queue, job)
 }
 
@@ -724,26 +832,37 @@ pub fn future_desync<TFn, TFuture>(queue: &Arc<JobQueue>, job: TFn) -> Scheduler
 /// Schedules a job to run and returns a future for retrieving the result
 ///
 /// The future will cancel if the return value is discarded, and will run in the current execution context. These futures are
-/// more complex to schedule than `future_desync` futures, but the callback function has a shorter lifespan making it easier 
+/// more complex to schedule than `future_desync` futures, but the callback function has a shorter lifespan making it easier
 /// to use when borrowing values.
 ///
-pub fn future_sync<'a, TFn, TFuture>(queue: &Arc<JobQueue>, job: TFn) -> impl 'a + Future<Output=Result<TFuture::Output, oneshot::Canceled>> + Send
-    where TFn: 'a + Send + FnOnce() -> TFuture,
-          TFuture: 'a + Send + Future,
-          TFuture::Output: Send {
+pub fn future_sync<'a, TFn, TFuture>(
+    queue: &Arc<JobQueue>,
+    job: TFn,
+) -> impl 'a + Future<Output = Result<TFuture::Output, oneshot::Canceled>> + Send
+where
+    TFn: 'a + Send + FnOnce() -> TFuture,
+    TFuture: 'a + Send + Future,
+    TFuture::Output: Send,
+{
     scheduler().future_sync(queue, job)
 }
 
 ///
-/// Performs an action synchronously on the specified queue 
+/// Performs an action synchronously on the specified queue
 ///
-pub fn sync<Result: Send, TFn: Send + FnOnce() -> Result>(queue: &Arc<JobQueue>, job: TFn) -> Result {
+pub fn sync<Result: Send, TFn: Send + FnOnce() -> Result>(
+    queue: &Arc<JobQueue>,
+    job: TFn,
+) -> Result {
     scheduler().sync(queue, job)
 }
 
 ///
-/// Performs an action synchronously on the specified queue 
+/// Performs an action synchronously on the specified queue
 ///
-pub fn try_sync<FnResult: Send, TFn: Send + FnOnce() -> FnResult>(queue: &Arc<JobQueue>, job: TFn) -> Result<FnResult, TrySyncError> {
+pub fn try_sync<FnResult: Send, TFn: Send + FnOnce() -> FnResult>(
+    queue: &Arc<JobQueue>,
+    job: TFn,
+) -> Result<FnResult, TrySyncError> {
     scheduler().try_sync(queue, job)
 }

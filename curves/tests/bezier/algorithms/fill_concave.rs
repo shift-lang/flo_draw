@@ -1,9 +1,18 @@
-use flo_curves::*;
-use flo_curves::bezier::*;
-use flo_curves::bezier::path::*;
-use flo_curves::bezier::path::algorithms::*;
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
 
-fn circle_ray_cast(circle_center: Coord2, radius: f64) -> impl Fn(Coord2, Coord2) -> Vec<RayCollision<Coord2, ()>> {
+use flo_curves::bezier::path::algorithms::*;
+use flo_curves::bezier::path::*;
+use flo_curves::bezier::*;
+use flo_curves::*;
+
+fn circle_ray_cast(
+    circle_center: Coord2,
+    radius: f64,
+) -> impl Fn(Coord2, Coord2) -> Vec<RayCollision<Coord2, ()>> {
     move |from: Coord2, to: Coord2| {
         let from = from - circle_center;
         let to = to - circle_center;
@@ -19,13 +28,16 @@ fn circle_ray_cast(circle_center: Coord2, radius: f64) -> impl Fn(Coord2, Coord2
 
         let d = x1 * y2 - x2 * y1;
 
-        let xc1 = (d * dy + (dy.signum() * dx * ((radius * radius * dr * dr - d * d).sqrt()))) / (dr * dr);
-        let xc2 = (d * dy - (dy.signum() * dx * ((radius * radius * dr * dr - d * d).sqrt()))) / (dr * dr);
+        let xc1 = (d * dy + (dy.signum() * dx * ((radius * radius * dr * dr - d * d).sqrt())))
+            / (dr * dr);
+        let xc2 = (d * dy - (dy.signum() * dx * ((radius * radius * dr * dr - d * d).sqrt())))
+            / (dr * dr);
         let yc1 = (-d * dx + (dy.abs() * ((radius * radius * dr * dr - d * d).sqrt()))) / (dr * dr);
         let yc2 = (-d * dx - (dy.abs() * ((radius * radius * dr * dr - d * d).sqrt()))) / (dr * dr);
 
         vec![
-            RayCollision::new(Coord2(xc1, yc1) + circle_center, ()), RayCollision::new(Coord2(xc2, yc2) + circle_center, ()),
+            RayCollision::new(Coord2(xc1, yc1) + circle_center, ()),
+            RayCollision::new(Coord2(xc2, yc2) + circle_center, ()),
         ]
     }
 }
@@ -98,7 +110,11 @@ fn fill_concave_circle() {
     let circle_ray_cast = circle_ray_cast(circle_center, radius);
 
     // Flood-fill this curve
-    let path = flood_fill_concave::<SimpleBezierPath, _, _, _, _>(circle_center, &FillSettings::default(), circle_ray_cast);
+    let path = flood_fill_concave::<SimpleBezierPath, _, _, _, _>(
+        circle_center,
+        &FillSettings::default(),
+        circle_ray_cast,
+    );
 
     assert!(path.is_some());
     assert!(path.as_ref().unwrap().len() == 1);
@@ -121,7 +137,11 @@ fn fill_concave_circle_offset() {
     let circle_ray_cast = circle_ray_cast(circle_center, radius);
 
     // Flood-fill this curve
-    let path = flood_fill_concave::<SimpleBezierPath, _, _, _, _>(circle_center + Coord2(1.0, 0.0), &FillSettings::default(), circle_ray_cast);
+    let path = flood_fill_concave::<SimpleBezierPath, _, _, _, _>(
+        circle_center + Coord2(1.0, 0.0),
+        &FillSettings::default(),
+        circle_ray_cast,
+    );
 
     assert!(path.is_some());
     assert!(path.as_ref().unwrap().len() == 1);
@@ -145,13 +165,18 @@ fn fill_concave_doughnut() {
     let outer_circle = circle_ray_cast(circle_center, outer_radius);
     let inner_circle = circle_ray_cast(circle_center, inner_radius);
     let doughnut = |from: Coord2, to: Coord2| {
-        outer_circle(from.clone(), to.clone()).into_iter()
+        outer_circle(from.clone(), to.clone())
+            .into_iter()
             .chain(inner_circle(from, to))
     };
 
     // Flood-fill this curve
     let start_point = circle_center + Coord2(inner_radius + 10.0, 0.0);
-    let path = flood_fill_concave::<SimpleBezierPath, _, _, _, _>(start_point, &FillSettings::default(), doughnut);
+    let path = flood_fill_concave::<SimpleBezierPath, _, _, _, _>(
+        start_point,
+        &FillSettings::default(),
+        doughnut,
+    );
 
     assert!(path.is_some());
     assert!(path.as_ref().unwrap().len() != 0);
@@ -192,18 +217,20 @@ fn fill_doughnut_with_extra_holes() {
         let ray = to - from;
         if (ray.x() / ray.y()).abs() < 0.1 || (ray.y() / ray.x()) < 0.1 {
             // Just the inner collisions (leave holes in the collision list)
-            inner_collisions.into_iter()
-                .chain(vec![])
+            inner_collisions.into_iter().chain(vec![])
         } else {
             // All the collisions
-            inner_collisions.into_iter()
-                .chain(outer_collisions)
+            inner_collisions.into_iter().chain(outer_collisions)
         }
     };
 
     // Flood-fill this curve
     let start_point = circle_center + Coord2(inner_radius + 10.0, 0.0);
-    let path = flood_fill_concave::<SimpleBezierPath, _, _, _, _>(start_point, &FillSettings::default().with_step(1.0), doughnut);
+    let path = flood_fill_concave::<SimpleBezierPath, _, _, _, _>(
+        start_point,
+        &FillSettings::default().with_step(1.0),
+        doughnut,
+    );
 
     assert!(path.is_some());
     assert!(path.as_ref().unwrap().len() != 0);
@@ -211,9 +238,16 @@ fn fill_doughnut_with_extra_holes() {
     assert!(path.as_ref().unwrap().len() == 2);
 
     let mut max_error = 0.0;
-    println!("Path length: {:?}", path.as_ref().unwrap()[0].to_curves::<Curve<Coord2>>().len());
+    println!(
+        "Path length: {:?}",
+        path.as_ref().unwrap()[0].to_curves::<Curve<Coord2>>().len()
+    );
 
-    for (idx, curve) in path.as_ref().unwrap()[0].to_curves::<Curve<Coord2>>().into_iter().enumerate() {
+    for (idx, curve) in path.as_ref().unwrap()[0]
+        .to_curves::<Curve<Coord2>>()
+        .into_iter()
+        .enumerate()
+    {
         for t in 0..100 {
             let t = (t as f64) / 100.0;
             let distance = circle_center.distance_to(&curve.point_at_pos(t));
@@ -233,7 +267,11 @@ fn fill_doughnut_with_extra_holes() {
             let t = (t as f64) / 100.0;
             let distance = circle_center.distance_to(&curve.point_at_pos(t));
 
-            assert!((distance - inner_radius).abs() < 2.0, "Inner curve had distance {:?}", (distance - inner_radius).abs());
+            assert!(
+                (distance - inner_radius).abs() < 2.0,
+                "Inner curve had distance {:?}",
+                (distance - inner_radius).abs()
+            );
         }
     }
 }
@@ -253,18 +291,20 @@ fn fill_circle_without_escaping_gaps() {
         let ray = to - from;
         if (ray.x() / ray.y()).abs() < 0.01 {
             // Just the inner collisions (leave holes in the collision list)
-            enclosing_collisions.into_iter()
-                .chain(vec![])
+            enclosing_collisions.into_iter().chain(vec![])
         } else {
             // All the collisions
-            enclosing_collisions.into_iter()
-                .chain(outer_collisions)
+            enclosing_collisions.into_iter().chain(outer_collisions)
         }
     };
 
     // Flood-fill this curve
     let start_point = circle_center;
-    let path = flood_fill_concave::<SimpleBezierPath, _, _, _, _>(start_point, &FillSettings::default(), doughnut);
+    let path = flood_fill_concave::<SimpleBezierPath, _, _, _, _>(
+        start_point,
+        &FillSettings::default(),
+        doughnut,
+    );
 
     assert!(path.is_some());
     assert!(path.as_ref().unwrap().len() != 0);
@@ -295,18 +335,20 @@ fn fill_circle_without_escaping_gaps_offset() {
         let ray = to - from;
         if (ray.x() / ray.y()).abs() < 0.01 {
             // Just the inner collisions (leave holes in the collision list)
-            enclosing_collisions.into_iter()
-                .chain(vec![])
+            enclosing_collisions.into_iter().chain(vec![])
         } else {
             // All the collisions
-            enclosing_collisions.into_iter()
-                .chain(outer_collisions)
+            enclosing_collisions.into_iter().chain(outer_collisions)
         }
     };
 
     // Flood-fill this curve
     let start_point = circle_center + Coord2(50.0, 70.0);
-    let path = flood_fill_concave::<SimpleBezierPath, _, _, _, _>(start_point, &FillSettings::default(), doughnut);
+    let path = flood_fill_concave::<SimpleBezierPath, _, _, _, _>(
+        start_point,
+        &FillSettings::default(),
+        doughnut,
+    );
 
     assert!(path.is_some());
     assert!(path.as_ref().unwrap().len() != 0);
@@ -340,12 +382,14 @@ fn fill_doughnut_without_escaping_gaps() {
         let ray = to - from;
         if (ray.x() / ray.y()).abs() < 0.01 {
             // Just the inner collisions (leave holes in the collision list)
-            inner_collisions.into_iter()
+            inner_collisions
+                .into_iter()
                 .chain(enclosing_collisions)
                 .chain(vec![])
         } else {
             // All the collisions
-            inner_collisions.into_iter()
+            inner_collisions
+                .into_iter()
                 .chain(enclosing_collisions)
                 .chain(outer_collisions)
         }
@@ -353,7 +397,11 @@ fn fill_doughnut_without_escaping_gaps() {
 
     // Flood-fill this curve
     let start_point = circle_center + Coord2(inner_radius + 10.0, 0.0);
-    let path = flood_fill_concave::<SimpleBezierPath, _, _, _, _>(start_point, &FillSettings::default(), doughnut);
+    let path = flood_fill_concave::<SimpleBezierPath, _, _, _, _>(
+        start_point,
+        &FillSettings::default(),
+        doughnut,
+    );
 
     assert!(path.is_some());
     assert!(path.as_ref().unwrap().len() != 0);

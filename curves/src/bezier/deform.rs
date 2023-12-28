@@ -1,3 +1,9 @@
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
 use super::curve::*;
 
 ///
@@ -6,7 +12,11 @@ use super::curve::*;
 /// This recomputes the control points such that the point at t on the original curve
 /// is moved by the vector specified by `offset`.
 ///
-pub fn move_point<CurveOut: BezierCurveFactory>(curve: &impl BezierCurve<Point=CurveOut::Point>, t: f64, offset: &CurveOut::Point) -> CurveOut {
+pub fn move_point<CurveOut: BezierCurveFactory>(
+    curve: &impl BezierCurve<Point = CurveOut::Point>,
+    t: f64,
+    offset: &CurveOut::Point,
+) -> CurveOut {
     // Fetch the points from the curve
     let w1 = curve.start_point();
     let w4 = curve.end_point();

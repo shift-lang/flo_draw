@@ -1,3 +1,9 @@
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
 //!
 //! Desync pipes provide a way to generate and process streams via a `Desync` object
 //!
@@ -22,7 +28,7 @@
 //! # extern crate desync;
 //! # use std::collections::HashSet;
 //! # use std::sync::*;
-//! # 
+//! #
 //! use futures::future;
 //! use futures::channel::mpsc;
 //! use futures::executor;
@@ -37,7 +43,7 @@
 //!
 //!     sender.send("Test".to_string()).await.unwrap();
 //!     sender.send("Another value".to_string()).await.unwrap();
-//! # 
+//! #
 //! #   assert!(desync_hashset.sync(|hashset| hashset.contains(&("Test".to_string()))))
 //! });
 //! ```
@@ -45,15 +51,15 @@
 
 use super::desync::*;
 
-use futures::*;
-use futures::future::{BoxFuture};
-use futures::stream::{Stream};
+use futures::future::BoxFuture;
+use futures::stream::Stream;
 use futures::task;
-use futures::task::{Poll, Context};
+use futures::task::{Context, Poll};
+use futures::*;
 
-use std::sync::*;
-use std::pin::{Pin};
 use std::collections::VecDeque;
+use std::pin::Pin;
+use std::sync::*;
 
 lazy_static! {
     /// Desync for disposing of references used in pipes (if a pipe is closed with pending data, this avoids clearing it in the same context as the pipe monitor)
@@ -67,8 +73,8 @@ const PIPE_BACKPRESSURE_COUNT: usize = 5;
 /// Wakes up a pipe context
 ///
 struct PipeWaker<Core, PollFn>
-    where
-        Core: Send + Unpin,
+where
+    Core: Send + Unpin,
 {
     /// If the context has not already been woken up, the context to wake
     context: Mutex<Option<Arc<PipeContext<Core, PollFn>>>>,
@@ -78,8 +84,8 @@ struct PipeWaker<Core, PollFn>
 /// Futures notifier used to wake up a pipe when a stream or future notifies
 ///
 struct PipeContext<Core, PollFn>
-    where
-        Core: Send + Unpin
+where
+    Core: Send + Unpin,
 {
     /// The desync target that will be woken when the stream notifies that it needs to be polled
     ///   We keep a weak reference so that if the stream/future is all that's left referencing the
@@ -91,9 +97,9 @@ struct PipeContext<Core, PollFn>
 }
 
 impl<Core, PollFn> PipeContext<Core, PollFn>
-    where
-        Core: 'static + Send + Unpin,
-        PollFn: 'static + Send + for<'a> FnMut(&'a mut Core, task::Waker) -> BoxFuture<'a, bool>
+where
+    Core: 'static + Send + Unpin,
+    PollFn: 'static + Send + for<'a> FnMut(&'a mut Core, task::Waker) -> BoxFuture<'a, bool>,
 {
     ///
     /// Creates a new pipe context, ready to poll
@@ -122,31 +128,38 @@ impl<Core, PollFn> PipeContext<Core, PollFn>
             let maybe_poll_fn = Arc::clone(&arc_self.poll_fn);
 
             // Schedule a polling operation on the desync
-            target.future_desync(move |core| {
-                async move {
-                    // Create a futures context from the context reference
-                    let waker = PipeWaker { context: Mutex::new(Some(Arc::clone(&arc_self))) };
-                    let waker = Arc::new(waker);
-                    let waker = task::waker(waker);
+            target
+                .future_desync(move |core| {
+                    {
+                        async move {
+                            // Create a futures context from the context reference
+                            let waker = PipeWaker {
+                                context: Mutex::new(Some(Arc::clone(&arc_self))),
+                            };
+                            let waker = Arc::new(waker);
+                            let waker = task::waker(waker);
 
-                    // Pass in to the poll function
-                    let future_poll = {
-                        let mut maybe_poll_fn = maybe_poll_fn.lock().unwrap();
-                        let future_poll = maybe_poll_fn.as_mut().map(move |poll_fn| {
-                            (poll_fn)(core, waker.clone())
-                        });
-                        future_poll
-                    };
+                            // Pass in to the poll function
+                            let future_poll = {
+                                let mut maybe_poll_fn = maybe_poll_fn.lock().unwrap();
+                                let future_poll = maybe_poll_fn
+                                    .as_mut()
+                                    .map(move |poll_fn| (poll_fn)(core, waker.clone()));
+                                future_poll
+                            };
 
-                    if let Some(future_poll) = future_poll {
-                        let keep_polling = future_poll.await;
-                        if !keep_polling {
-                            // Deallocate the function when it's time to stop polling altogether
-                            (*arc_self.poll_fn.lock().unwrap()) = None;
+                            if let Some(future_poll) = future_poll {
+                                let keep_polling = future_poll.await;
+                                if !keep_polling {
+                                    // Deallocate the function when it's time to stop polling altogether
+                                    (*arc_self.poll_fn.lock().unwrap()) = None;
+                                }
+                            }
                         }
                     }
-                }
-            }.boxed()).detach();
+                    .boxed()
+                })
+                .detach();
         } else {
             // Stream has woken up but the desync is no longer listening
             let old_poll_fn = arc_self.poll_fn.lock().unwrap().take();
@@ -159,9 +172,9 @@ impl<Core, PollFn> PipeContext<Core, PollFn>
 }
 
 impl<Core, PollFn> task::ArcWake for PipeWaker<Core, PollFn>
-    where
-        Core: 'static + Send + Unpin,
-        PollFn: 'static + Send + for<'a> FnMut(&'a mut Core, task::Waker) -> BoxFuture<'a, bool>,
+where
+    Core: 'static + Send + Unpin,
+    PollFn: 'static + Send + for<'a> FnMut(&'a mut Core, task::Waker) -> BoxFuture<'a, bool>,
 {
     fn wake_by_ref(arc_self: &Arc<Self>) {
         let context = arc_self.context.lock().unwrap().take();
@@ -184,11 +197,11 @@ impl<Core, PollFn> task::ArcWake for PipeWaker<Core, PollFn>
 /// start draining into the `Desync` object.
 ///
 pub fn pipe_in<Core, S, ProcessFn>(desync: Arc<Desync<Core>>, stream: S, process: ProcessFn)
-    where
-        Core: 'static + Send + Unpin,
-        S: 'static + Send + Unpin + Stream,
-        S::Item: Send,
-        ProcessFn: 'static + Send + for<'a> FnMut(&'a mut Core, S::Item) -> BoxFuture<'a, ()>,
+where
+    Core: 'static + Send + Unpin,
+    S: 'static + Send + Unpin + Stream,
+    S::Item: Send,
+    ProcessFn: 'static + Send + for<'a> FnMut(&'a mut Core, S::Item) -> BoxFuture<'a, ()>,
 {
     let stream = Arc::new(Mutex::new(stream));
     let process = Arc::new(Mutex::new(process));
@@ -220,7 +233,8 @@ pub fn pipe_in<Core, S, ProcessFn>(desync: Arc<Desync<Core>>, stream: S, process
                     }
                 }
             }
-        }.boxed()
+        }
+        .boxed()
     });
 
     // Trigger the initial poll
@@ -250,7 +264,7 @@ pub fn pipe_in<Core, S, ProcessFn>(desync: Arc<Desync<Core>>, stream: S, process
 /// # extern crate desync;
 /// # use std::collections::HashSet;
 /// # use std::sync::*;
-/// # 
+/// #
 /// use futures::prelude::*;
 /// use futures::future;
 /// use futures::channel::mpsc;
@@ -261,7 +275,7 @@ pub fn pipe_in<Core, S, ProcessFn>(desync: Arc<Desync<Core>>, stream: S, process
 ///     let desync_hashset          = Arc::new(Desync::new(HashSet::new()));
 ///     let (mut sender, receiver)  = mpsc::channel::<String>(5);
 ///
-///     let mut value_inserted      = pipe(Arc::clone(&desync_hashset), receiver, 
+///     let mut value_inserted      = pipe(Arc::clone(&desync_hashset), receiver,
 ///         |hashset, value| { future::ready((value.clone(), hashset.insert(value))).boxed() });
 ///
 ///     sender.send("Test".to_string()).await.unwrap();
@@ -274,15 +288,18 @@ pub fn pipe_in<Core, S, ProcessFn>(desync: Arc<Desync<Core>>, stream: S, process
 /// });
 /// ```
 ///
-pub fn pipe<Core, S, Output, ProcessFn>(desync: Arc<Desync<Core>>, stream: S, process: ProcessFn) -> PipeStream<Output>
-    where
-        Core: 'static + Send + Unpin,
-        S: 'static + Send + Unpin + Stream,
-        S::Item: Send,
-        Output: 'static + Send,
-        ProcessFn: 'static + Send + for<'a> FnMut(&'a mut Core, S::Item) -> BoxFuture<'a, Output>,
+pub fn pipe<Core, S, Output, ProcessFn>(
+    desync: Arc<Desync<Core>>,
+    stream: S,
+    process: ProcessFn,
+) -> PipeStream<Output>
+where
+    Core: 'static + Send + Unpin,
+    S: 'static + Send + Unpin + Stream,
+    S::Item: Send,
+    Output: 'static + Send,
+    ProcessFn: 'static + Send + for<'a> FnMut(&'a mut Core, S::Item) -> BoxFuture<'a, Output>,
 {
-
     // Prepare the streams
     let input_stream = Arc::new(Mutex::new(stream));
     let process = Arc::new(Mutex::new(process));
@@ -336,13 +353,17 @@ pub fn pipe<Core, S, Output, ProcessFn>(desync: Arc<Desync<Core>>, stream: S, pr
                     // Poll the stream
                     let next = {
                         let mut desync_context = Context::from_waker(&desync_waker);
-                        input_stream.lock().unwrap().poll_next_unpin(&mut desync_context)
+                        input_stream
+                            .lock()
+                            .unwrap()
+                            .poll_next_unpin(&mut desync_context)
                     };
 
                     match next {
                         // Wait for notification when the stream goes pending
                         Poll::Pending => {
-                            stream_core.lock().unwrap().notify_stream_closed = Some(desync_waker.clone());
+                            stream_core.lock().unwrap().notify_stream_closed =
+                                Some(desync_waker.clone());
                             return true;
                         }
 
@@ -381,7 +402,8 @@ pub fn pipe<Core, S, Output, ProcessFn>(desync: Arc<Desync<Core>>, stream: S, pr
                 // The stream core has been released
                 return false;
             }
-        }.boxed()
+        }
+        .boxed()
     });
 
     // Poll the context to start the stream running
@@ -467,14 +489,14 @@ impl<Item> Drop for PipeStream<Item> {
         core.closed = true;
 
         // Wake the stream to finish closing it
-        core.notify_stream_closed.take().map(|notify_stream_closed| notify_stream_closed.wake());
+        core.notify_stream_closed
+            .take()
+            .map(|notify_stream_closed| notify_stream_closed.wake());
 
         // Run the drop function
-        self.on_drop.take().map(|mut on_drop| {
-            REFERENCE_CHUTE.desync(move |_| {
-                (on_drop)()
-            })
-        });
+        self.on_drop
+            .take()
+            .map(|mut on_drop| REFERENCE_CHUTE.desync(move |_| (on_drop)()));
     }
 }
 

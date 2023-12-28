@@ -1,26 +1,32 @@
-use super::drawing_state::*;
-use super::layer::*;
-use super::prepared_layer::*;
-use super::pixel_programs::*;
-use super::texture::*;
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
 
-use crate::edgeplan::*;
-use crate::pixel::*;
-use crate::pixel_programs::*;
+use std::collections::HashMap;
+use std::sync::*;
 
 use flo_sparse_array::*;
 
 use flo_canvas as canvas;
 
-use std::collections::{HashMap};
-use std::sync::*;
+use crate::edgeplan::*;
+use crate::pixel::*;
+use crate::pixel_programs::*;
+
+use super::drawing_state::*;
+use super::layer::*;
+use super::pixel_programs::*;
+use super::prepared_layer::*;
+use super::texture::*;
 
 ///
 /// A `CanvasDrawing` represents the state of a drawing after a series of `Draw` commands have been processed
 ///
 pub struct CanvasDrawing<TPixel, const N: usize>
-    where
-        TPixel: 'static + Send + Sync + Pixel<N>,
+where
+    TPixel: 'static + Send + Sync + Pixel<N>,
 {
     /// The gamma correction value for the current drawing
     pub(super) gamma: f64,
@@ -69,8 +75,8 @@ pub struct CanvasDrawing<TPixel, const N: usize>
 }
 
 impl<TPixel, const N: usize> CanvasDrawing<TPixel, N>
-    where
-        TPixel: 'static + Send + Sync + Pixel<N>,
+where
+    TPixel: 'static + Send + Sync + Pixel<N>,
 {
     ///
     /// Creates a blank canvas drawing
@@ -87,7 +93,11 @@ impl<TPixel, const N: usize> CanvasDrawing<TPixel, N>
         let mut data_cache = program_cache.create_data_cache();
 
         // Default background colour is solid white
-        let background = program_cache.program_cache.store_program_data(&program_cache.solid_color, &mut data_cache, SolidColorData(TPixel::white()));
+        let background = program_cache.program_cache.store_program_data(
+            &program_cache.solid_color,
+            &mut data_cache,
+            SolidColorData(TPixel::white()),
+        );
 
         CanvasDrawing {
             gamma: 2.2,
@@ -120,7 +130,7 @@ impl<TPixel, const N: usize> CanvasDrawing<TPixel, N>
     ///
     /// Updates the state of this drawing with some drawing instructions
     ///
-    pub fn draw(&mut self, drawing: impl IntoIterator<Item=canvas::Draw>) {
+    pub fn draw(&mut self, drawing: impl IntoIterator<Item = canvas::Draw>) {
         for instruction in drawing {
             use canvas::Draw::*;
 
@@ -129,62 +139,138 @@ impl<TPixel, const N: usize> CanvasDrawing<TPixel, N>
                 ShowFrame => { /* For flow control outside of the renderer */ }
                 ResetFrame => { /* For flow control outside of the renderer */ }
 
-                Namespace(namespace) => { self.current_namespace = namespace; }
+                Namespace(namespace) => {
+                    self.current_namespace = namespace;
+                }
 
-                ClearCanvas(color) => { self.clear_canvas(TPixel::from_color(color, self.gamma)); }
-                Layer(layer_id) => { self.select_layer(layer_id); }
-                LayerBlend(layer_id, blend_mode) => { self.layer_blend(layer_id, blend_mode); }
-                LayerAlpha(layer_id, alpha) => { self.layer_alpha(layer_id, alpha as f64); }
-                ClearLayer => { self.clear_layer(self.current_layer); }
-                ClearAllLayers => { self.clear_all_layers(); }
-                SwapLayers(layer_1, layer_2) => { self.swap_layers(layer_1, layer_2); }
+                ClearCanvas(color) => {
+                    self.clear_canvas(TPixel::from_color(color, self.gamma));
+                }
+                Layer(layer_id) => {
+                    self.select_layer(layer_id);
+                }
+                LayerBlend(layer_id, blend_mode) => {
+                    self.layer_blend(layer_id, blend_mode);
+                }
+                LayerAlpha(layer_id, alpha) => {
+                    self.layer_alpha(layer_id, alpha as f64);
+                }
+                ClearLayer => {
+                    self.clear_layer(self.current_layer);
+                }
+                ClearAllLayers => {
+                    self.clear_all_layers();
+                }
+                SwapLayers(layer_1, layer_2) => {
+                    self.swap_layers(layer_1, layer_2);
+                }
 
-                Path(path_op) => { self.current_state.path_op(path_op); }
-                Fill => { self.fill(); }
-                Stroke => { self.stroke(); }
+                Path(path_op) => {
+                    self.current_state.path_op(path_op);
+                }
+                Fill => {
+                    self.fill();
+                }
+                Stroke => {
+                    self.stroke();
+                }
 
-                LineWidth(width) => { self.current_state.line_width(width as _); }
-                LineWidthPixels(width_pixels) => { self.current_state.line_width_pixels(width_pixels as _, self.height_pixels as _); }
-                LineJoin(join_style) => { self.current_state.line_join(join_style); }
-                LineCap(cap_style) => { self.current_state.line_cap(cap_style); }
+                LineWidth(width) => {
+                    self.current_state.line_width(width as _);
+                }
+                LineWidthPixels(width_pixels) => {
+                    self.current_state
+                        .line_width_pixels(width_pixels as _, self.height_pixels as _);
+                }
+                LineJoin(join_style) => {
+                    self.current_state.line_join(join_style);
+                }
+                LineCap(cap_style) => {
+                    self.current_state.line_cap(cap_style);
+                }
                 NewDashPattern => { /* todo!() - dash patterns not supported yet */ }
                 DashLength(_dash_length) => { /* todo!() - dash patterns not supported yet */ }
                 DashOffset(_dash_offset) => { /* todo!() - dash patterns not supported yet */ }
-                FillColor(fill_color) => { self.current_state.fill_solid_color(fill_color, &mut self.program_data_cache); }
-                FillTexture(texture, (x1, y1), (x2, y2)) => { self.fill_texture(texture, x1, y1, x2, y2); }
+                FillColor(fill_color) => {
+                    self.current_state
+                        .fill_solid_color(fill_color, &mut self.program_data_cache);
+                }
+                FillTexture(texture, (x1, y1), (x2, y2)) => {
+                    self.fill_texture(texture, x1, y1, x2, y2);
+                }
                 FillGradient(gradient, (x1, y1), (x2, y2)) => { /* todo!() */ }
                 FillTransform(transform) => { /* todo!() */ }
-                StrokeColor(stroke_color) => { self.current_state.stroke_solid_color(stroke_color, &mut self.program_data_cache); }
-                WindingRule(winding_rule) => { self.current_state.winding_rule(winding_rule); }
-                BlendMode(blend_mode) => { self.current_state.blend_mode(blend_mode, &mut self.program_data_cache); }
+                StrokeColor(stroke_color) => {
+                    self.current_state
+                        .stroke_solid_color(stroke_color, &mut self.program_data_cache);
+                }
+                WindingRule(winding_rule) => {
+                    self.current_state.winding_rule(winding_rule);
+                }
+                BlendMode(blend_mode) => {
+                    self.current_state
+                        .blend_mode(blend_mode, &mut self.program_data_cache);
+                }
 
-                IdentityTransform => { self.current_state.identity_transform(); }
-                CanvasHeight(height) => { self.current_state.canvas_height(height); }
-                CenterRegion((x1, y1), (x2, y2)) => { self.current_state.center_region((x1, y1), (x2, y2)); }
-                MultiplyTransform(transform) => { self.current_state.multiply_transform(transform); }
+                IdentityTransform => {
+                    self.current_state.identity_transform();
+                }
+                CanvasHeight(height) => {
+                    self.current_state.canvas_height(height);
+                }
+                CenterRegion((x1, y1), (x2, y2)) => {
+                    self.current_state.center_region((x1, y1), (x2, y2));
+                }
+                MultiplyTransform(transform) => {
+                    self.current_state.multiply_transform(transform);
+                }
 
-                Unclip => { self.unclip(); }
-                Clip => { self.set_clipping_path(); }
-                Store => { self.store_layer_edges(); }
-                Restore => { self.restore_layer_edges(); }
-                FreeStoredBuffer => { self.free_stored_edges(); }
-                PushState => { self.push_state() }
-                PopState => { self.pop_state() }
+                Unclip => {
+                    self.unclip();
+                }
+                Clip => {
+                    self.set_clipping_path();
+                }
+                Store => {
+                    self.store_layer_edges();
+                }
+                Restore => {
+                    self.restore_layer_edges();
+                }
+                FreeStoredBuffer => {
+                    self.free_stored_edges();
+                }
+                PushState => self.push_state(),
+                PopState => self.pop_state(),
 
-                Sprite(sprite_id) => { self.sprite(sprite_id); }
-                MoveSpriteFrom(sprite_id) => { self.sprite_move_from(sprite_id); }
-                ClearSprite => { self.clear_layer(self.current_layer); }
-                SpriteTransform(transform) => { self.current_state.sprite_transform(transform); }
-                DrawSprite(sprite_id) => { self.sprite_draw(sprite_id); }
+                Sprite(sprite_id) => {
+                    self.sprite(sprite_id);
+                }
+                MoveSpriteFrom(sprite_id) => {
+                    self.sprite_move_from(sprite_id);
+                }
+                ClearSprite => {
+                    self.clear_layer(self.current_layer);
+                }
+                SpriteTransform(transform) => {
+                    self.current_state.sprite_transform(transform);
+                }
+                DrawSprite(sprite_id) => {
+                    self.sprite_draw(sprite_id);
+                }
                 DrawSpriteWithFilters(sprite_id, filters) => { /* todo!() */ }
 
-                Texture(texture_id, texture_op) => { self.texture(texture_id, texture_op); }
+                Texture(texture_id, texture_op) => {
+                    self.texture(texture_id, texture_op);
+                }
                 Gradient(gradient_id, gradient_op) => { /* todo!() */ }
 
                 Font(_font_id, _font_op) => { /* Use the glyph and font streams in flo_canvas */ }
-                BeginLineLayout(_x, _y, _alignment) => { /* Use the glyph and font streams in flo_canvas */ }
+                BeginLineLayout(_x, _y, _alignment) => { /* Use the glyph and font streams in flo_canvas */
+                }
                 DrawLaidOutText => { /* Use the glyph and font streams in flo_canvas */ }
-                DrawText(_font_id, _text, _x, _y) => { /* Use the glyph and font streams in flo_canvas */ }
+                DrawText(_font_id, _text, _x, _y) => { /* Use the glyph and font streams in flo_canvas */
+                }
             }
         }
 
@@ -200,12 +286,15 @@ impl<TPixel, const N: usize> CanvasDrawing<TPixel, N>
     fn prepare_to_render(&mut self) {
         use rayon::prelude::*;
 
-        let mut layers = self.layers.iter_mut()
+        let mut layers = self
+            .layers
+            .iter_mut()
             .map(|(_, layer)| layer)
             .collect::<Vec<_>>();
 
         // Prepare each layer for rendering
-        layers.par_iter_mut()
+        layers
+            .par_iter_mut()
             .for_each(|layer| layer.edges.prepare_to_render());
     }
 
@@ -215,7 +304,8 @@ impl<TPixel, const N: usize> CanvasDrawing<TPixel, N>
     #[cfg(not(feature = "multithreading"))]
     fn prepare_to_render(&mut self) {
         // Prepare each layer for rendering
-        self.layers.iter_mut()
+        self.layers
+            .iter_mut()
             .for_each(|(_, layer)| layer.edges.prepare_to_render());
     }
 
@@ -227,11 +317,15 @@ impl<TPixel, const N: usize> CanvasDrawing<TPixel, N>
     /// `set_pixel_height()` should be the 'original' height. Ie, if rendering an image scaled for 1080p at 4k resolution, `set_pixel_height()`
     /// should be called with 1080 as the value, and this should be called with 2160.
     ///
-    pub fn program_runner<'a>(&'a self, height_pixels: f64) -> impl 'a + PixelProgramRunner<TPixel=TPixel> {
+    pub fn program_runner<'a>(
+        &'a self,
+        height_pixels: f64,
+    ) -> impl 'a + PixelProgramRunner<TPixel = TPixel> {
         // The y-position for the scene goes from -1 to 1 so the pixel size is 2.0/height
         let pixel_size = 2.0 / height_pixels;
 
-        self.program_data_cache.create_program_runner(PixelSize(pixel_size))
+        self.program_data_cache
+            .create_program_runner(PixelSize(pixel_size))
     }
 
     ///
@@ -249,7 +343,8 @@ impl<TPixel, const N: usize> CanvasDrawing<TPixel, N>
 
         layers.insert(0, initial_layer);
 
-        self.current_state.release_all_programs(&mut self.program_data_cache);
+        self.current_state
+            .release_all_programs(&mut self.program_data_cache);
 
         // Reset the state of the canvas
         self.current_layer = LayerHandle(0);
@@ -265,7 +360,11 @@ impl<TPixel, const N: usize> CanvasDrawing<TPixel, N>
         self.program_data_cache.free_all_data();
 
         // Create a new background colour
-        let background = self.program_cache.program_cache.store_program_data(&self.program_cache.solid_color, &mut self.program_data_cache, SolidColorData(new_background_color));
+        let background = self.program_cache.program_cache.store_program_data(
+            &self.program_cache.solid_color,
+            &mut self.program_data_cache,
+            SolidColorData(new_background_color),
+        );
         self.background = background;
     }
 
@@ -274,12 +373,16 @@ impl<TPixel, const N: usize> CanvasDrawing<TPixel, N>
     ///
     /// This can be used for manual rendering or other types of post-processing beyond the capabilities of `CanvasDrawingRegionRenderer`
     ///
-    pub fn edges_for_layer<'a>(&'a self, layer_id: canvas::LayerId) -> Option<&'a EdgePlan<Arc<dyn EdgeDescriptor>>> {
+    pub fn edges_for_layer<'a>(
+        &'a self,
+        layer_id: canvas::LayerId,
+    ) -> Option<&'a EdgePlan<Arc<dyn EdgeDescriptor>>> {
         // Map the layer to a layer handle, if it exists
         let layer_handle = self.ordered_layers.get(layer_id.0 as usize).copied()?;
 
         // Retrieve the edges for the layer with this handle
-        self.layers.get(layer_handle.0 as _)
+        self.layers
+            .get(layer_handle.0 as _)
             .map(|layer| &layer.edges)
     }
 }

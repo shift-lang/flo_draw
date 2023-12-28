@@ -1,5 +1,11 @@
-use flo_draw::*;
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
 use flo_draw::canvas::*;
+use flo_draw::*;
 
 ///
 /// Demonstrates using a clipping path
@@ -23,13 +29,12 @@ pub fn main() {
 
             gc.new_path();
             gc.circle(500.0, 500.0, 150.0);
-            // gc.circle(150.0, 850.0, 150.0);
-            gc.clip();
-            gc.new_path();
+            gc.circle(500.0, 600.0, 150.0);
             gc.circle(600.0, 500.0, 200.0);
             // gc.circle(150.0, 850.0, 100.0);
             gc.clip();
 
+            gc.winding_rule(WindingRule::NonZero);
             gc.new_path();
             gc.rect(0.0, 0.0, 1000.0, 1000.0);
             gc.fill_color(Color::Rgba(0.0, 0.0, 0.6, 1.0));
@@ -43,7 +48,7 @@ pub fn main() {
             gc.stroke();
 
             gc.unclip();
-            gc.unclip();
+            // gc.unclip();
 
             gc.new_path();
             gc.rect(100.0, 100.0, 200.0, 200.0);

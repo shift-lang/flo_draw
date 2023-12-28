@@ -1,10 +1,16 @@
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
 use super::fill_convex::*;
 use super::fill_settings::*;
 
+use crate::bezier::path::*;
+use crate::bezier::*;
 use crate::geo::*;
 use crate::line::*;
-use crate::bezier::*;
-use crate::bezier::path::*;
 
 use std::f64;
 
@@ -24,7 +30,7 @@ impl<Item> Into<Option<Item>> for ConcaveItem<Item> {
     fn into(self) -> Option<Item> {
         match self {
             ConcaveItem::Edge(item) => Some(item),
-            ConcaveItem::SelfIntersection(_) => None
+            ConcaveItem::SelfIntersection(_) => None,
         }
     }
 }
@@ -42,9 +48,12 @@ struct LongEdge<Coord> {
 ///
 /// Retrieves the 'long' edges from a set of edges returned by a raycast tracing operation
 ///
-fn find_long_edges<Coord, Item>(edges: &[RayCollision<Coord, Item>], edge_min_len_squared: f64) -> Vec<LongEdge<Coord>>
-    where
-        Coord: Coordinate + Coordinate2D,
+fn find_long_edges<Coord, Item>(
+    edges: &[RayCollision<Coord, Item>],
+    edge_min_len_squared: f64,
+) -> Vec<LongEdge<Coord>>
+where
+    Coord: Coordinate + Coordinate2D,
 {
     // Find the edges where we need to cast extra rays
     let mut long_edges = vec![];
@@ -77,8 +86,8 @@ fn find_long_edges<Coord, Item>(edges: &[RayCollision<Coord, Item>], edge_min_le
 /// Determines if the 'to' position is further away from the 'center' position than the 'from' position
 ///
 fn ray_is_moving_outwards<Coord>(center: &Coord, from: &Coord, to: &Coord) -> bool
-    where
-        Coord: Coordinate + Coordinate2D,
+where
+    Coord: Coordinate + Coordinate2D,
 {
     // Determine where the 'to' point is along this ray
     let ray = (*center, *from);
@@ -96,9 +105,13 @@ fn ray_is_moving_outwards<Coord>(center: &Coord, from: &Coord, to: &Coord) -> bo
 /// If they're closer than the minimum size, we can remove the edge by moving all the points that were found on the other
 /// side into a line.
 ///
-fn remove_small_gaps<Coord, Item>(center: &Coord, edges: &mut Vec<RayCollision<Coord, Item>>, long_edges: &mut Vec<LongEdge<Coord>>, min_gap_size: f64)
-    where
-        Coord: Coordinate + Coordinate2D,
+fn remove_small_gaps<Coord, Item>(
+    center: &Coord,
+    edges: &mut Vec<RayCollision<Coord, Item>>,
+    long_edges: &mut Vec<LongEdge<Coord>>,
+    min_gap_size: f64,
+) where
+    Coord: Coordinate + Coordinate2D,
 {
     // To avoid calculating a lot of square roots, square the min gap size
     let min_gap_sq = min_gap_size * min_gap_size;
@@ -109,12 +122,18 @@ fn remove_small_gaps<Coord, Item>(center: &Coord, edges: &mut Vec<RayCollision<C
     // Inspect the 'long edges' as pairs (they need to be in order for this to work)
     for edge1_idx in 0..long_edges.len() {
         // Going to measure the distance between this edge and the following one
-        let edge2_idx = if edge1_idx < long_edges.len() - 1 { edge1_idx + 1 } else { 0 };
+        let edge2_idx = if edge1_idx < long_edges.len() - 1 {
+            edge1_idx + 1
+        } else {
+            0
+        };
         let edge1 = &long_edges[edge1_idx];
         let edge2 = &long_edges[edge2_idx];
 
         // Edge1 must be moving out from the center
-        if ray_is_moving_outwards(center, &edge1.start, &edge1.end) && !ray_is_moving_outwards(center, &edge2.start, &edge2.end) {
+        if ray_is_moving_outwards(center, &edge1.start, &edge1.end)
+            && !ray_is_moving_outwards(center, &edge2.start, &edge2.end)
+        {
             // Work out the gap between the start and the end of this gap
             let start_pos = &edge1.start;
             let end_pos = &edge2.end;
@@ -137,11 +156,14 @@ fn remove_small_gaps<Coord, Item>(center: &Coord, edges: &mut Vec<RayCollision<C
                     // Map this edge to the gap line
                     let edge = &mut edges[edge_num];
                     let edge_ray = (*center, edge.position);
-                    edge.position = line_intersects_ray(&edge_ray, &gap_line).unwrap_or(edge.position);
+                    edge.position =
+                        line_intersects_ray(&edge_ray, &gap_line).unwrap_or(edge.position);
 
                     // Move to the next edge
                     edge_num += 1;
-                    if edge_num >= edges.len() { edge_num = 0; }
+                    if edge_num >= edges.len() {
+                        edge_num = 0;
+                    }
                 }
 
                 // Remove these edges from consideration for future raycast operations
@@ -175,22 +197,26 @@ fn remove_small_gaps<Coord, Item>(center: &Coord, edges: &mut Vec<RayCollision<C
 /// Collisions generated internally will have 'None' set for the `what` field of the ray collision (this is why the field is made
 /// optional by this call)
 ///
-pub fn trace_outline_concave<Coord, Item, RayList, RayFn>(center: Coord, options: &FillSettings, cast_ray: RayFn) -> Vec<RayCollision<Coord, Option<Item>>>
-    where
-        Coord: Coordinate + Coordinate2D,
-        RayList: IntoIterator<Item=RayCollision<Coord, Item>>,
-        RayFn: Fn(Coord, Coord) -> RayList,
+pub fn trace_outline_concave<Coord, Item, RayList, RayFn>(
+    center: Coord,
+    options: &FillSettings,
+    cast_ray: RayFn,
+) -> Vec<RayCollision<Coord, Option<Item>>>
+where
+    Coord: Coordinate + Coordinate2D,
+    RayList: IntoIterator<Item = RayCollision<Coord, Item>>,
+    RayFn: Fn(Coord, Coord) -> RayList,
 {
     // Modify the raycasting function to return concave items (so we can distinguish between edges we introduced and ones matched by the original raycasting algorithm)
     // TODO: this just ensures we return optional items
     let cast_ray = &cast_ray;
     let cast_ray = &|from, to| {
-        cast_ray(from, to).into_iter().map(|collision| {
-            RayCollision {
+        cast_ray(from, to)
+            .into_iter()
+            .map(|collision| RayCollision {
                 position: collision.position,
                 what: ConcaveItem::Edge(collision.what),
-            }
-        })
+            })
     };
 
     // The edge min length is the length of edge we need to see before we'll 'look around' a corner
@@ -239,7 +265,8 @@ pub fn trace_outline_concave<Coord, Item, RayList, RayFn>(center: Coord, options
                 let ray_line = (from, to);
 
                 // Generate the collisions with the 'long edges' where we'll be considering casting more rays later on
-                let extra_collisions = long_edges.iter()
+                let extra_collisions = long_edges
+                    .iter()
                     .enumerate()
                     .filter(|(edge_index, _edge)| *edge_index != long_edge_index)
                     .filter_map(move |(edge_index, edge)| {
@@ -247,11 +274,13 @@ pub fn trace_outline_concave<Coord, Item, RayList, RayFn>(center: Coord, options
                         let edge_line = (edge.start, edge.end);
 
                         // Detect where they intersect
-                        if let Some(intersection_point) = line_intersects_ray(&edge_line, &ray_line) {
+                        if let Some(intersection_point) = line_intersects_ray(&edge_line, &ray_line)
+                        {
                             // Move the intersection point slightly inside the shape along the direction of the ray (so we can add the final result up properly)
                             let length = to.distance_to(&from);
                             let direction = (to - from) * (4.0 / length);
-                            let intersection_point = intersection_point + (direction * self_intersection_distance);
+                            let intersection_point =
+                                intersection_point + (direction * self_intersection_distance);
 
                             // Generate a colision at this point
                             Some(RayCollision {
@@ -268,7 +297,12 @@ pub fn trace_outline_concave<Coord, Item, RayList, RayFn>(center: Coord, options
             };
 
             // Perform raycasting over a 180 degree angle to get the next set of edges
-            let mut new_edges = trace_outline_convex_partial(center_point, options, line_angle..(line_angle + f64::consts::PI), cast_ray_to_edges);
+            let mut new_edges = trace_outline_convex_partial(
+                center_point,
+                options,
+                line_angle..(line_angle + f64::consts::PI),
+                cast_ray_to_edges,
+            );
 
             if new_edges.len() > 2 {
                 // We ignore the first point as it will be the point along the existing edge (ie, will be the start point we already know)
@@ -283,7 +317,8 @@ pub fn trace_outline_concave<Coord, Item, RayList, RayFn>(center: Coord, options
                 }
 
                 // Find new long edges in the new edges
-                let mut new_long_edges = find_long_edges(&new_edges[0..(new_edges.len())], edge_min_len_squared);
+                let mut new_long_edges =
+                    find_long_edges(&new_edges[0..(new_edges.len())], edge_min_len_squared);
 
                 // Don't count the edge ending at point 0 (that's the edge we just came from)
                 new_long_edges.retain(|edge| edge.edge_index.1 != 0);
@@ -293,11 +328,13 @@ pub fn trace_outline_concave<Coord, Item, RayList, RayFn>(center: Coord, options
                     remove_small_gaps(&center, &mut new_edges, &mut new_long_edges, min_gap);
                 }
 
-
                 // Insert the new edges into the existing edge list (except the first which will be a duplicate)
                 let edge_index = next_edge_index;
                 let num_new_edges = new_edges.len() - 1;
-                edges.splice(edge_index..edge_index, new_edges.into_iter().take(num_new_edges));
+                edges.splice(
+                    edge_index..edge_index,
+                    new_edges.into_iter().take(num_new_edges),
+                );
 
                 // Update the remaining long edge indexes
                 for long_edge in long_edges.iter_mut() {
@@ -325,7 +362,8 @@ pub fn trace_outline_concave<Coord, Item, RayList, RayFn>(center: Coord, options
     }
 
     // The edges we retrieved are the result
-    edges.into_iter()
+    edges
+        .into_iter()
         .map(|collision| RayCollision {
             position: collision.position,
             what: collision.what.into(),
@@ -340,28 +378,41 @@ pub fn trace_outline_concave<Coord, Item, RayList, RayFn>(center: Coord, options
 /// area is not entirely closed (from the point of view of the ray-casting function), then a line will be
 /// generated between the gaps.
 ///
-pub fn flood_fill_concave<Path, Coord, Item, RayList, RayFn>(center: Coord, options: &FillSettings, cast_ray: RayFn) -> Option<Vec<Path>>
-    where
-        Path: BezierPathFactory<Point=Coord>,
-        Coord: Coordinate + Coordinate2D,
-        RayList: IntoIterator<Item=RayCollision<Coord, Item>>,
-        RayFn: Fn(Coord, Coord) -> RayList,
+pub fn flood_fill_concave<Path, Coord, Item, RayList, RayFn>(
+    center: Coord,
+    options: &FillSettings,
+    cast_ray: RayFn,
+) -> Option<Vec<Path>>
+where
+    Path: BezierPathFactory<Point = Coord>,
+    Coord: Coordinate + Coordinate2D,
+    RayList: IntoIterator<Item = RayCollision<Coord, Item>>,
+    RayFn: Fn(Coord, Coord) -> RayList,
 {
     // Trace where the ray casting algorithm indicates collisions with the specified center
     let collisions = trace_outline_concave(center, options, cast_ray);
 
     // Build a path using the LMS algorithm
-    let curves = fit_curve_loop::<Curve<Coord>>(&collisions.iter().map(|collision| collision.position).collect::<Vec<_>>(), options.fit_error);
+    let curves = fit_curve_loop::<Curve<Coord>>(
+        &collisions
+            .iter()
+            .map(|collision| collision.position)
+            .collect::<Vec<_>>(),
+        options.fit_error,
+    );
 
     if let Some(curves) = curves {
         if !curves.is_empty() {
             // Convert the curves into a path
             let initial_point = curves[0].start_point();
-            let overlapped_path = Path::from_points(initial_point, curves.into_iter().map(|curve| {
-                let (cp1, cp2) = curve.control_points();
-                let end_point = curve.end_point();
-                (cp1, cp2, end_point)
-            }));
+            let overlapped_path = Path::from_points(
+                initial_point,
+                curves.into_iter().map(|curve| {
+                    let (cp1, cp2) = curve.control_points();
+                    let end_point = curve.end_point();
+                    (cp1, cp2, end_point)
+                }),
+            );
 
             // Remove any interior points that the path might have (this happens when the fill path overlaps itself)
             Some(path_remove_interior_points(&vec![overlapped_path], 0.01))

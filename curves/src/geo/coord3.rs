@@ -1,5 +1,11 @@
-use super::coordinate::*;
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
 use super::coord2::*;
+use super::coordinate::*;
 
 use std::ops::*;
 
@@ -102,7 +108,9 @@ impl Coordinate for Coord3 {
     }
 
     #[inline]
-    fn len() -> usize { 3 }
+    fn len() -> usize {
+        3
+    }
 
     #[inline]
     fn get(&self, index: usize) -> f64 {
@@ -110,16 +118,24 @@ impl Coordinate for Coord3 {
             0 => self.0,
             1 => self.1,
             2 => self.2,
-            _ => panic!("Coord3 only has three components")
+            _ => panic!("Coord3 only has three components"),
         }
     }
 
     fn from_biggest_components(p1: Coord3, p2: Coord3) -> Coord3 {
-        Coord3(f64::from_biggest_components(p1.0, p2.0), f64::from_biggest_components(p1.1, p2.1), f64::from_biggest_components(p1.2, p2.2))
+        Coord3(
+            f64::from_biggest_components(p1.0, p2.0),
+            f64::from_biggest_components(p1.1, p2.1),
+            f64::from_biggest_components(p1.2, p2.2),
+        )
     }
 
     fn from_smallest_components(p1: Coord3, p2: Coord3) -> Coord3 {
-        Coord3(f64::from_smallest_components(p1.0, p2.0), f64::from_smallest_components(p1.1, p2.1), f64::from_smallest_components(p1.2, p2.2))
+        Coord3(
+            f64::from_smallest_components(p1.0, p2.0),
+            f64::from_smallest_components(p1.1, p2.1),
+            f64::from_smallest_components(p1.2, p2.2),
+        )
     }
 
     #[inline]

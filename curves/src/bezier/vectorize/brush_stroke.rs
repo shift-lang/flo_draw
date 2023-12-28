@@ -1,10 +1,16 @@
-use super::ColumnSampledContour;
-use super::distance_field::*;
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
 use super::daub_brush_distance_field::*;
+use super::distance_field::*;
 use super::marching_squares::*;
 use super::sampled_contour::*;
-use crate::bezier::*;
+use super::ColumnSampledContour;
 use crate::bezier::path::*;
+use crate::bezier::*;
 use crate::geo::*;
 
 ///
@@ -22,7 +28,11 @@ pub trait DaubBrush {
     ///
     /// The centered position will be chosen so that `centered_at.x()-radius` and `centered_at.y()-radius` is greater than 1.
     ///
-    fn create_daub(&self, centered_at: impl Coordinate + Coordinate2D, radius: f64) -> Option<(Self::DaubDistanceField, ContourPosition)>;
+    fn create_daub(
+        &self,
+        centered_at: impl Coordinate + Coordinate2D,
+        radius: f64,
+    ) -> Option<(Self::DaubDistanceField, ContourPosition)>;
 }
 
 ///
@@ -33,14 +43,22 @@ pub trait DaubBrush {
 ///
 /// The curve passed in to this function should have 3 dimensions: the third dimension is the radius of the brush stroke at each point.
 ///
-/// The step value is the distance between each daub (smaller distances generate more points but are more accurate) and the max error is 
+/// The step value is the distance between each daub (smaller distances generate more points but are more accurate) and the max error is
 /// the amount of 'jitter' that is allowed in the spacing of the daubs. Values of `0.5` and `0.25` should produce good results.
 ///
-pub fn brush_stroke_daubs_from_curve<'a, TBrush, TCurve>(distance_field: &'a TBrush, curve: &'a TCurve, step: f64, max_error: f64) -> (impl 'a + Iterator<Item=(TBrush::DaubDistanceField, ContourPosition)>, Coord2)
-    where
-        TCurve: BezierCurve,
-        TCurve::Point: Coordinate + Coordinate3D,
-        TBrush: 'a + DaubBrush,
+pub fn brush_stroke_daubs_from_curve<'a, TBrush, TCurve>(
+    distance_field: &'a TBrush,
+    curve: &'a TCurve,
+    step: f64,
+    max_error: f64,
+) -> (
+    impl 'a + Iterator<Item = (TBrush::DaubDistanceField, ContourPosition)>,
+    Coord2,
+)
+where
+    TCurve: BezierCurve,
+    TCurve::Point: Coordinate + Coordinate3D,
+    TBrush: 'a + DaubBrush,
 {
     // Read the points from the curve
     let start_point = curve.start_point();
@@ -48,7 +66,11 @@ pub fn brush_stroke_daubs_from_curve<'a, TBrush, TCurve>(distance_field: &'a TBr
     let end_point = curve.end_point();
 
     // Create a 2D curve (this is the one we walk along: we don't care about moving equidistantly along the z axis)
-    let curve2d = Curve::from_points(Coord2(start_point.x(), start_point.y()), (Coord2(cp1.x(), cp1.y()), Coord2(cp2.x(), cp2.y())), Coord2(end_point.x(), end_point.y()));
+    let curve2d = Curve::from_points(
+        Coord2(start_point.x(), start_point.y()),
+        (Coord2(cp1.x(), cp1.y()), Coord2(cp2.x(), cp2.y())),
+        Coord2(end_point.x(), end_point.y()),
+    );
 
     // We'll use the z positions for the radius
     let radius = Curve::from_points(start_point.z(), (cp1.z(), cp2.z()), end_point.z());
@@ -62,20 +84,25 @@ pub fn brush_stroke_daubs_from_curve<'a, TBrush, TCurve>(distance_field: &'a TBr
     let offset = Coord2(offset.x() - radius_max - 1.0, offset.y() - radius_max - 1.0);
 
     // Subtract the offset from the curve
-    let curve2d = Curve::from_points(Coord2(start_point.x(), start_point.y()) - offset, (Coord2(cp1.x(), cp1.y()) - offset, Coord2(cp2.x(), cp2.y()) - offset), Coord2(end_point.x(), end_point.y()) - offset);
+    let curve2d = Curve::from_points(
+        Coord2(start_point.x(), start_point.y()) - offset,
+        (
+            Coord2(cp1.x(), cp1.y()) - offset,
+            Coord2(cp2.x(), cp2.y()) - offset,
+        ),
+        Coord2(end_point.x(), end_point.y()) - offset,
+    );
 
     // Create the daubs by walking the 2D curve
-    let iterator = walk_curve_evenly_map(curve2d, step, max_error,
-                                         move |curve_section| {
-                                             let t_mid = curve_section.t_for_t(0.5);
+    let iterator = walk_curve_evenly_map(curve2d, step, max_error, move |curve_section| {
+        let t_mid = curve_section.t_for_t(0.5);
 
-                                             let pos = curve2d.point_at_pos(t_mid);
-                                             let radius = radius.point_at_pos(t_mid);
+        let pos = curve2d.point_at_pos(t_mid);
+        let radius = radius.point_at_pos(t_mid);
 
-                                             (pos, radius)
-                                         }).flat_map(move |(pos, radius)| {
-        distance_field.create_daub(pos, radius)
-    });
+        (pos, radius)
+    })
+    .flat_map(move |(pos, radius)| distance_field.create_daub(pos, radius));
 
     (iterator, offset)
 }
@@ -88,14 +115,22 @@ pub fn brush_stroke_daubs_from_curve<'a, TBrush, TCurve>(distance_field: &'a TBr
 ///
 /// The curve passed in to this function should have 3 dimensions: the third dimension is the radius of the brush stroke at each point.
 ///
-/// The step value is the distance between each daub (smaller distances generate more points but are more accurate) and the max error is 
+/// The step value is the distance between each daub (smaller distances generate more points but are more accurate) and the max error is
 /// the amount of 'jitter' that is allowed in the spacing of the daubs. Values of `0.5` and `0.25` should produce good results.
 ///
-pub fn brush_stroke_daubs_from_path<'a, TBrush, TPath>(distance_field: &'a TBrush, path: &'a TPath, step: f64, max_error: f64) -> (impl 'a + Iterator<Item=(TBrush::DaubDistanceField, ContourPosition)>, Coord2)
-    where
-        TPath: BezierPath,
-        TPath::Point: Coordinate + Coordinate3D,
-        TBrush: 'a + DaubBrush,
+pub fn brush_stroke_daubs_from_path<'a, TBrush, TPath>(
+    distance_field: &'a TBrush,
+    path: &'a TPath,
+    step: f64,
+    max_error: f64,
+) -> (
+    impl 'a + Iterator<Item = (TBrush::DaubDistanceField, ContourPosition)>,
+    Coord2,
+)
+where
+    TPath: BezierPath,
+    TPath::Point: Coordinate + Coordinate3D,
+    TBrush: 'a + DaubBrush,
 {
     // Break the path up into 2D curves for the main path, and 1D curves for the radius
     let mut curves = vec![];
@@ -103,7 +138,11 @@ pub fn brush_stroke_daubs_from_path<'a, TBrush, TPath>(distance_field: &'a TBrus
     for path_curve in path.to_curves::<Curve<_>>() {
         let (start_point, (cp1, cp2), end_point) = path_curve.all_points();
 
-        let curve2d = Curve::from_points(Coord2(start_point.x(), start_point.y()), (Coord2(cp1.x(), cp1.y()), Coord2(cp2.x(), cp2.y())), Coord2(end_point.x(), end_point.y()));
+        let curve2d = Curve::from_points(
+            Coord2(start_point.x(), start_point.y()),
+            (Coord2(cp1.x(), cp1.y()), Coord2(cp2.x(), cp2.y())),
+            Coord2(end_point.x(), end_point.y()),
+        );
         let radius = Curve::from_points(start_point.z(), (cp1.z(), cp2.z()), end_point.z());
 
         curves.push((curve2d, radius));
@@ -134,11 +173,16 @@ pub fn brush_stroke_daubs_from_path<'a, TBrush, TPath>(distance_field: &'a TBrus
     let offset = Coord2(offset.x() - radius_max - 1.0, offset.y() - radius_max - 1.0);
 
     // Walk the curves to generate the points for this path
-    let iterator = curves.into_iter()
+    let iterator = curves
+        .into_iter()
         .enumerate()
         .flat_map(move |(idx, (curve2d, radius))| {
             let (start_point, (cp1, cp2), end_point) = curve2d.all_points();
-            let curve2d_offset = Curve::from_points(start_point - offset, (cp1 - offset, cp2 - offset), end_point - offset);
+            let curve2d_offset = Curve::from_points(
+                start_point - offset,
+                (cp1 - offset, cp2 - offset),
+                end_point - offset,
+            );
             let skip = if idx == 0 { 0 } else { 1 };
 
             walk_curve_evenly_map(curve2d_offset, step, max_error, move |curve_section| {
@@ -149,10 +193,9 @@ pub fn brush_stroke_daubs_from_path<'a, TBrush, TPath>(distance_field: &'a TBrus
                 let radius = radius.point_at_pos(t_mid);
 
                 (pos, radius)
-            }).skip(skip)
-                .flat_map(move |(pos, radius)| {
-                    distance_field.create_daub(pos, radius)
-                })
+            })
+            .skip(skip)
+            .flat_map(move |(pos, radius)| distance_field.create_daub(pos, radius))
         });
 
     (iterator, offset)
@@ -175,14 +218,19 @@ pub fn brush_stroke_daubs_from_path<'a, TBrush, TPath>(distance_field: &'a TBrus
 /// the daubs and the final path: `0.25` is a good default value for this parameter. Too low a value for `max_error` may produce artifacts
 /// from over-fitting against the shape of the distance field.
 ///
-pub fn brush_stroke_from_curve<TPath, TBrushCurve, TBrush>(distance_field: &TBrush, curve: &TBrushCurve, step: f64, max_error: f64) -> Vec<TPath>
-    where
-        TPath: BezierPathFactory,
-        TPath::Point: Coordinate + Coordinate2D,
-        TBrushCurve: BezierCurve,
-        TBrushCurve::Point: Coordinate + Coordinate3D,
-        TBrush: DaubBrush,
-        TBrush::DaubDistanceField: SampledSignedDistanceField,
+pub fn brush_stroke_from_curve<TPath, TBrushCurve, TBrush>(
+    distance_field: &TBrush,
+    curve: &TBrushCurve,
+    step: f64,
+    max_error: f64,
+) -> Vec<TPath>
+where
+    TPath: BezierPathFactory,
+    TPath::Point: Coordinate + Coordinate2D,
+    TBrushCurve: BezierCurve,
+    TBrushCurve::Point: Coordinate + Coordinate3D,
+    TBrush: DaubBrush,
+    TBrush::DaubDistanceField: SampledSignedDistanceField,
 {
     let (daubs, offset) = brush_stroke_daubs_from_curve(distance_field, curve, step, max_error);
     let distance_field = DaubBrushDistanceField::from_daubs(daubs);
@@ -190,7 +238,9 @@ pub fn brush_stroke_from_curve<TPath, TBrushCurve, TBrush>(distance_field: &TBru
 
     let offset = TPath::Point::from_components(&[offset.x(), offset.y()]);
 
-    paths.iter_mut().for_each(|path| *path = path.with_offset(offset));
+    paths
+        .iter_mut()
+        .for_each(|path| *path = path.with_offset(offset));
 
     paths
 }
@@ -212,14 +262,19 @@ pub fn brush_stroke_from_curve<TPath, TBrushCurve, TBrush>(distance_field: &TBru
 /// the daubs and the final path: `0.25` is a good default value for this parameter. Too low a value for `max_error` may produce artifacts
 /// from over-fitting against the shape of the distance field.
 ///
-pub fn brush_stroke_from_path<TPath, TBrushPath, TBrush>(distance_field: &TBrush, path: &TBrushPath, step: f64, max_error: f64) -> Vec<TPath>
-    where
-        TPath: BezierPathFactory,
-        TPath::Point: Coordinate + Coordinate2D,
-        TBrushPath: BezierPath,
-        TBrushPath::Point: Coordinate + Coordinate3D,
-        TBrush: DaubBrush,
-        TBrush::DaubDistanceField: SampledSignedDistanceField,
+pub fn brush_stroke_from_path<TPath, TBrushPath, TBrush>(
+    distance_field: &TBrush,
+    path: &TBrushPath,
+    step: f64,
+    max_error: f64,
+) -> Vec<TPath>
+where
+    TPath: BezierPathFactory,
+    TPath::Point: Coordinate + Coordinate2D,
+    TBrushPath: BezierPath,
+    TBrushPath::Point: Coordinate + Coordinate3D,
+    TBrush: DaubBrush,
+    TBrush::DaubDistanceField: SampledSignedDistanceField,
 {
     let (daubs, offset) = brush_stroke_daubs_from_path(distance_field, path, step, max_error);
     let distance_field = DaubBrushDistanceField::from_daubs(daubs);
@@ -227,7 +282,9 @@ pub fn brush_stroke_from_path<TPath, TBrushPath, TBrush>(distance_field: &TBrush
 
     let offset = TPath::Point::from_components(&[offset.x(), offset.y()]);
 
-    paths.iter_mut().for_each(|path| *path = path.with_offset(offset));
+    paths
+        .iter_mut()
+        .for_each(|path| *path = path.with_offset(offset));
 
     paths
 }
@@ -249,15 +306,20 @@ pub fn brush_stroke_from_path<TPath, TBrushPath, TBrush>(distance_field: &TBrush
 /// the daubs and the final path: `0.25` is a good default value for this parameter. Too low a value for `max_error` may produce artifacts
 /// from over-fitting against the shape of the distance field.
 ///
-pub fn brush_stroke_from_path_intercepts<TPath, TBrushPath, TBrush>(distance_field: &TBrush, path: &TBrushPath, step: f64, max_error: f64) -> Vec<TPath>
-    where
-        TPath: BezierPathFactory,
-        TPath::Point: Coordinate + Coordinate2D,
-        TBrushPath: BezierPath,
-        TBrushPath::Point: Coordinate + Coordinate3D,
-        TBrush: DaubBrush,
-        TBrush::DaubDistanceField: SampledSignedDistanceField,
-        <TBrush::DaubDistanceField as SampledSignedDistanceField>::Contour: ColumnSampledContour,
+pub fn brush_stroke_from_path_intercepts<TPath, TBrushPath, TBrush>(
+    distance_field: &TBrush,
+    path: &TBrushPath,
+    step: f64,
+    max_error: f64,
+) -> Vec<TPath>
+where
+    TPath: BezierPathFactory,
+    TPath::Point: Coordinate + Coordinate2D,
+    TBrushPath: BezierPath,
+    TBrushPath::Point: Coordinate + Coordinate3D,
+    TBrush: DaubBrush,
+    TBrush::DaubDistanceField: SampledSignedDistanceField,
+    <TBrush::DaubDistanceField as SampledSignedDistanceField>::Contour: ColumnSampledContour,
 {
     let (daubs, offset) = brush_stroke_daubs_from_path(distance_field, path, step, max_error);
     let distance_field = DaubBrushDistanceField::from_daubs(daubs);
@@ -265,7 +327,9 @@ pub fn brush_stroke_from_path_intercepts<TPath, TBrushPath, TBrush>(distance_fie
 
     let offset = TPath::Point::from_components(&[offset.x(), offset.y()]);
 
-    paths.iter_mut().for_each(|path| *path = path.with_offset(offset));
+    paths
+        .iter_mut()
+        .for_each(|path| *path = path.with_offset(offset));
 
     paths
 }

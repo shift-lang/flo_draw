@@ -1,10 +1,26 @@
-use flo_curves::geo::*;
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
 use flo_curves::bezier::*;
+use flo_curves::geo::*;
 
 #[test]
 fn line_to_sine_wave() {
-    let line = Curve::from_points(Coord2(100.0, 100.0), (Coord2(100.0, 100.0), Coord2(400.0, 100.0)), Coord2(400.0, 100.0));
-    let distorted = distort_curve::<_, _, Curve<_>>(&line, |pos, _t| Coord2(pos.x(), pos.y() + (pos.x() * 20.0).sin()), 1.0, 1.0).expect("Fit curve");
+    let line = Curve::from_points(
+        Coord2(100.0, 100.0),
+        (Coord2(100.0, 100.0), Coord2(400.0, 100.0)),
+        Coord2(400.0, 100.0),
+    );
+    let distorted = distort_curve::<_, _, Curve<_>>(
+        &line,
+        |pos, _t| Coord2(pos.x(), pos.y() + (pos.x() * 20.0).sin()),
+        1.0,
+        1.0,
+    )
+    .expect("Fit curve");
 
     for curve in distorted.into_iter() {
         println!("{:?}", curve);
@@ -17,7 +33,13 @@ fn line_to_sine_wave() {
             let expected_y = 100.0 + (pos.x() * 20.0).sin();
             let actual_y = pos.y();
 
-            println!("  {:?} {:?} {:?} {:?}", t_mid, expected_y, actual_y, (expected_y - actual_y).abs());
+            println!(
+                "  {:?} {:?} {:?} {:?}",
+                t_mid,
+                expected_y,
+                actual_y,
+                (expected_y - actual_y).abs()
+            );
 
             assert!((expected_y - actual_y).abs() < 4.0);
         }

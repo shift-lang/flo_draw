@@ -1,3 +1,9 @@
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
 use super::sampled_contour::*;
 
 use smallvec::*;
@@ -11,8 +17,8 @@ use std::mem;
 /// transformed by this iterator.
 ///
 pub struct EdgesByScanlineIterator<TIterator>
-    where
-        TIterator: Iterator<Item=(ContourPosition, ContourCell)>,
+where
+    TIterator: Iterator<Item = (ContourPosition, ContourCell)>,
 {
     // The contour iterator
     iterator: TIterator,
@@ -25,8 +31,8 @@ pub struct EdgesByScanlineIterator<TIterator>
 }
 
 impl<TIterator> From<TIterator> for EdgesByScanlineIterator<TIterator>
-    where
-        TIterator: Iterator<Item=(ContourPosition, ContourCell)>,
+where
+    TIterator: Iterator<Item = (ContourPosition, ContourCell)>,
 {
     fn from(iterator: TIterator) -> EdgesByScanlineIterator<TIterator> {
         let mut iterator = iterator;
@@ -48,8 +54,8 @@ impl<TIterator> From<TIterator> for EdgesByScanlineIterator<TIterator>
 }
 
 impl<TIterator> Iterator for EdgesByScanlineIterator<TIterator>
-    where
-        TIterator: Iterator<Item=(ContourPosition, ContourCell)>,
+where
+    TIterator: Iterator<Item = (ContourPosition, ContourCell)>,
 {
     type Item = (usize, SmallVec<[(usize, ContourCell); 4]>);
 

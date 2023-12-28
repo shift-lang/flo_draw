@@ -1,21 +1,35 @@
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
 use super::error::*;
-use super::opengl::*;
 use super::offscreen_trait::*;
+use super::opengl::*;
 
 use flo_render_gl_offscreen::wgl;
-use flo_render_gl_offscreen::winapi::um::winuser::{CreateWindowExW, RegisterClassExW, GetDC, DefWindowProcW, DestroyWindow, WNDCLASSEXW, CS_OWNDC, WS_EX_APPWINDOW, WS_OVERLAPPEDWINDOW};
-use flo_render_gl_offscreen::winapi::um::wingdi::{ChoosePixelFormat, SetPixelFormat, PIXELFORMATDESCRIPTOR, PFD_DRAW_TO_WINDOW, PFD_SUPPORT_OPENGL, PFD_DOUBLEBUFFER, PFD_TYPE_RGBA, PFD_MAIN_PLANE};
-use flo_render_gl_offscreen::winapi::um::libloaderapi::{LoadLibraryW, FreeLibrary, GetModuleHandleW, GetProcAddress};
-use flo_render_gl_offscreen::winapi::um::errhandlingapi::{GetLastError};
-use flo_render_gl_offscreen::winapi::shared::windef::{HWND, HGLRC};
-use flo_render_gl_offscreen::winapi::shared::minwindef::{HINSTANCE};
-use flo_render_gl_offscreen::winapi::shared::winerror::{ERROR_CLASS_ALREADY_EXISTS};
+use flo_render_gl_offscreen::winapi::shared::minwindef::HINSTANCE;
+use flo_render_gl_offscreen::winapi::shared::windef::{HGLRC, HWND};
+use flo_render_gl_offscreen::winapi::shared::winerror::ERROR_CLASS_ALREADY_EXISTS;
+use flo_render_gl_offscreen::winapi::um::errhandlingapi::GetLastError;
+use flo_render_gl_offscreen::winapi::um::libloaderapi::{
+    FreeLibrary, GetModuleHandleW, GetProcAddress, LoadLibraryW,
+};
+use flo_render_gl_offscreen::winapi::um::wingdi::{
+    ChoosePixelFormat, SetPixelFormat, PFD_DOUBLEBUFFER, PFD_DRAW_TO_WINDOW, PFD_MAIN_PLANE,
+    PFD_SUPPORT_OPENGL, PFD_TYPE_RGBA, PIXELFORMATDESCRIPTOR,
+};
+use flo_render_gl_offscreen::winapi::um::winuser::{
+    CreateWindowExW, DefWindowProcW, DestroyWindow, GetDC, RegisterClassExW, CS_OWNDC, WNDCLASSEXW,
+    WS_EX_APPWINDOW, WS_OVERLAPPEDWINDOW,
+};
 
-use std::mem;
-use std::ptr;
 use std::ffi;
 use std::ffi::{CString, OsStr};
-use std::os::windows::ffi::{OsStrExt};
+use std::mem;
+use std::os::windows::ffi::OsStrExt;
+use std::ptr;
 
 ///
 /// Represents a WGL off-screen rendering context
@@ -39,12 +53,19 @@ struct WglOffscreenRenderContext {
 ///
 /// This version is the WGL version for Windows
 ///
-pub fn opengl_initialize_offscreen_rendering() -> Result<impl OffscreenRenderContext, RenderInitError> {
+pub fn opengl_initialize_offscreen_rendering(
+) -> Result<impl OffscreenRenderContext, RenderInitError> {
     // See also https://www.khronos.org/opengl/wiki/Creating_an_OpenGL_Context_(WGL)
     unsafe {
         // Set up the window class
-        let class_name = OsStr::new("FloRender Class").encode_wide().chain(Some(0).into_iter()).collect::<Vec<_>>();
-        let window_name = OsStr::new("flo_draw OpenGL window").encode_wide().chain(Some(0).into_iter()).collect::<Vec<_>>();
+        let class_name = OsStr::new("FloRender Class")
+            .encode_wide()
+            .chain(Some(0).into_iter())
+            .collect::<Vec<_>>();
+        let window_name = OsStr::new("flo_draw OpenGL window")
+            .encode_wide()
+            .chain(Some(0).into_iter())
+            .collect::<Vec<_>>();
 
         let mut window_class = mem::zeroed::<WNDCLASSEXW>();
 
@@ -56,20 +77,42 @@ pub fn opengl_initialize_offscreen_rendering() -> Result<impl OffscreenRenderCon
 
         if RegisterClassExW(&window_class) == 0 {
             if GetLastError() != ERROR_CLASS_ALREADY_EXISTS {
-                panic!("Unable to register window class for offscreen rendering: {}", GetLastError());
+                panic!(
+                    "Unable to register window class for offscreen rendering: {}",
+                    GetLastError()
+                );
             }
         }
 
         // Create a window (we never show this or render to it, but we need a device context to initialise OpenGL)
-        let window = CreateWindowExW(WS_EX_APPWINDOW, class_name.as_ptr(), window_name.as_ptr(), WS_OVERLAPPEDWINDOW, 0, 0, 1024, 768, ptr::null_mut(), ptr::null_mut(), GetModuleHandleW(ptr::null()), ptr::null_mut());
+        let window = CreateWindowExW(
+            WS_EX_APPWINDOW,
+            class_name.as_ptr(),
+            window_name.as_ptr(),
+            WS_OVERLAPPEDWINDOW,
+            0,
+            0,
+            1024,
+            768,
+            ptr::null_mut(),
+            ptr::null_mut(),
+            GetModuleHandleW(ptr::null()),
+            ptr::null_mut(),
+        );
         if window.is_null() {
-            panic!("Unable to create window for offscreen rendering: {}", GetLastError());
+            panic!(
+                "Unable to create window for offscreen rendering: {}",
+                GetLastError()
+            );
         }
 
         // Fetch the device context for the window
         let dc = GetDC(window);
         if dc.is_null() {
-            panic!("Unable to fetch device context for offscreen window: {}", GetLastError());
+            panic!(
+                "Unable to fetch device context for offscreen window: {}",
+                GetLastError()
+            );
         }
 
         // Set up the pixel format descriptor
@@ -109,7 +152,10 @@ pub fn opengl_initialize_offscreen_rendering() -> Result<impl OffscreenRenderCon
         // Create a context for the window and make it current (this is to load the extra functions, the default context is an old version of OpenGL...)
         let initial_ctxt = wgl::wgl::CreateContext(dc as *const _);
         if initial_ctxt.is_null() {
-            panic!("Could not create initial OpenGL context: {}", GetLastError());
+            panic!(
+                "Could not create initial OpenGL context: {}",
+                GetLastError()
+            );
         }
 
         if wgl::wgl::MakeCurrent(dc as *const _, initial_ctxt) == 0 {
@@ -135,17 +181,27 @@ pub fn opengl_initialize_offscreen_rendering() -> Result<impl OffscreenRenderCon
         opengl33_attribs.push(3);
         opengl33_attribs.push(0);
 
-        let ctxt = extra_functions.CreateContextAttribsARB(dc as *const _, ptr::null(), opengl33_attribs.as_ptr());
+        let ctxt = extra_functions.CreateContextAttribsARB(
+            dc as *const _,
+            ptr::null(),
+            opengl33_attribs.as_ptr(),
+        );
         if ctxt.is_null() {
             panic!("Could not create OpenGL 3.3 context: {}", GetLastError());
         }
 
         if wgl::wgl::MakeCurrent(dc as *const _, ctxt) == 0 {
-            panic!("Could not make OpenGL 3.3 context current: {}", GetLastError());
+            panic!(
+                "Could not make OpenGL 3.3 context current: {}",
+                GetLastError()
+            );
         }
 
         // Load the OpenGL library
-        let opengl_name = OsStr::new("opengl32.dll").encode_wide().chain(Some(0).into_iter()).collect::<Vec<_>>();
+        let opengl_name = OsStr::new("opengl32.dll")
+            .encode_wide()
+            .chain(Some(0).into_iter())
+            .collect::<Vec<_>>();
         let opengl_library = LoadLibraryW(opengl_name.as_ptr());
 
         // Load the GL commands
@@ -215,7 +271,10 @@ impl OffscreenRenderContext for WglOffscreenRenderContext {
             // Get the window device context...
             let dc = GetDC(self.window);
             if dc.is_null() {
-                panic!("Unable to fetch device context for offscreen window: {}", GetLastError());
+                panic!(
+                    "Unable to fetch device context for offscreen window: {}",
+                    GetLastError()
+                );
             }
 
             // Make the openGL context for the window current

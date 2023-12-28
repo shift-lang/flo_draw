@@ -1,9 +1,15 @@
-use crate::traits::*;
-use crate::watcher::*;
-use crate::releasable::*;
-use crate::binding_context::*;
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
 
 use std::sync::*;
+
+use crate::binding_context::*;
+use crate::releasable::*;
+use crate::traits::*;
+use crate::watcher::*;
 
 ///
 /// An internal representation of a bound value
@@ -52,7 +58,8 @@ impl<Value: Clone + PartialEq> BoundValue<Value> {
     /// If there are any notifiables in this object that aren't in use, remove them
     ///
     pub fn filter_unused_notifications(&mut self) {
-        self.when_changed.retain(|releasable| releasable.is_in_use());
+        self.when_changed
+            .retain(|releasable| releasable.is_in_use());
     }
 
     ///
@@ -130,7 +137,7 @@ impl<Value: PartialEq> PartialEq for Binding<Value> {
 impl<Value: Clone + PartialEq> Binding<Value> {
     pub fn new(value: Value) -> Binding<Value> {
         Binding {
-            value: Arc::new(Mutex::new(BoundValue::new(value)))
+            value: Arc::new(Mutex::new(BoundValue::new(value))),
         }
     }
 }
@@ -142,8 +149,8 @@ impl<Value: 'static + Clone + PartialEq + Send> Changeable for Binding<Value> {
 }
 
 impl<TValue> Bound for Binding<TValue>
-    where
-        TValue: 'static + Clone + PartialEq + Send,
+where
+    TValue: 'static + Clone + PartialEq + Send,
 {
     type Value = TValue;
 
@@ -165,8 +172,8 @@ impl<TValue> Bound for Binding<TValue>
 }
 
 impl<Value> MutableBound for Binding<Value>
-    where
-        Value: 'static + Clone + PartialEq + Send
+where
+    Value: 'static + Clone + PartialEq + Send,
 {
     fn set(&self, new_value: Value) {
         // Update the value with the lock held
@@ -197,14 +204,14 @@ impl<Value> MutableBound for Binding<Value>
 
 impl<Value: 'static + Clone + PartialEq + Send> WithBound<Value> for Binding<Value> {
     fn with_ref<F, T>(&self, f: F) -> T
-        where
-            F: FnOnce(&Value) -> T,
+    where
+        F: FnOnce(&Value) -> T,
     {
         f(&self.value.lock().unwrap().value)
     }
     fn with_mut<F>(&self, f: F)
-        where
-            F: FnOnce(&mut Value) -> bool,
+    where
+        F: FnOnce(&mut Value) -> bool,
     {
         let notifications = {
             let mut v = self.value.lock().unwrap();

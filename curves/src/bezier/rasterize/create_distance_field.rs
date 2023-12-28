@@ -1,3 +1,9 @@
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
 use crate::bezier::vectorize::*;
 
 ///
@@ -5,7 +11,10 @@ use crate::bezier::vectorize::*;
 ///
 /// This is the slowest way to create a distance field in most instances
 ///
-pub fn create_distance_field(signed_distance_at_point: impl Fn(f64, f64) -> f64, size: ContourSize) -> F64SampledDistanceField {
+pub fn create_distance_field(
+    signed_distance_at_point: impl Fn(f64, f64) -> f64,
+    size: ContourSize,
+) -> F64SampledDistanceField {
     let width = size.width();
     let height = size.height();
 

@@ -1,3 +1,9 @@
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
 use flo_render_software::draw::*;
 use flo_render_software::pixel::*;
 use flo_render_software::render::*;
@@ -24,6 +30,10 @@ pub fn render_simple_circle() {
     let mut frame = vec![0u8; 1920 * 1080 * 4];
     let mut rgba = RgbaFrame::from_bytes(1920, 1080, 2.2, &mut frame).unwrap();
 
-    let renderer = CanvasDrawingRegionRenderer::new(PixelScanPlanner::default(), ScanlineRenderer::new(canvas_drawing.program_runner(1080.0)), 1080);
+    let renderer = CanvasDrawingRegionRenderer::new(
+        PixelScanPlanner::default(),
+        ScanlineRenderer::new(canvas_drawing.program_runner(1080.0)),
+        1080,
+    );
     rgba.render(renderer, &canvas_drawing);
 }

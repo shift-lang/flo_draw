@@ -1,17 +1,29 @@
-use super::canvas_renderer::*;
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
+use futures::prelude::*;
 
 use flo_canvas::*;
 use flo_render::*;
 
-use futures::prelude::*;
+use super::canvas_renderer::*;
 
 ///
 /// Renders a canvas in an offscreen context, returning the resulting bitmap
 ///
-pub fn render_canvas_offscreen<'a, DrawStream, RenderContext>(context: &'a mut RenderContext, width: usize, height: usize, scale: f32, actions: DrawStream) -> impl 'a + Future<Output=Vec<u8>>
-    where
-        DrawStream: 'a + Stream<Item=Draw>,
-        RenderContext: 'a + OffscreenRenderContext
+pub fn render_canvas_offscreen<'a, DrawStream, RenderContext>(
+    context: &'a mut RenderContext,
+    width: usize,
+    height: usize,
+    scale: f32,
+    actions: DrawStream,
+) -> impl 'a + Future<Output = Vec<u8>>
+where
+    DrawStream: 'a + Stream<Item = Draw>,
+    RenderContext: 'a + OffscreenRenderContext,
 {
     async move {
         // Perform as many drawing actions simultaneously as we can
@@ -25,7 +37,13 @@ pub fn render_canvas_offscreen<'a, DrawStream, RenderContext>(context: &'a mut R
         let mut renderer = CanvasRenderer::new();
 
         // Prepare to render
-        renderer.set_viewport(0.0..(width as f32), 0.0..(height as f32), width as f32, height as f32, scale);
+        renderer.set_viewport(
+            0.0..(width as f32),
+            0.0..(height as f32),
+            width as f32,
+            height as f32,
+            scale,
+        );
 
         // Send the drawing instructions from the action stream
         while let Some(drawing) = actions.next().await {

@@ -1,5 +1,11 @@
-use super::texture::*;
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
 use super::pipeline::*;
+use super::texture::*;
 use super::to_buffer::*;
 use super::wgpu_shader::*;
 
@@ -14,12 +20,21 @@ use std::sync::*;
 ///
 /// Performs an alpha-blending render pass on a texture
 ///
-pub(crate) fn alpha_blend(device: &wgpu::Device, encoder: &mut wgpu::CommandEncoder, alpha_blend_pipeline: &Pipeline, source_texture: &WgpuTexture, alpha: f32) -> WgpuTexture {
+pub(crate) fn alpha_blend(
+    device: &wgpu::Device,
+    encoder: &mut wgpu::CommandEncoder,
+    alpha_blend_pipeline: &Pipeline,
+    source_texture: &WgpuTexture,
+    alpha: f32,
+) -> WgpuTexture {
     // Ensure we have a suitable pipeline render pass
-    debug_assert!(match alpha_blend_pipeline.shader_module {
-        WgpuShader::Filter(FilterShader::AlphaBlend(..)) => true,
-        _ => false
-    }, "alpha_blend must be used with a pipeline configured for alpha blending");
+    debug_assert!(
+        match alpha_blend_pipeline.shader_module {
+            WgpuShader::Filter(FilterShader::AlphaBlend(..)) => true,
+            _ => false,
+        },
+        "alpha_blend must be used with a pipeline configured for alpha blending"
+    );
 
     // Set up buffers
     let vertices = vec![
@@ -29,7 +44,8 @@ pub(crate) fn alpha_blend(device: &wgpu::Device, encoder: &mut wgpu::CommandEnco
         Vertex2D::with_pos(-1.0, -1.0),
         Vertex2D::with_pos(1.0, -1.0),
         Vertex2D::with_pos(1.0, 1.0),
-    ].to_buffer(device, wgpu::BufferUsages::VERTEX);
+    ]
+    .to_buffer(device, wgpu::BufferUsages::VERTEX);
 
     let alpha = alpha.to_buffer(device, wgpu::BufferUsages::UNIFORM);
 
@@ -39,7 +55,9 @@ pub(crate) fn alpha_blend(device: &wgpu::Device, encoder: &mut wgpu::CommandEnco
     let target_texture = device.create_texture(&target_descriptor);
 
     // Bind the resources
-    let source_view = source_texture.texture.create_view(&wgpu::TextureViewDescriptor::default());
+    let source_view = source_texture
+        .texture
+        .create_view(&wgpu::TextureViewDescriptor::default());
     let layout = &*alpha_blend_pipeline.alpha_blend_layout;
     let alpha_binding = wgpu::BufferBinding {
         buffer: &alpha,
@@ -66,13 +84,19 @@ pub(crate) fn alpha_blend(device: &wgpu::Device, encoder: &mut wgpu::CommandEnco
     // Run a render pass to apply the filter
     {
         let target_view = target_texture.create_view(&wgpu::TextureViewDescriptor::default());
-        let color_attachments = vec![
-            Some(wgpu::RenderPassColorAttachment {
-                view: &target_view,
-                resolve_target: None,
-                ops: wgpu::Operations { load: wgpu::LoadOp::Clear(wgpu::Color { r: 0.0, g: 0.0, b: 0.0, a: 0.0 }), store: wgpu::StoreOp::Store },
-            })
-        ];
+        let color_attachments = vec![Some(wgpu::RenderPassColorAttachment {
+            view: &target_view,
+            resolve_target: None,
+            ops: wgpu::Operations {
+                load: wgpu::LoadOp::Clear(wgpu::Color {
+                    r: 0.0,
+                    g: 0.0,
+                    b: 0.0,
+                    a: 0.0,
+                }),
+                store: wgpu::StoreOp::Store,
+            },
+        })];
         let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
             label: Some("alpha_blend"),
             depth_stencil_attachment: None,

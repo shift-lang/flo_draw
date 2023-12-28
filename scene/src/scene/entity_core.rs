@@ -1,9 +1,16 @@
-use std::any::{Any, type_name, TypeId};
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
+use std::any::{type_name, Any, TypeId};
 use std::sync::*;
 
-use ::desync::scheduler::*;
 use futures::channel::oneshot;
 use futures::prelude::*;
+
+use ::desync::scheduler::*;
 
 use crate::any_entity_channel::*;
 use crate::simple_entity_channel::*;
@@ -39,11 +46,12 @@ impl EntityCore {
     /// Creates a new entity that receives messages on the specified channel
     ///
     pub fn new<TMessage>(channel: SimpleEntityChannel<TMessage>) -> EntityCore
-        where
-            TMessage: 'static + Send,
+    where
+        TMessage: 'static + Send,
     {
         let conversion_channel = channel.clone();
-        let create_conversion_channel = move || { AnyEntityChannel::from_channel(conversion_channel.clone()) };
+        let create_conversion_channel =
+            move || AnyEntityChannel::from_channel(conversion_channel.clone());
         let close_channel = move |channel: &mut Box<dyn Send + Any>| {
             if let Some(channel) = channel.downcast_mut::<SimpleEntityChannel<TMessage>>() {
                 channel.close();
@@ -99,11 +107,13 @@ impl EntityCore {
     /// If this entity has an implementation of a particular channel, returns it
     ///
     pub fn attach_channel<TMessage>(&self) -> Option<SimpleEntityChannel<TMessage>>
-        where
-            TMessage: 'static + Send,
+    where
+        TMessage: 'static + Send,
     {
         // Downcast the channel back to a concrete type
-        let channel = self.channel.downcast_ref::<SimpleEntityChannel<TMessage>>()?;
+        let channel = self
+            .channel
+            .downcast_ref::<SimpleEntityChannel<TMessage>>()?;
 
         // Clone it to create the channel for the receiver
         Some(channel.clone())
@@ -130,7 +140,7 @@ impl EntityCore {
     ///
     /// Returns a future that completes when this entity is ready (or is destroyed)
     ///
-    pub fn wait_for_start(&mut self) -> impl Send + Future<Output=()> {
+    pub fn wait_for_start(&mut self) -> impl Send + Future<Output = ()> {
         let wait_for_ready = if let Some(when_ready) = &mut self.when_ready {
             // Create a channel to signal once this entity becomes ready
             let (sender, receiver) = oneshot::channel();

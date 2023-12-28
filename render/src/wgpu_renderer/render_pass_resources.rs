@@ -1,14 +1,20 @@
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
 use super::pipeline::*;
 use super::texture_settings::*;
 
 use wgpu;
 use wgpu::util;
-use wgpu::util::{DeviceExt};
+use wgpu::util::DeviceExt;
 
+use std::ffi::c_void;
 use std::mem;
 use std::slice;
 use std::sync::*;
-use std::ffi::{c_void};
 
 ///
 /// Resources used for the current render pass (required for lifetime bookkeeping due to the design of WGPU)
@@ -53,7 +59,12 @@ pub struct RenderPassResources {
     pub(crate) matrix_bind_groups: Vec<wgpu::BindGroup>,
 
     /// The texture settings that will be loaded into the texture settings buffer for this render pass
-    pub(crate) texture_settings: Vec<(Arc<Pipeline>, TextureSettings, Option<Arc<wgpu::Texture>>, Option<Arc<wgpu::Sampler>>)>,
+    pub(crate) texture_settings: Vec<(
+        Arc<Pipeline>,
+        TextureSettings,
+        Option<Arc<wgpu::Texture>>,
+        Option<Arc<wgpu::Sampler>>,
+    )>,
 
     /// Once the render pass is running, the buffer containing all of the texture settings from the texture_settings Vec
     pub(crate) texture_settings_buffer: Option<wgpu::Buffer>,
@@ -95,13 +106,14 @@ impl RenderPassResources {
         };
 
         if let Some(target_view) = &self.target_view {
-            vec![
-                Some(wgpu::RenderPassColorAttachment {
-                    view: &**target_view,
-                    resolve_target: None,
-                    ops: wgpu::Operations { load: load_op, store: wgpu::StoreOp::Store },
-                })
-            ]
+            vec![Some(wgpu::RenderPassColorAttachment {
+                view: &**target_view,
+                resolve_target: None,
+                ops: wgpu::Operations {
+                    load: load_op,
+                    store: wgpu::StoreOp::Store,
+                },
+            })]
         } else {
             vec![]
         }
@@ -118,7 +130,8 @@ impl RenderPassResources {
         // Convert the matrix list to a u8 pointer
         let matrices_void = matrices.as_ptr() as *const c_void;
         let matrices_len = matrix_size * matrices.len();
-        let matrices_u8 = unsafe { slice::from_raw_parts(matrices_void as *const u8, matrices_len) };
+        let matrices_u8 =
+            unsafe { slice::from_raw_parts(matrices_void as *const u8, matrices_len) };
 
         // Need to make another buffer from this where everything is aligned according to the min_uniform_buffer_offset_alignment
         let limits = device.limits();
@@ -134,7 +147,8 @@ impl RenderPassResources {
             let original_offset = matrix_size * matrix_num;
             let new_offset = group_offset * matrix_num;
 
-            aligned_matrices[new_offset..(new_offset + matrix_size)].copy_from_slice(&matrices_u8[original_offset..(original_offset + matrix_size)]);
+            aligned_matrices[new_offset..(new_offset + matrix_size)]
+                .copy_from_slice(&matrices_u8[original_offset..(original_offset + matrix_size)]);
         }
 
         // Load into a buffer
@@ -145,8 +159,11 @@ impl RenderPassResources {
         });
 
         // Create bind groups for each of the matrices in the buffer
-        let bind_groups = (0..matrices.len()).into_iter()
-            .map(|offset| pipeline.bind_matrix_buffer(device, &matrix_buffer, offset * group_offset))
+        let bind_groups = (0..matrices.len())
+            .into_iter()
+            .map(|offset| {
+                pipeline.bind_matrix_buffer(device, &matrix_buffer, offset * group_offset)
+            })
             .collect();
 
         // Store the matrix buffer for use during the render pass
@@ -177,11 +194,13 @@ impl RenderPassResources {
             let (_, texture_setting, _, _) = &settings[setting_num];
 
             let settings_void = texture_setting as *const _ as *const c_void;
-            let settings_u8 = unsafe { slice::from_raw_parts(settings_void as *const u8, settings_size) };
+            let settings_u8 =
+                unsafe { slice::from_raw_parts(settings_void as *const u8, settings_size) };
 
             // Copy the setting into the aligned settings
             let new_offset = group_offset * setting_num;
-            aligned_settings[new_offset..(new_offset + settings_size)].copy_from_slice(&settings_u8[..]);
+            aligned_settings[new_offset..(new_offset + settings_size)]
+                .copy_from_slice(&settings_u8[..]);
         }
 
         // Load into a buffer
@@ -192,10 +211,17 @@ impl RenderPassResources {
         });
 
         // Create bind groups for each of the texture settings in the buffer
-        let bind_groups = (0..settings.len()).into_iter()
+        let bind_groups = (0..settings.len())
+            .into_iter()
             .map(|setting_num| {
                 let (pipeline, _, texture, sampler) = &settings[setting_num];
-                pipeline.bind_input_texture(device, &settings_buffer, setting_num * group_offset, texture.as_ref().map(|t| &**t), sampler.as_ref().map(|s| &**s))
+                pipeline.bind_input_texture(
+                    device,
+                    &settings_buffer,
+                    setting_num * group_offset,
+                    texture.as_ref().map(|t| &**t),
+                    sampler.as_ref().map(|s| &**s),
+                )
             })
             .collect();
 

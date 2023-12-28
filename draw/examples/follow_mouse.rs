@@ -1,3 +1,9 @@
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
 use futures::executor;
 use futures::prelude::*;
 
@@ -63,16 +69,16 @@ pub fn main() {
             while let Some(event) = events.next().await {
                 match event {
                     // Track any event relating to the pointer
-                    DrawEvent::Pointer(_action, _id, state) => {
-                        if let Some((x, y)) = &state.location_in_canvas {
-                            // Draw a circle at the mouse position
+                    DrawEvent::CursorMoved { state } => {
+                        // Draw a circle at the mouse position
+                        if let Some((x, y)) = state.location_in_canvas {
                             canvas.draw(|gc| {
                                 // Draw on layer 1 to avoid disrupting the image underneath
                                 gc.layer(LayerId(1));
                                 gc.clear_layer();
 
                                 gc.new_path();
-                                gc.circle(*x as _, *y as _, 20.0);
+                                gc.circle(x as _, y as _, 20.0);
 
                                 gc.stroke_color(Color::Rgba(0.1, 0.1, 0.1, 0.8));
                                 gc.line_width_pixels(3.0);

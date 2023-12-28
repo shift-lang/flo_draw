@@ -1,4 +1,10 @@
-use std::ops::{Range};
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
+use std::ops::Range;
 
 ///
 /// Describes how to transform the x positions in the edge plan to the viewport x positions
@@ -112,7 +118,11 @@ mod test {
         let transform = ScanlineTransform::for_region(&(-1.0..1.0), 1000);
         let converted = transform.source_x_to_pixels(-1.0);
 
-        assert!((converted - 0.0).abs() < 0.1, "Expected 0, got {}", converted);
+        assert!(
+            (converted - 0.0).abs() < 0.1,
+            "Expected 0, got {}",
+            converted
+        );
     }
 
     #[test]
@@ -120,7 +130,11 @@ mod test {
         let transform = ScanlineTransform::for_region(&(-1.0..1.0), 1000);
         let converted = transform.pixel_x_to_source_x(0);
 
-        assert!((converted - -1.0).abs() < 0.1, "Expected -1.0, got {}", converted);
+        assert!(
+            (converted - -1.0).abs() < 0.1,
+            "Expected -1.0, got {}",
+            converted
+        );
     }
 
     #[test]
@@ -128,7 +142,11 @@ mod test {
         let transform = ScanlineTransform::for_region(&(-1.0..1.0), 1000);
         let converted = transform.source_x_to_pixels(1.0);
 
-        assert!((converted - 1000.0).abs() < 0.1, "Expected 1000, got {}", converted);
+        assert!(
+            (converted - 1000.0).abs() < 0.1,
+            "Expected 1000, got {}",
+            converted
+        );
     }
 
     #[test]
@@ -136,7 +154,11 @@ mod test {
         let transform = ScanlineTransform::for_region(&(-1.0..1.0), 1000);
         let converted = transform.pixel_x_to_source_x(1000);
 
-        assert!((converted - 1.0).abs() < 0.1, "Expected -1.0, got {}", converted);
+        assert!(
+            (converted - 1.0).abs() < 0.1,
+            "Expected -1.0, got {}",
+            converted
+        );
     }
 
     #[test]
@@ -144,7 +166,11 @@ mod test {
         let transform = ScanlineTransform::for_region(&(-1.0..1.0), 1000);
         let converted = transform.source_x_to_pixels(0.0);
 
-        assert!((converted - 500.0).abs() < 0.1, "Expected 500, got {}", converted);
+        assert!(
+            (converted - 500.0).abs() < 0.1,
+            "Expected 500, got {}",
+            converted
+        );
     }
 
     #[test]
@@ -152,8 +178,16 @@ mod test {
         let transform = ScanlineTransform::for_region(&(-1.0..1.0), 1000);
         let converted = transform.pixel_range_to_x(&(250..750));
 
-        assert!((converted.start - -0.5).abs() < 0.01, "Expected -0.5, got {:?}", converted);
-        assert!((converted.end - 0.5).abs() < 0.01, "Expected 0.5, got {:?}", converted);
+        assert!(
+            (converted.start - -0.5).abs() < 0.01,
+            "Expected -0.5, got {:?}",
+            converted
+        );
+        assert!(
+            (converted.end - 0.5).abs() < 0.01,
+            "Expected 0.5, got {:?}",
+            converted
+        );
     }
 
     #[test]
@@ -162,8 +196,18 @@ mod test {
         let converted_left = transformed.pixel_x_to_source_x(0);
         let converted_right = transformed.pixel_x_to_source_x(1000);
 
-        assert!((converted_left - (-1.0 * 2.0 + 0.0)).abs() < 0.01, "Expected {}, got {}", (-1.0 * 2.0 + 0.0), converted_left);
-        assert!((converted_right - (1.0 * 2.0 + 0.0)).abs() < 0.01, "Expected {}, got {}", (1.0 * 2.0 + 0.0), converted_right);
+        assert!(
+            (converted_left - (-1.0 * 2.0 + 0.0)).abs() < 0.01,
+            "Expected {}, got {}",
+            (-1.0 * 2.0 + 0.0),
+            converted_left
+        );
+        assert!(
+            (converted_right - (1.0 * 2.0 + 0.0)).abs() < 0.01,
+            "Expected {}, got {}",
+            (1.0 * 2.0 + 0.0),
+            converted_right
+        );
     }
 
     #[test]
@@ -172,8 +216,18 @@ mod test {
         let converted_left = transformed.source_x_to_pixels(-1.0 * 2.0 + 0.0);
         let converted_right = transformed.source_x_to_pixels(1.0 * 2.0 + 0.0);
 
-        assert!((converted_left - (0.0)).abs() < 0.01, "Expected {}, got {}", 0.0, converted_left);
-        assert!((converted_right - (1000.0)).abs() < 0.01, "Expected {}, got {}", 1000.0, converted_right);
+        assert!(
+            (converted_left - (0.0)).abs() < 0.01,
+            "Expected {}, got {}",
+            0.0,
+            converted_left
+        );
+        assert!(
+            (converted_right - (1000.0)).abs() < 0.01,
+            "Expected {}, got {}",
+            1000.0,
+            converted_right
+        );
     }
 
     #[test]
@@ -182,8 +236,18 @@ mod test {
         let converted_left = transformed.pixel_x_to_source_x(0);
         let converted_right = transformed.pixel_x_to_source_x(1000);
 
-        assert!((converted_left - (-1.0 * 1.0 + 2.0)).abs() < 0.01, "Expected {}, got {}", (-1.0 * 1.0 + 2.0), converted_left);
-        assert!((converted_right - (1.0 * 1.0 + 2.0)).abs() < 0.01, "Expected {}, got {}", (1.0 * 1.0 + 2.0), converted_right);
+        assert!(
+            (converted_left - (-1.0 * 1.0 + 2.0)).abs() < 0.01,
+            "Expected {}, got {}",
+            (-1.0 * 1.0 + 2.0),
+            converted_left
+        );
+        assert!(
+            (converted_right - (1.0 * 1.0 + 2.0)).abs() < 0.01,
+            "Expected {}, got {}",
+            (1.0 * 1.0 + 2.0),
+            converted_right
+        );
     }
 
     #[test]
@@ -192,8 +256,18 @@ mod test {
         let converted_left = transformed.source_x_to_pixels(-1.0 * 1.0 + 2.0);
         let converted_right = transformed.source_x_to_pixels(1.0 * 1.0 + 2.0);
 
-        assert!((converted_left - (0.0)).abs() < 0.01, "Expected {}, got {}", 0.0, converted_left);
-        assert!((converted_right - (1000.0)).abs() < 0.01, "Expected {}, got {}", 1000.0, converted_right);
+        assert!(
+            (converted_left - (0.0)).abs() < 0.01,
+            "Expected {}, got {}",
+            0.0,
+            converted_left
+        );
+        assert!(
+            (converted_right - (1000.0)).abs() < 0.01,
+            "Expected {}, got {}",
+            1000.0,
+            converted_right
+        );
     }
 
     #[test]
@@ -202,8 +276,18 @@ mod test {
         let converted_left = transformed.pixel_x_to_source_x(0);
         let converted_right = transformed.pixel_x_to_source_x(1000);
 
-        assert!((converted_left - (-1.0 * 2.0 + 3.0)).abs() < 0.01, "Expected {}, got {}", (-1.0 * 2.0 + 3.0), converted_left);
-        assert!((converted_right - (1.0 * 2.0 + 3.0)).abs() < 0.01, "Expected {}, got {}", (1.0 * 2.0 + 3.0), converted_right);
+        assert!(
+            (converted_left - (-1.0 * 2.0 + 3.0)).abs() < 0.01,
+            "Expected {}, got {}",
+            (-1.0 * 2.0 + 3.0),
+            converted_left
+        );
+        assert!(
+            (converted_right - (1.0 * 2.0 + 3.0)).abs() < 0.01,
+            "Expected {}, got {}",
+            (1.0 * 2.0 + 3.0),
+            converted_right
+        );
     }
 
     #[test]
@@ -212,7 +296,17 @@ mod test {
         let converted_left = transformed.source_x_to_pixels(-1.0 * 2.0 + 3.0);
         let converted_right = transformed.source_x_to_pixels(1.0 * 2.0 + 3.0);
 
-        assert!((converted_left - (0.0)).abs() < 0.01, "Expected {}, got {}", 0.0, converted_left);
-        assert!((converted_right - (1000.0)).abs() < 0.01, "Expected {}, got {}", 1000.0, converted_right);
+        assert!(
+            (converted_left - (0.0)).abs() < 0.01,
+            "Expected {}, got {}",
+            0.0,
+            converted_left
+        );
+        assert!(
+            (converted_right - (1000.0)).abs() < 0.01,
+            "Expected {}, got {}",
+            1000.0,
+            converted_right
+        );
     }
 }

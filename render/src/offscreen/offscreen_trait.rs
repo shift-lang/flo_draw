@@ -1,3 +1,9 @@
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
 use crate::action::*;
 
 ///
@@ -7,7 +13,7 @@ pub trait OffscreenRenderTarget {
     ///
     /// Sends render actions to this offscreen render target
     ///
-    fn render<ActionIter: IntoIterator<Item=RenderAction>>(&mut self, actions: ActionIter);
+    fn render<ActionIter: IntoIterator<Item = RenderAction>>(&mut self, actions: ActionIter);
 
     ///
     /// Consumes this render target and returns the realized pixels as a byte array

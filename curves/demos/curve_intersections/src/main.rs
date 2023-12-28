@@ -1,24 +1,35 @@
-use flo_curves::*;
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
 use flo_curves::arc::*;
-use flo_curves::bezier::*;
 use flo_curves::bezier::path::*;
-use flo_draw::*;
+use flo_curves::bezier::*;
+use flo_curves::*;
 use flo_draw::canvas::*;
+use flo_draw::*;
 
 fn main() {
     with_2d_graphics(|| {
         let canvas = create_canvas_window("Curve intersection demonstration");
 
         // Two paths to find intersections in
-        let path1 = Circle::new(Coord2(496.9997044935593, 500.0), 300.0).to_path::<SimpleBezierPath>();
-        let path2 = Circle::new(Coord2(503.0002955064407, 500.0), 300.0).to_path::<SimpleBezierPath>();
+        let path1 =
+            Circle::new(Coord2(496.9997044935593, 500.0), 300.0).to_path::<SimpleBezierPath>();
+        let path2 =
+            Circle::new(Coord2(503.0002955064407, 500.0), 300.0).to_path::<SimpleBezierPath>();
 
         // Find the intersections between these two paths
         let mut intersections = vec![];
         for curve1 in path1.to_curves::<Curve<_>>() {
             for curve2 in path2.to_curves::<Curve<_>>() {
-                intersections.extend(curve_intersects_curve_clip(&curve1, &curve2, 0.01).into_iter()
-                    .map(|(t1, _t2)| curve1.point_at_pos(t1)));
+                intersections.extend(
+                    curve_intersects_curve_clip(&curve1, &curve2, 0.01)
+                        .into_iter()
+                        .map(|(t1, _t2)| curve1.point_at_pos(t1)),
+                );
             }
         }
 

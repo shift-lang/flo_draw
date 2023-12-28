@@ -1,3 +1,9 @@
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
 //!
 //! # Manipulating and describing lines
 //!
@@ -9,14 +15,14 @@
 //! implements `Coordinate`).
 //!
 
+mod coefficients;
+mod intersection;
 mod line;
 mod to_curve;
-mod intersection;
-mod coefficients;
 
-pub use self::line::*;
-pub use self::to_curve::*;
 pub use self::coefficients::*;
 pub use self::intersection::*;
+pub use self::line::*;
+pub use self::to_curve::*;
 
 pub use super::geo::*;

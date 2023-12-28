@@ -1,6 +1,12 @@
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
 use std::pin::*;
-use std::sync::*;
 use std::sync::atomic::*;
+use std::sync::*;
 
 use futures::channel::oneshot;
 use futures::prelude::*;
@@ -29,11 +35,15 @@ struct EntityReceiverWaker {
 }
 
 impl<TStream> EntityReceiver<TStream>
-    where
-        TStream: Unpin + Stream
+where
+    TStream: Unpin + Stream,
 {
     /// Creates a new entity receiver
-    pub fn new(stream: TStream, active_entity_count: &Arc<AtomicIsize>, ready_signal: Option<oneshot::Sender<()>>) -> EntityReceiver<TStream> {
+    pub fn new(
+        stream: TStream,
+        active_entity_count: &Arc<AtomicIsize>,
+        ready_signal: Option<oneshot::Sender<()>>,
+    ) -> EntityReceiver<TStream> {
         // The stream starts awake
         active_entity_count.fetch_add(1, Ordering::Relaxed);
 
@@ -52,14 +62,15 @@ impl<TStream> EntityReceiver<TStream>
 impl Drop for EntityReceiverState {
     fn drop(&mut self) {
         // Ensure that the activation count is updated (note: won't generate a heartbeat if dropped while 'active')
-        self.active_entity_count.fetch_sub(self.activation_count, Ordering::Relaxed);
+        self.active_entity_count
+            .fetch_sub(self.activation_count, Ordering::Relaxed);
         self.activation_count = 0;
     }
 }
 
 impl<TStream> Stream for EntityReceiver<TStream>
-    where
-        TStream: Unpin + Stream
+where
+    TStream: Unpin + Stream,
 {
     type Item = TStream::Item;
 
@@ -80,7 +91,9 @@ impl<TStream> Stream for EntityReceiver<TStream>
         };
 
         // Create the context using our waker
-        let waker = Arc::new(EntityReceiverWaker { state: Arc::clone(&self.state) });
+        let waker = Arc::new(EntityReceiverWaker {
+            state: Arc::clone(&self.state),
+        });
         let future_waker = task::waker(waker);
         let mut context = task::Context::from_waker(&future_waker);
 
@@ -91,7 +104,9 @@ impl<TStream> Stream for EntityReceiver<TStream>
                     let mut state = self.state.lock().unwrap();
 
                     state.activation_count -= initial_activation_count;
-                    let previous_count = state.active_entity_count.fetch_sub(initial_activation_count, Ordering::Relaxed);
+                    let previous_count = state
+                        .active_entity_count
+                        .fetch_sub(initial_activation_count, Ordering::Relaxed);
 
                     // Send the heartbeat if the count reaches 0
                     previous_count == initial_activation_count
@@ -105,9 +120,7 @@ impl<TStream> Stream for EntityReceiver<TStream>
                 Poll::Pending
             }
 
-            Poll::Ready(Some(msg)) => {
-                Poll::Ready(Some(msg))
-            }
+            Poll::Ready(Some(msg)) => Poll::Ready(Some(msg)),
 
             Poll::Ready(None) => {
                 let send_heartbeat = {
@@ -116,7 +129,9 @@ impl<TStream> Stream for EntityReceiver<TStream>
 
                     // Entirely remove this from the active entity count
                     state.future_waker = None;
-                    let previous_count = state.active_entity_count.fetch_sub(state.activation_count, Ordering::Relaxed);
+                    let previous_count = state
+                        .active_entity_count
+                        .fetch_sub(state.activation_count, Ordering::Relaxed);
                     let send_heartbeat = previous_count == state.activation_count;
                     state.activation_count = 0;
 

@@ -1,12 +1,17 @@
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
 use std::{
     collections::HashMap,
     sync::{
-        Arc,
-        atomic::{AtomicU64, Ordering}, Mutex,
+        atomic::{AtomicU64, Ordering},
+        Arc, Mutex,
     },
 };
 
-use flo_binding::*;
 use flo_stream::*;
 use futures::{future::LocalBoxFuture, prelude::*, task};
 use glutin::{
@@ -17,14 +22,16 @@ use glutin::{
 use glutin_winit::DisplayBuilder;
 use raw_window_handle::HasRawWindowHandle;
 use winit::{
-    event::{DeviceId, ElementState, Event, WindowEvent},
+    event::{DeviceId, Event, WindowEvent},
     event_loop::{ControlFlow, EventLoopWindowTarget},
     window::{Fullscreen, WindowId},
 };
 
+use flo_binding::*;
+
 use crate::{events::*, window_properties::*};
 
-use super::{event_conversion::*, glutin_thread::*, glutin_thread_event::*, glutin_window::*};
+use super::{glutin_thread::*, glutin_thread_event::*, glutin_window::*};
 
 static NEXT_FUTURE_ID: AtomicU64 = AtomicU64::new(0);
 
@@ -88,7 +95,7 @@ impl GlutinRuntime {
         &mut *self
             .pointer_state
             .entry(*device_id)
-            .or_insert_with(|| PointerState::new())
+            .or_insert_with(|| PointerState::new((0.0, 0.0).into()))
     }
 
     ///
@@ -144,10 +151,10 @@ impl GlutinRuntime {
     /// Handles a glutin window event
     ///
     fn handle_window_event(&mut self, window_id: WindowId, event: WindowEvent) {
-        if let WindowEvent::CloseRequested = event {
-            // Glutin has a bug (at least in OS X) where setting control_flow to Exit does not actually shut it down
+        if let CloseRequested = event {
+            // Glutin has a problem (at least in OS X) where setting control_flow to Exit does not actually shut it down
             // This issue does not occur if the 'Exit' request is done in response to closing a window
-            // (This only partially works around the bug: the process will still not quit properly if the last window
+            // (This only partially works around the issue: the process will still not quit properly if the last window
             // is closed before the main routine finishes, ie when 'will_stop_when_no_windows' is still false)
             if self.will_stop_when_no_windows && self.window_events.len() <= 1 {
                 self.will_exit = true;
@@ -156,182 +163,60 @@ impl GlutinRuntime {
 
         use WindowEvent::*;
 
-        // Generate draw_events for the window event
-        let draw_events = match event {
-            Resized(new_size) => vec![DrawEvent::Resize(
-                new_size.width as f64,
-                new_size.height as f64,
-            )],
-            Moved(_position) => vec![],
-            CloseRequested => vec![DrawEvent::Closed],
-            Destroyed => vec![],
-            DroppedFile(_path) => vec![],
-            HoveredFile(_path) => vec![],
-            HoveredFileCancelled => vec![],
-            ReceivedCharacter(_c) => vec![],
-            Focused(_focused) => vec![],
-            ModifiersChanged(_state) => vec![],
+        let event = match event {
+            Resized(size) => DrawEvent::Resized(size),
+            CloseRequested => DrawEvent::CloseRequested,
+            Destroyed => DrawEvent::Destroyed,
+            DroppedFile(path) => DrawEvent::DroppedFile(path),
+            HoveredFile(path) => DrawEvent::HoveredFile(path),
+            HoveredFileCancelled => DrawEvent::HoveredFileCancelled,
+            ReceivedCharacter(char) => DrawEvent::ReceivedCharacter(char),
+            Focused(is_focused) => DrawEvent::Focused(is_focused),
+            KeyboardInput {
+                input,
+                is_synthetic,
+                ..
+            } => DrawEvent::KeyboardInput {
+                input,
+                is_synthetic,
+            },
+            ModifiersChanged(modifier_state) => DrawEvent::ModifiersChanged(modifier_state),
+            Ime(ime) => DrawEvent::Ime(ime),
+            CursorMoved { position, .. } => DrawEvent::CursorMoved {
+                state: PointerState::new(position),
+            },
+            CursorEntered { .. } => DrawEvent::CursorEntered,
+            CursorLeft { .. } => DrawEvent::CursorLeft,
+            MouseWheel { delta, phase, .. } => DrawEvent::MouseWheel { delta, phase },
+            MouseInput { state, button, .. } => DrawEvent::MouseInput { state, button },
+            TouchpadMagnify { delta, phase, .. } => DrawEvent::TouchpadMagnify { delta, phase },
+            SmartMagnify { .. } => DrawEvent::SmartMagnify,
+            TouchpadRotate { delta, phase, .. } => DrawEvent::TouchpadRotate { delta, phase },
             TouchpadPressure {
-                device_id: _,
-                pressure: _,
-                stage: _,
-            } => vec![],
-            TouchpadMagnify {
-                device_id: _,
-                delta: _,
-                phase: _,
-            } => vec![],
-            TouchpadRotate {
-                device_id: _,
-                delta: _,
-                phase: _,
-            } => vec![],
-            SmartMagnify { device_id: _ } => vec![],
-            AxisMotion {
-                device_id: _,
-                axis: _,
-                value: _,
-            } => vec![],
-            Touch(_touch) => vec![],
-            Ime(_) => vec![],
-            Occluded(_) => vec![],
+                pressure, stage, ..
+            } => DrawEvent::TouchpadPressure { pressure, stage },
+            AxisMotion { axis, value, .. } => DrawEvent::AxisMotion { axis, value },
+            Touch(touch) => DrawEvent::Touch(touch),
             ScaleFactorChanged {
                 scale_factor,
                 new_inner_size,
-            } => vec![
-                DrawEvent::Scale(scale_factor),
-                DrawEvent::Resize(new_inner_size.width as f64, new_inner_size.height as f64),
-            ],
-            ThemeChanged(_theme) => vec![],
-
-            // Keyboard events
-            KeyboardInput {
-                device_id: _,
-                input,
-                is_synthetic: _,
-            } => {
-                // Convert the keycode
-                let key = input
-                    .virtual_keycode
-                    .map(|keycode| key_from_glutin(&keycode));
-                let key = if key == Some(Key::Unknown) { None } else { key };
-
-                // TODO: for modifier keys, generate keydown/up using the modifier state
-
-                // Generate the event for this keypress
-                match input.state {
-                    ElementState::Pressed => vec![DrawEvent::KeyDown(input.scancode as _, key)],
-                    ElementState::Released => vec![DrawEvent::KeyUp(input.scancode as _, key)],
-                }
-            }
-
-            // Pointer events
-            CursorMoved {
-                device_id,
-                position,
-                ..
-            } => {
-                // Update the pointer state
-                let pointer_id = self.id_for_pointer(&device_id);
-                let pointer_state = self.state_for_pointer(&device_id);
-
-                pointer_state.location_in_window = (position.x, position.y);
-
-                // Generate the mouse event
-                let pointer_state = pointer_state.clone();
-                let is_drag = pointer_state.buttons.len() > 0;
-                let action = if is_drag {
-                    PointerAction::Drag
-                } else {
-                    PointerAction::Move
-                };
-
-                vec![DrawEvent::Pointer(action, pointer_id, pointer_state)]
-            }
-
-            CursorEntered { device_id } => {
-                // Generate the 'entered' event with the current pointer state
-                let pointer_id = self.id_for_pointer(&device_id);
-                let pointer_state = self.state_for_pointer(&device_id);
-
-                // Generate the mouse event
-                let pointer_state = pointer_state.clone();
-                vec![DrawEvent::Pointer(
-                    PointerAction::Enter,
-                    pointer_id,
-                    pointer_state,
-                )]
-            }
-
-            CursorLeft { device_id } => {
-                // Generate the 'entered' event with the current pointer state
-                let pointer_id = self.id_for_pointer(&device_id);
-                let pointer_state = self.state_for_pointer(&device_id);
-
-                // Generate the mouse event
-                let pointer_state = pointer_state.clone();
-                vec![DrawEvent::Pointer(
-                    PointerAction::Leave,
-                    pointer_id,
-                    pointer_state,
-                )]
-            }
-
-            MouseInput {
-                device_id,
-                state,
-                button,
-                ..
-            } => {
-                // Generate the 'entered' event with the current pointer state
-                let pointer_id = self.id_for_pointer(&device_id);
-                let pointer_state = self.state_for_pointer(&device_id);
-
-                // TODO: for modifier keys, generate keydown/up using the modifier state
-
-                // Update the pointe state
-                let button = button_from_glutin(&button);
-                let action = match state {
-                    ElementState::Pressed => {
-                        if !pointer_state.buttons.contains(&button) {
-                            pointer_state.buttons.push(button);
-                        }
-
-                        PointerAction::ButtonDown
-                    }
-
-                    ElementState::Released => {
-                        pointer_state.buttons.retain(|item| item != &button);
-
-                        PointerAction::ButtonUp
-                    }
-                };
-
-                // Generate the mouse event
-                let pointer_state = pointer_state.clone();
-                vec![DrawEvent::Pointer(action, pointer_id, pointer_state)]
-            }
-
-            MouseWheel {
-                device_id: _,
-                delta: _,
-                phase: _,
-                ..
-            } => vec![],
+            } => DrawEvent::ScaleFactorChanged {
+                scale_factor,
+                new_inner_size: new_inner_size.clone(),
+            },
+            ThemeChanged(theme) => DrawEvent::ThemeChanged(theme),
+            Occluded(is_occluded) => DrawEvent::Occluded(is_occluded),
+            Moved(position) => DrawEvent::Moved(position),
         };
 
         if let Some(window_events) = self.window_events.get_mut(&window_id) {
             // Dispatch the draw events using a process
-            if draw_events.len() > 0 {
-                // Need to republish the window events so we can share with the process
-                let mut window_events = window_events.0.republish();
+            // Need to republish the window events so we can share with the process
+            let mut window_events = window_events.0.republish();
 
-                self.run_process(async move {
-                    for evt in draw_events {
-                        window_events.publish(evt).await;
-                    }
-                });
-            }
+            self.run_process(async move {
+                window_events.publish(event).await;
+            });
         }
     }
 
@@ -493,10 +378,13 @@ impl GlutinRuntime {
                 // Run the window as a process on this thread
                 self.run_process(async move {
                     // Send the initial events for this window (set the size and the DPI)
+                    initial_events.publish(DrawEvent::Resized(size)).await;
                     initial_events
-                        .publish(DrawEvent::Resize(size.width as f64, size.height as f64))
+                        .publish(DrawEvent::ScaleFactorChanged {
+                            new_inner_size: size,
+                            scale_factor: scale,
+                        })
                         .await;
-                    initial_events.publish(DrawEvent::Scale(scale)).await;
                     initial_events.publish(DrawEvent::Redraw).await;
 
                     let window_events = initial_events;
@@ -509,7 +397,7 @@ impl GlutinRuntime {
                         window_events,
                         window_properties,
                     )
-                        .await;
+                    .await;
 
                     // Stop processing events for the window once there are no more actions
                     glutin_thread().send_event(GlutinThreadEvent::StopSendingToWindow(window_id));
@@ -545,7 +433,7 @@ impl GlutinRuntime {
     ///
     /// Runs a process in the context of this runtime
     ///
-    fn run_process<Fut: 'static + Future<Output=()>>(&mut self, future: Fut) {
+    fn run_process<Fut: 'static + Future<Output = ()>>(&mut self, future: Fut) {
         // Box the future for polling
         let future = future.boxed_local();
 

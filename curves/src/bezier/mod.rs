@@ -1,10 +1,16 @@
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
 //!
 //! # Routines for describing, querying and manipulating Bezier curves
 //!
 //! ```
 //! # use flo_curves::*;
 //! # use flo_curves::bezier::*;
-//! # 
+//! #
 //! let curve           = Curve::from_points(Coord2(1.0, 2.0), (Coord2(2.0, 0.0), Coord2(3.0, 5.0)), Coord2(4.0, 2.0));
 //!
 //! let mid_point       = curve.point_at_pos(0.5);
@@ -23,57 +29,57 @@
 //! For routines that deal with paths made up of bezier curves, see the `path` namespace.
 //!
 
-mod curve;
-mod section;
 mod basis;
-mod subdivide;
-mod derivative;
-mod tangent;
-mod normal;
 mod bounds;
+mod characteristics;
+mod curve;
 mod deform;
+mod derivative;
+mod distort;
 mod fit;
+mod intersection;
+mod length;
+mod nearest_point;
+mod normal;
 mod offset;
 mod offset_lms;
 mod offset_scaling;
 mod offset_subdivision_lms;
-mod search;
-mod solve;
 mod overlaps;
-mod intersection;
-mod characteristics;
-mod length;
+mod search;
+mod section;
+mod solve;
+mod subdivide;
+mod tangent;
 mod walk;
-mod distort;
-mod nearest_point;
 
 pub mod path;
-pub mod vectorize;
 pub mod rasterize;
 pub mod roots;
+pub mod vectorize;
 
-pub use curve::*;
-pub use section::*;
 pub use basis::*;
-pub use subdivide::*;
-pub use derivative::*;
-pub use tangent::*;
-pub use normal::*;
 pub use bounds::*;
+pub use characteristics::*;
+pub use curve::*;
 pub use deform::*;
+pub use derivative::*;
+pub use distort::*;
 pub use fit::*;
+pub use intersection::*;
+pub use length::*;
+pub use nearest_point::*;
+pub use normal::*;
 pub use offset::*;
 pub use offset_lms::*;
 pub use offset_scaling::*;
 pub use offset_subdivision_lms::*;
-pub use search::*;
-pub use solve::*;
 pub use overlaps::*;
-pub use intersection::*;
-pub use characteristics::*;
-pub use length::*;
+pub use search::*;
+pub use section::*;
+pub use solve::*;
+pub use subdivide::*;
+pub use tangent::*;
 pub use walk::*;
-pub use distort::*;
-pub use nearest_point::*;
 
 pub use super::geo::*;

@@ -1,3 +1,9 @@
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
 #[cfg(feature = "timer")]
 use std::sync::*;
 use std::time::Duration;
@@ -49,22 +55,27 @@ impl Default for TimerId {
 ///
 /// Creates the timer entity
 ///
-/// This responds to TimerRequests, 
+/// This responds to TimerRequests,
 ///
 #[cfg(feature = "timer")]
-pub fn create_timer_entity(entity_id: EntityId, context: &Arc<SceneContext>) -> Result<impl EntityChannel<Message=TimerRequest>, CreateEntityError> {
+pub fn create_timer_entity(
+    entity_id: EntityId,
+    context: &Arc<SceneContext>,
+) -> Result<impl EntityChannel<Message = TimerRequest>, CreateEntityError> {
     context.create_entity(entity_id, |context, mut timer_messages| async move {
         while let Some(message) = timer_messages.next().await {
             use TimerRequest::*;
 
             match message {
                 OneShot(timer_id, time, channel) => {
-                    context.run_in_background(async move {
-                        let mut channel = channel;
+                    context
+                        .run_in_background(async move {
+                            let mut channel = channel;
 
-                        Delay::new(time).await;
-                        channel.send(Timeout(timer_id, time)).await.ok();
-                    }).ok();
+                            Delay::new(time).await;
+                            channel.send(Timeout(timer_id, time)).await.ok();
+                        })
+                        .ok();
                 }
 
                 Repeating(timer_id, time, channel) => {
@@ -77,35 +88,39 @@ pub fn create_timer_entity(entity_id: EntityId, context: &Arc<SceneContext>) -> 
                     let start_time = Instant::now();
                     let mut next_tick = time;
 
-                    context.run_in_background(async move {
-                        let mut channel = channel;
+                    context
+                        .run_in_background(async move {
+                            let mut channel = channel;
 
-                        loop {
-                            // Decide how long to wait by using the start time
-                            let current_time = Instant::now().duration_since(start_time);
+                            loop {
+                                // Decide how long to wait by using the start time
+                                let current_time = Instant::now().duration_since(start_time);
 
-                            while next_tick <= current_time {
+                                while next_tick <= current_time {
+                                    next_tick += time;
+                                }
+
+                                // Wait for the delay to pass (for current_time to reach next_tick)
+                                let delay = next_tick - current_time;
+                                let last_tick = next_tick;
+
+                                Delay::new(delay).await;
                                 next_tick += time;
+
+                                // Inform the channel of the timeout
+                                let send_result = channel.send(Timeout(timer_id, last_tick)).await;
+
+                                match send_result {
+                                    Ok(()) => { /* Target responded */ }
+
+                                    // Other errors stop the timer
+                                    Err(_) => {
+                                        break;
+                                    }
+                                }
                             }
-
-                            // Wait for the delay to pass (for current_time to reach next_tick)
-                            let delay = next_tick - current_time;
-                            let last_tick = next_tick;
-
-                            Delay::new(delay).await;
-                            next_tick += time;
-
-                            // Inform the channel of the timeout
-                            let send_result = channel.send(Timeout(timer_id, last_tick)).await;
-
-                            match send_result {
-                                Ok(()) => { /* Target responded */ }
-
-                                // Other errors stop the timer
-                                Err(_) => { break; }
-                            }
-                        }
-                    }).ok();
+                        })
+                        .ok();
                 }
             }
         }

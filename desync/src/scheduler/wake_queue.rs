@@ -1,9 +1,15 @@
-use super::core::*;
-use super::queue_state::*;
-use super::job_queue::*;
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
 
+use super::core::*;
+use super::job_queue::*;
+use super::queue_state::*;
+
+use futures::task::ArcWake;
 use std::sync::*;
-use futures::task::{ArcWake};
 
 ///
 /// Waker that will wake the specified queue in the specified scheduler core
@@ -29,7 +35,7 @@ impl ArcWake for WakeQueue {
 
                 QueueState::WaitingForWake => queue_core.state = QueueState::Idle,
                 QueueState::Running => queue_core.state = QueueState::AwokenWhileRunning,
-                other_state => queue_core.state = other_state
+                other_state => queue_core.state = other_state,
             }
         }
 

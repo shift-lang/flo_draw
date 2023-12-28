@@ -1,11 +1,17 @@
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
+use super::column_sampled_contour::*;
 use super::distance_field::*;
 use super::sampled_contour::*;
-use super::column_sampled_contour::*;
 use crate::geo::*;
 
 use smallvec::*;
 
-use std::ops::{Range};
+use std::ops::Range;
 
 ///
 /// A distance field to a circle with a particular radius
@@ -59,18 +65,37 @@ impl CircularDistanceField {
     /// be positive values). This is intended to be used as input to the `DaubBrushDistanceField` type to create brush
     /// strokes out of many circle.
     ///
-    pub fn centered_at_position(pos: impl Coordinate + Coordinate2D, radius: f64) -> Option<(CircularDistanceField, ContourPosition)> {
-        if radius <= 0.0 { return None; }
+    pub fn centered_at_position(
+        pos: impl Coordinate + Coordinate2D,
+        radius: f64,
+    ) -> Option<(CircularDistanceField, ContourPosition)> {
+        if radius <= 0.0 {
+            return None;
+        }
 
         let circle = CircularDistanceField::with_radius(radius);
 
         let x = pos.x() - circle.center_x - 1.0;
         let y = pos.y() - circle.center_y - 1.0;
 
-        debug_assert!(x >= 0.0, "x {}-{}-1 < 0.0 ({})", pos.x(), circle.center_x, x);
-        debug_assert!(y >= 0.0, "y {}-{}-1 < 0.0 ({})", pos.y(), circle.center_y, y);
+        debug_assert!(
+            x >= 0.0,
+            "x {}-{}-1 < 0.0 ({})",
+            pos.x(),
+            circle.center_x,
+            x
+        );
+        debug_assert!(
+            y >= 0.0,
+            "y {}-{}-1 < 0.0 ({})",
+            pos.y(),
+            circle.center_y,
+            y
+        );
 
-        if x < 0.0 || y < 0.0 { return None; }
+        if x < 0.0 || y < 0.0 {
+            return None;
+        }
 
         let offset_x = x - x.floor();
         let offset_y = y - y.floor();
@@ -139,5 +164,7 @@ impl SampledSignedDistanceField for CircularDistanceField {
     }
 
     #[inline]
-    fn as_contour<'a>(&'a self) -> &'a Self::Contour { self }
+    fn as_contour<'a>(&'a self) -> &'a Self::Contour {
+        self
+    }
 }

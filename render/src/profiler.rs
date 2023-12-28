@@ -1,7 +1,13 @@
-use std::fmt::{Debug};
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
+use std::collections::{HashMap, VecDeque};
+use std::fmt::Debug;
+use std::hash::Hash;
 use std::time::{Duration, Instant};
-use std::hash::{Hash};
-use std::collections::{VecDeque, HashMap};
 
 const ROLLING_WINDOW_SIZE: usize = 30;
 
@@ -18,8 +24,8 @@ struct ActionTime {
 /// Used for profiling frame-by-frame actions
 ///
 pub struct RenderProfiler<TAction>
-    where
-        TAction: Copy + Debug + Hash + Eq,
+where
+    TAction: Copy + Debug + Hash + Eq,
 {
     /// The time that the profiler was created
     start_time: Instant,
@@ -59,8 +65,8 @@ pub struct RenderProfiler<TAction>
 }
 
 impl<TAction> RenderProfiler<TAction>
-    where
-        TAction: Copy + Debug + Hash + Eq,
+where
+    TAction: Copy + Debug + Hash + Eq,
 {
     ///
     /// Creates a new render profiler
@@ -126,13 +132,19 @@ impl<TAction> RenderProfiler<TAction>
             let duration = now.duration_since(action_start_time);
 
             // Add to the time for this action
-            let time = self.frame_action_times
+            let time = self
+                .frame_action_times
                 .entry(action)
-                .or_insert_with(|| ActionTime { count: 0, time: Duration::default(), reentrant_time: Duration::default() });
+                .or_insert_with(|| ActionTime {
+                    count: 0,
+                    time: Duration::default(),
+                    reentrant_time: Duration::default(),
+                });
 
             // Add as recursive time to the action on top of the stack
             if let Some(parent_action) = self.action_stack.last() {
-                let parent_time = self.reentrant_time
+                let parent_time = self
+                    .reentrant_time
                     .entry(*parent_action)
                     .or_insert_with(|| Duration::default());
                 *parent_time += duration;
@@ -183,27 +195,50 @@ impl<TAction> RenderProfiler<TAction>
     ///
     pub fn summary_string(&self) -> String {
         // Calculate some time values
-        let total_time = self.frame_finish.map(|frame_finish| frame_finish.duration_since(self.start_time)).unwrap_or(Duration::default());
+        let total_time = self
+            .frame_finish
+            .map(|frame_finish| frame_finish.duration_since(self.start_time))
+            .unwrap_or(Duration::default());
         let total_seconds = (total_time.as_micros() as f64) / 1_000_000.0;
 
-        let rolling_start = self.rolling_frame_times.iter().next().map(|(start_time, _end_time)| *start_time);
-        let rolling_end = self.rolling_frame_times.iter().last().map(|(_start_time, end_time)| *end_time);
-        let rolling_time = if let (Some(start), Some(end)) = (rolling_start, rolling_end) { end.duration_since(start) } else { Duration::default() };
-        let rolling_fps = (self.rolling_frame_times.len() as f64) / ((rolling_time.as_micros() as f64) / 1_000_000.0);
+        let rolling_start = self
+            .rolling_frame_times
+            .iter()
+            .next()
+            .map(|(start_time, _end_time)| *start_time);
+        let rolling_end = self
+            .rolling_frame_times
+            .iter()
+            .last()
+            .map(|(_start_time, end_time)| *end_time);
+        let rolling_time = if let (Some(start), Some(end)) = (rolling_start, rolling_end) {
+            end.duration_since(start)
+        } else {
+            Duration::default()
+        };
+        let rolling_fps = (self.rolling_frame_times.len() as f64)
+            / ((rolling_time.as_micros() as f64) / 1_000_000.0);
 
-        let frame_time = if let (Some(start), Some(end)) = (self.frame_start, self.frame_finish) { end.duration_since(start) } else { Duration::default() };
+        let frame_time = if let (Some(start), Some(end)) = (self.frame_start, self.frame_finish) {
+            end.duration_since(start)
+        } else {
+            Duration::default()
+        };
         let frame_millis = (frame_time.as_micros() as f64) / 1_000.0;
 
-        let idle_time = if let (Some(start), Some(end)) = (self.last_frame_finish, self.frame_start) { end.duration_since(start) } else { Duration::default() };
+        let idle_time = if let (Some(start), Some(end)) = (self.last_frame_finish, self.frame_start)
+        {
+            end.duration_since(start)
+        } else {
+            Duration::default()
+        };
         let idle_millis = (idle_time.as_micros() as f64) / 1_000.0;
 
         // Header indicates the frame number, total time and FPS and frame generation time info
-        let header = format!("==== FRAME {} @ {:.2}s === {:.1} fps === {:.2}ms = {:.2}ms idle ===",
-                             self.frame_count,
-                             total_seconds,
-                             rolling_fps,
-                             frame_millis,
-                             idle_millis);
+        let header = format!(
+            "==== FRAME {} @ {:.2}s === {:.1} fps === {:.2}ms = {:.2}ms idle ===",
+            self.frame_count, total_seconds, rolling_fps, frame_millis, idle_millis
+        );
 
         // Number of primitives
         let num_primitives = format!("    {} primitives", self.frame_primitive_count);
@@ -213,26 +248,46 @@ impl<TAction> RenderProfiler<TAction>
         all_actions.sort_by_key(|(_act, time)| time.time - time.reentrant_time);
         all_actions.reverse();
 
-        let slowest_time = all_actions.iter().next().map(|(_, slowest_time)| slowest_time.time).unwrap_or(Duration::default());
+        let slowest_time = all_actions
+            .iter()
+            .next()
+            .map(|(_, slowest_time)| slowest_time.time)
+            .unwrap_or(Duration::default());
         let slowest_micros = slowest_time.as_micros() as f64;
-        let all_actions = all_actions.into_iter()
+        let all_actions = all_actions
+            .into_iter()
             .map(|(action, time)| {
                 let reentrant = time.reentrant_time.as_micros() as f64;
                 let micros = time.time.as_micros() as f64;
                 let micros = micros - reentrant;
                 let graph_len = 16.0 * (micros / slowest_micros);
                 let reentrant_len = 16.0 * (reentrant / slowest_micros);
-                let graph = format!("{}{}", "#".repeat(graph_len as _), "-".repeat(reentrant_len as _));
+                let graph = format!(
+                    "{}{}",
+                    "#".repeat(graph_len as _),
+                    "-".repeat(reentrant_len as _)
+                );
                 let action = format!("{:?}", action);
 
-                format!("   {: <20.20} | {: >8.8}µs | {: >7.7} | {}", action, time.time.as_micros(), time.count, graph)
+                format!(
+                    "   {: <20.20} | {: >8.8}µs | {: >7.7} | {}",
+                    action,
+                    time.time.as_micros(),
+                    time.count,
+                    graph
+                )
             })
             .collect::<Vec<_>>();
         let action_times = all_actions.join("\n");
 
         // Draw a graph of the recent frame times/idle times
         let mut times = vec![];
-        let mut last_time = self.rolling_frame_times.iter().next().map(|(start, _end)| *start).unwrap();
+        let mut last_time = self
+            .rolling_frame_times
+            .iter()
+            .next()
+            .map(|(start, _end)| *start)
+            .unwrap();
 
         for (start, end) in self.rolling_frame_times.iter() {
             // Figure out the idle time (time spent waiting since the last frame) and frame time for this frame
@@ -247,46 +302,54 @@ impl<TAction> RenderProfiler<TAction>
         }
 
         // Work out the time for the longest frame
-        let longest_frame_time = times.iter().map(|(idle, frame)| *idle + *frame).max().unwrap_or(Duration::default());
+        let longest_frame_time = times
+            .iter()
+            .map(|(idle, frame)| *idle + *frame)
+            .max()
+            .unwrap_or(Duration::default());
         let longest_frame_micros = (longest_frame_time.as_micros() as f64).max(1.0);
 
         // Make a graph of all the frames, except the first which will have bad idle time
-        let graph = times.into_iter().skip(1).map(|(idle, frame)| {
-            let idle = idle.as_micros() as f64;
-            let frame = frame.as_micros() as f64;
-            let idle = (idle / longest_frame_micros * 10.0) as usize;
-            let frame = (frame / longest_frame_micros * 10.0) as usize;
+        let graph = times
+            .into_iter()
+            .skip(1)
+            .map(|(idle, frame)| {
+                let idle = idle.as_micros() as f64;
+                let frame = frame.as_micros() as f64;
+                let idle = (idle / longest_frame_micros * 10.0) as usize;
+                let frame = (frame / longest_frame_micros * 10.0) as usize;
 
-            let idle = "|".repeat(idle);
-            let frame = "#".repeat(frame);
+                let idle = "|".repeat(idle);
+                let frame = "#".repeat(frame);
 
-            idle + &frame
-        }).collect::<Vec<_>>();
+                idle + &frame
+            })
+            .collect::<Vec<_>>();
 
         // Flip the graph from horizontal to vertical
         let graph_len = graph.len();
-        let graph = (0..10).into_iter()
-            .map(|row| {
-                let mut graph_row = vec![' '; graph_len];
+        let graph = (0..10).into_iter().map(|row| {
+            let mut graph_row = vec![' '; graph_len];
 
-                for column in 0..graph.len() {
-                    let ypos = 9 - row;
-                    if graph[column].len() > ypos {
-                        graph_row[column] = graph[column].chars().nth(ypos).unwrap_or(' ');
-                    }
+            for column in 0..graph.len() {
+                let ypos = 9 - row;
+                if graph[column].len() > ypos {
+                    graph_row[column] = graph[column].chars().nth(ypos).unwrap_or(' ');
                 }
+            }
 
-                graph_row.into_iter().collect::<String>()
-            });
-        let graph = graph.map(|row| format!("    |{}", row)).collect::<Vec<_>>().join("\n");
+            graph_row.into_iter().collect::<String>()
+        });
+        let graph = graph
+            .map(|row| format!("    |{}", row))
+            .collect::<Vec<_>>()
+            .join("\n");
         let graph_xaxis = format!("    +{}", "-".repeat(graph_len));
 
         // Stick together into a summary string
-        format!("{}\n\n{}\n\n{}\n\n{}\n{}\n",
-                header,
-                num_primitives,
-                action_times,
-                graph,
-                graph_xaxis)
+        format!(
+            "{}\n\n{}\n\n{}\n\n{}\n{}\n",
+            header, num_primitives, action_times, graph, graph_xaxis
+        )
     }
 }

@@ -1,12 +1,18 @@
-use super::job::*;
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
 use super::active_queue::*;
+use super::job::*;
 use super::queue_state::*;
 use super::wake_thread::*;
 
+use std::collections::vec_deque::*;
 use std::fmt;
 use std::sync::*;
 use std::thread;
-use std::collections::vec_deque::*;
 
 use futures::task;
 use futures::task::{Context, Poll};
@@ -48,13 +54,17 @@ impl fmt::Debug for JobQueue {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         let core = self.core.lock().expect("JobQueue core lock");
 
-        fmt.write_str(&format!("JobQueue: State: {:?}, Pending: {}", core.state, core.queue.len()))
+        fmt.write_str(&format!(
+            "JobQueue: State: {:?}, Pending: {}",
+            core.state,
+            core.queue.len()
+        ))
     }
 }
 
 impl JobQueue {
     ///
-    /// Creates a new job queue 
+    /// Creates a new job queue
     ///
     pub(super) fn new() -> JobQueue {
         JobQueue {
@@ -62,7 +72,7 @@ impl JobQueue {
                 queue: VecDeque::new(),
                 state: QueueState::Idle,
                 wake_blocked: vec![],
-            })
+            }),
         }
     }
 
@@ -121,7 +131,7 @@ impl JobQueue {
                         core.state = match core.state {
                             QueueState::Running => QueueState::WaitingForWake,
                             QueueState::AwokenWhileRunning => QueueState::Running,
-                            other => other
+                            other => other,
                         };
 
                         if core.state == QueueState::WaitingForWake {
@@ -176,7 +186,7 @@ impl JobQueue {
                             core.state = match core.state {
                                 QueueState::AwokenWhileRunning => QueueState::Running,
                                 QueueState::Running => QueueState::WaitingForUnpark,
-                                other => panic!("Queue was in unexpected state {:?}", other)
+                                other => panic!("Queue was in unexpected state {:?}", other),
                             };
 
                             core.state == QueueState::WaitingForUnpark
@@ -191,7 +201,7 @@ impl JobQueue {
                                     QueueState::Running => break,
                                     QueueState::AwokenWhileRunning => break,
                                     QueueState::WaitingForUnpark => (),
-                                    other => panic!("Queue was in unexpected state {:?}", other)
+                                    other => panic!("Queue was in unexpected state {:?}", other),
                                 }
 
                                 // Park until we're awoken from the other thread (once awoken, we re-check the state)

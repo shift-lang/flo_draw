@@ -1,25 +1,31 @@
-use super::fill_state::*;
-use super::layer_state::*;
-use super::layer_bounds::*;
-use super::layer_handle::*;
-use super::render_entity::*;
-use super::render_texture::*;
-use super::renderer_layer::*;
-use super::render_gradient::*;
-use super::renderer_worker::*;
-use super::stroke_settings::*;
-use super::render_entity_details::*;
-use super::dynamic_texture_state::*;
-use super::texture_render_request::*;
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
+use std::collections::{HashMap, HashSet};
+use std::mem;
+use std::sync::*;
+
+use lyon::tessellation::FillRule;
 
 use flo_canvas as canvas;
 use flo_render as render;
 
-use lyon::tessellation::{FillRule};
-
-use std::mem;
-use std::sync::*;
-use std::collections::{HashMap, HashSet};
+use super::dynamic_texture_state::*;
+use super::fill_state::*;
+use super::layer_bounds::*;
+use super::layer_handle::*;
+use super::layer_state::*;
+use super::render_entity::*;
+use super::render_entity_details::*;
+use super::render_gradient::*;
+use super::render_texture::*;
+use super::renderer_layer::*;
+use super::renderer_worker::*;
+use super::stroke_settings::*;
+use super::texture_render_request::*;
 
 ///
 /// Parts of the renderer that are shared with the workers
@@ -120,25 +126,36 @@ impl RenderCore {
             DisableClipping => {}
 
             SetFillTexture(texture_id, _, _, _) => {
-                self.used_textures.get_mut(&texture_id)
+                self.used_textures
+                    .get_mut(&texture_id)
                     .map(|usage_count| *usage_count -= 1);
             }
 
             SetFillGradient(texture_id, _, _, _) => {
-                self.used_textures.get_mut(&texture_id)
+                self.used_textures
+                    .get_mut(&texture_id)
                     .map(|usage_count| *usage_count -= 1);
             }
 
             RenderSpriteWithFilters(_, _, _, filters) => {
                 let textures = filters.iter().flat_map(|filter| filter.used_textures());
                 for texture_id in textures {
-                    self.used_textures.get_mut(&texture_id)
+                    self.used_textures
+                        .get_mut(&texture_id)
                         .map(|usage_count| *usage_count -= 1);
                 }
             }
 
-            EnableClipping(render::VertexBufferId(vertex_id), render::IndexBufferId(index_id), _num_vertices) |
-            DrawIndexed(render::VertexBufferId(vertex_id), render::IndexBufferId(index_id), _num_vertices) => {
+            EnableClipping(
+                render::VertexBufferId(vertex_id),
+                render::IndexBufferId(index_id),
+                _num_vertices,
+            )
+            | DrawIndexed(
+                render::VertexBufferId(vertex_id),
+                render::IndexBufferId(index_id),
+                _num_vertices,
+            ) => {
                 // Each buffer is only used by one drawing operation, so we can always free them here
                 self.free_vertex_buffers.push(vertex_id);
                 if index_id != vertex_id {
@@ -164,7 +181,9 @@ impl RenderCore {
     ///
     pub fn free_unused_textures(&mut self) -> Vec<render::RenderAction> {
         // Collect the list of unused textures
-        let mut unused_textures = self.used_textures.iter()
+        let mut unused_textures = self
+            .used_textures
+            .iter()
             .filter(|(_texture_id, count)| **count <= 0)
             .map(|(texture_id, _count)| *texture_id)
             .collect::<HashSet<_>>();
@@ -173,8 +192,12 @@ impl RenderCore {
         for layer_handle in self.layers.iter() {
             let state = &self.layer_readonly(*layer_handle).state;
             match &state.fill_color {
-                FillState::Texture(texture_id, _, _, _, _) => { unused_textures.remove(texture_id); }
-                FillState::LinearGradient(texture_id, _, _, _, _) => { unused_textures.remove(texture_id); }
+                FillState::Texture(texture_id, _, _, _, _) => {
+                    unused_textures.remove(texture_id);
+                }
+                FillState::LinearGradient(texture_id, _, _, _, _) => {
+                    unused_textures.remove(texture_id);
+                }
 
                 _ => {}
             }
@@ -188,7 +211,8 @@ impl RenderCore {
             self.used_textures.remove(&free_texture_id);
 
             // Prevent any rendering to this texture
-            self.layer_textures.retain(|(id, _req)| id != &free_texture_id);
+            self.layer_textures
+                .retain(|(id, _req)| id != &free_texture_id);
 
             // Free the resources attached to the texture
             self.dynamic_texture_state.remove(&free_texture_id);
@@ -215,7 +239,12 @@ impl RenderCore {
     ///
     /// Stores the result of a worker job in this core item
     ///
-    pub fn store_job_result(&mut self, entity_ref: LayerEntityRef, render_entity: RenderEntity, details: RenderEntityDetails) {
+    pub fn store_job_result(
+        &mut self,
+        entity_ref: LayerEntityRef,
+        render_entity: RenderEntity,
+        details: RenderEntityDetails,
+    ) {
         let LayerHandle(layer_idx) = entity_ref.layer_id;
         let layer_idx = layer_idx as usize;
 
@@ -255,12 +284,11 @@ impl RenderCore {
     /// Index buffers share the same IDs as vertex buffers, so the return value should be turned into a vertex buffer ID or an index buffer ID as needed
     ///
     pub fn allocate_vertex_buffer(&mut self) -> usize {
-        self.free_vertex_buffers.pop()
-            .unwrap_or_else(|| {
-                let buffer_id = self.unused_vertex_buffer;
-                self.unused_vertex_buffer += 1;
-                buffer_id
-            })
+        self.free_vertex_buffers.pop().unwrap_or_else(|| {
+            let buffer_id = self.unused_vertex_buffer;
+            self.unused_vertex_buffer += 1;
+            buffer_id
+        })
     }
 
     ///
@@ -274,12 +302,11 @@ impl RenderCore {
     /// Allocates a texture ID
     ///
     pub fn allocate_texture(&mut self) -> render::TextureId {
-        self.free_textures.pop()
-            .unwrap_or_else(|| {
-                let texture_id = self.unused_texture_id;
-                self.unused_texture_id += 1;
-                render::TextureId(texture_id)
-            })
+        self.free_textures.pop().unwrap_or_else(|| {
+            let texture_id = self.unused_texture_id;
+            self.unused_texture_id += 1;
+            render::TextureId(texture_id)
+        })
     }
 
     ///
@@ -291,10 +318,14 @@ impl RenderCore {
 
         // Prevent any rendering to this texture
         let layer_textures = mem::take(&mut self.layer_textures);
-        let (kept, removed) = layer_textures.into_iter().partition(|(id, _req)| id != &texture_id);
+        let (kept, removed) = layer_textures
+            .into_iter()
+            .partition(|(id, _req)| id != &texture_id);
         self.layer_textures = kept;
 
-        removed.into_iter().for_each(|(_, request)| self.free_texture_render_request(request));
+        removed
+            .into_iter()
+            .for_each(|(_, request)| self.free_texture_render_request(request));
 
         // Free the resources attached to the texture
         self.dynamic_texture_state.remove(&texture_id);
@@ -309,12 +340,11 @@ impl RenderCore {
     /// Allocates a texture ID
     ///
     pub fn allocate_render_target(&mut self) -> render::RenderTargetId {
-        self.free_render_targets.pop()
-            .unwrap_or_else(|| {
-                let render_target_id = self.unused_render_target_id;
-                self.unused_render_target_id += 1;
-                render::RenderTargetId(render_target_id)
-            })
+        self.free_render_targets.pop().unwrap_or_else(|| {
+            let render_target_id = self.unused_render_target_id;
+            self.unused_render_target_id += 1;
+            render::RenderTargetId(render_target_id)
+        })
     }
 
     ///
@@ -327,13 +357,20 @@ impl RenderCore {
     ///
     /// Returns the render actions required to send a vertex buffer (as a stack, so in reverse order)
     ///
-    pub fn send_layer_vertex_buffer(&mut self, layer_id: LayerHandle, render_index: usize) -> Vec<render::RenderAction> {
+    pub fn send_layer_vertex_buffer(
+        &mut self,
+        layer_id: LayerHandle,
+        render_index: usize,
+    ) -> Vec<render::RenderAction> {
         let LayerHandle(layer_idx) = layer_id;
         let layer_idx = layer_idx as usize;
 
         // Remove the action from the layer (so we don't send the same buffer again)
         let mut vertex_action = RenderEntity::Missing;
-        mem::swap(&mut self.layer_definitions[layer_idx].render_order[render_index], &mut vertex_action);
+        mem::swap(
+            &mut self.layer_definitions[layer_idx].render_order[render_index],
+            &mut vertex_action,
+        );
 
         // The action we just removed should be a vertex buffer action
         match vertex_action {
@@ -344,22 +381,38 @@ impl RenderCore {
                 // Draw these buffers as the action at this position
                 match intent {
                     VertexBufferIntent::Draw => {
-                        self.layer_definitions[layer_idx].render_order[render_index] = RenderEntity::DrawIndexed(render::VertexBufferId(buffer_id), render::IndexBufferId(buffer_id), vertices.indices.len());
+                        self.layer_definitions[layer_idx].render_order[render_index] =
+                            RenderEntity::DrawIndexed(
+                                render::VertexBufferId(buffer_id),
+                                render::IndexBufferId(buffer_id),
+                                vertices.indices.len(),
+                            );
                     }
 
                     VertexBufferIntent::Clip => {
-                        self.layer_definitions[layer_idx].render_order[render_index] = RenderEntity::EnableClipping(render::VertexBufferId(buffer_id), render::IndexBufferId(buffer_id), vertices.indices.len());
+                        self.layer_definitions[layer_idx].render_order[render_index] =
+                            RenderEntity::EnableClipping(
+                                render::VertexBufferId(buffer_id),
+                                render::IndexBufferId(buffer_id),
+                                vertices.indices.len(),
+                            );
                     }
                 }
 
                 // Send the vertices and indices to the rendering engine
                 vec![
-                    render::RenderAction::CreateVertex2DBuffer(render::VertexBufferId(buffer_id), vertices.vertices),
-                    render::RenderAction::CreateIndexBuffer(render::IndexBufferId(buffer_id), vertices.indices),
+                    render::RenderAction::CreateVertex2DBuffer(
+                        render::VertexBufferId(buffer_id),
+                        vertices.vertices,
+                    ),
+                    render::RenderAction::CreateIndexBuffer(
+                        render::IndexBufferId(buffer_id),
+                        vertices.indices,
+                    ),
                 ]
             }
 
-            _ => panic!("send_vertex_buffer must be used on a vertex buffer item")
+            _ => panic!("send_vertex_buffer must be used on a vertex buffer item"),
         }
     }
 
@@ -376,19 +429,28 @@ impl RenderCore {
 
         for render_idx in 0..layer.render_order.len() {
             match &layer.render_order[render_idx] {
-                SetTransform(new_transform) => { active_transform = *new_transform; }
+                SetTransform(new_transform) => {
+                    active_transform = *new_transform;
+                }
 
                 VertexBuffer(_buffers, _) => {
-                    send_vertex_buffers.extend(self.send_layer_vertex_buffer(layer_handle, render_idx));
+                    send_vertex_buffers
+                        .extend(self.send_layer_vertex_buffer(layer_handle, render_idx));
                     layer = self.layer(layer_handle);
                 }
 
-                RenderSprite(namespace_id, sprite_id, transform) |
-                RenderSpriteWithFilters(namespace_id, sprite_id, transform, _) => {
+                RenderSprite(namespace_id, sprite_id, transform)
+                | RenderSpriteWithFilters(namespace_id, sprite_id, transform, _) => {
                     let sprite_id = *sprite_id;
                     let transform = *transform;
                     let namespace_id = *namespace_id;
-                    let filters = if let RenderSpriteWithFilters(_, _, _, filters) = &layer.render_order[render_idx] { Some(filters.clone()) } else { None };
+                    let filters = if let RenderSpriteWithFilters(_, _, _, filters) =
+                        &layer.render_order[render_idx]
+                    {
+                        Some(filters.clone())
+                    } else {
+                        None
+                    };
                     let sprite_layer_handle = self.sprites.get(&(namespace_id, sprite_id)).cloned();
                     let mut sprite_bounds = LayerBounds::default();
 
@@ -402,7 +464,8 @@ impl RenderCore {
 
                         // Apply any filter radius that might be needed
                         if let Some(filters) = filters {
-                            let filter_radius = filters.iter()
+                            let filter_radius = filters
+                                .iter()
                                 .fold(0.0, |radius, filter| f32::max(radius, filter.radius()));
                             sprite_bounds = sprite_bounds.inflate(filter_radius);
                         }
@@ -422,7 +485,11 @@ impl RenderCore {
     ///
     /// Returns a render texture for a canvas texture
     ///
-    pub fn texture_for_rendering(&mut self, namespace_id: usize, texture_id: canvas::TextureId) -> Option<render::TextureId> {
+    pub fn texture_for_rendering(
+        &mut self,
+        namespace_id: usize,
+        texture_id: canvas::TextureId,
+    ) -> Option<render::TextureId> {
         // 'Ready' textures are set up for rendering: 'Loading' textures need to be finished to render
         match self.canvas_textures.get(&(namespace_id, texture_id))? {
             RenderTexture::Ready(render_texture) => Some(*render_texture),
@@ -430,7 +497,10 @@ impl RenderCore {
                 let render_texture = *render_texture;
 
                 // Finish the texture
-                self.layer_textures.push((render_texture, TextureRenderRequest::CreateMipMaps(render_texture)));
+                self.layer_textures.push((
+                    render_texture,
+                    TextureRenderRequest::CreateMipMaps(render_texture),
+                ));
 
                 // Mark as finished
                 if let Some(texture) = self.canvas_textures.get_mut(&(namespace_id, texture_id)) {
@@ -457,7 +527,11 @@ impl RenderCore {
     ///
     /// Returns a (1D) render texture for a canvas gradient
     ///
-    pub fn gradient_for_rendering(&mut self, namespace_id: usize, gradient_id: canvas::GradientId) -> Option<render::TextureId> {
+    pub fn gradient_for_rendering(
+        &mut self,
+        namespace_id: usize,
+        gradient_id: canvas::GradientId,
+    ) -> Option<render::TextureId> {
         match self.canvas_gradients.get(&(namespace_id, gradient_id))? {
             RenderGradient::Ready(gradient_texture, _) => Some(*gradient_texture),
             RenderGradient::Defined(definition) => {
@@ -475,12 +549,20 @@ impl RenderCore {
                 // Define as a 1D texture
                 self.setup_actions.extend(vec![
                     render::RenderAction::Create1DTextureBgra(texture_id, render::Size1D(256)),
-                    render::RenderAction::WriteTexture1D(texture_id, render::Position1D(0), render::Position1D(256), Arc::new(bytes)),
+                    render::RenderAction::WriteTexture1D(
+                        texture_id,
+                        render::Position1D(0),
+                        render::Position1D(256),
+                        Arc::new(bytes),
+                    ),
                     render::RenderAction::CreateMipMaps(texture_id),
                 ]);
 
                 // Update the texture to 'ready'
-                self.canvas_gradients.insert((namespace_id, gradient_id), RenderGradient::Ready(texture_id, definition));
+                self.canvas_gradients.insert(
+                    (namespace_id, gradient_id),
+                    RenderGradient::Ready(texture_id, definition),
+                );
 
                 // The new texture is the one that will be used for rendering
                 Some(texture_id)
@@ -513,7 +595,9 @@ impl RenderCore {
             render_order: vec![RenderEntity::SetTransform(canvas::Transform2D::identity())],
             state: LayerState {
                 is_sprite: false,
-                modification_count: self.layer_definitions[layer_idx as usize].state.modification_count,
+                modification_count: self.layer_definitions[layer_idx as usize]
+                    .state
+                    .modification_count,
                 fill_color: FillState::Color(render::Rgba8([0, 0, 0, 255])),
                 winding_rule: FillRule::NonZero,
                 stroke_settings: StrokeSettings::new(),
@@ -532,7 +616,10 @@ impl RenderCore {
             alpha: 1.0,
         };
 
-        mem::swap(&mut old_layer, &mut self.layer_definitions[layer_idx as usize]);
+        mem::swap(
+            &mut old_layer,
+            &mut self.layer_definitions[layer_idx as usize],
+        );
 
         // Add the handle to the list of free layer handles
         self.free_layers.push(layer_handle);
@@ -568,28 +655,31 @@ impl RenderCore {
     ///
     /// The result is a tuple of `(bool, TextureRenderRequest)` where the 'bool' indicates if the request is retired after this action
     ///
-    pub fn setup_textures(&mut self, viewport_size: (f32, f32)) -> Vec<(bool, TextureRenderRequest)> {
+    pub fn setup_textures(
+        &mut self,
+        viewport_size: (f32, f32),
+    ) -> Vec<(bool, TextureRenderRequest)> {
         let mut textures = vec![];
-        let mut actions_for_dynamic_textures = HashMap::<render::TextureId, Vec<TextureRenderRequest>>::new();
+        let mut actions_for_dynamic_textures =
+            HashMap::<render::TextureId, Vec<TextureRenderRequest>>::new();
 
         // After performing the pending render instructions, the textures remain loaded until replaced
         for (_, render_request) in mem::take(&mut self.layer_textures).into_iter() {
             use TextureRenderRequest::*;
             match &render_request {
-                CreateBlankTexture(_, _, _) |
-                FromSprite(_, _, _) |
-                CopyTexture(_, _) => {
+                CreateBlankTexture(_, _, _) | FromSprite(_, _, _) | CopyTexture(_, _) => {
                     // These are always rendered
                     textures.push((true, render_request));
                 }
 
-                SetBytes(texture_id, _, _, _) |
-                CreateMipMaps(texture_id) |
-                Filter(texture_id, _) => {
+                SetBytes(texture_id, _, _, _)
+                | CreateMipMaps(texture_id)
+                | Filter(texture_id, _) => {
                     let mut retired = true;
 
                     // These also attach to the actions if the target texture is a dynamic texture
-                    if let Some(dynamic_actions) = actions_for_dynamic_textures.get_mut(texture_id) {
+                    if let Some(dynamic_actions) = actions_for_dynamic_textures.get_mut(texture_id)
+                    {
                         retired = false;
                         dynamic_actions.push(render_request.clone());
                     }
@@ -600,7 +690,13 @@ impl RenderCore {
 
                 DynamicTexture(texture_id, layer_handle, _, _, _, _) => {
                     let texture_id = *texture_id;
-                    let current_state = DynamicTextureState { viewport: viewport_size, sprite_modification_count: self.layer(*layer_handle).state.modification_count };
+                    let current_state = DynamicTextureState {
+                        viewport: viewport_size,
+                        sprite_modification_count: self
+                            .layer(*layer_handle)
+                            .state
+                            .modification_count,
+                    };
 
                     // Clear and start collecting any processing actions for this texture
                     actions_for_dynamic_textures.insert(texture_id, vec![]);

@@ -1,25 +1,30 @@
-use crate::matrix::*;
-use crate::renderer_core::*;
-use crate::renderer_worker::*;
-use crate::renderer_stream::*;
-use crate::resource_ids::*;
-use crate::layer_handle::*;
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
 
-use super::tessellate_build_path::*;
+use std::collections::HashMap;
+use std::ops::Range;
+use std::sync::*;
 
-use flo_render as render;
-use flo_render::{RenderTargetType};
-use flo_canvas as canvas;
 use flo_stream::*;
-
-use ::desync::*;
-
 use futures::prelude::*;
 use num_cpus;
 
-use std::collections::{HashMap};
-use std::ops::{Range};
-use std::sync::*;
+use ::desync::*;
+use flo_canvas as canvas;
+use flo_render as render;
+use flo_render::RenderTargetType;
+
+use crate::layer_handle::*;
+use crate::matrix::*;
+use crate::renderer_core::*;
+use crate::renderer_stream::*;
+use crate::renderer_worker::*;
+use crate::resource_ids::*;
+
+use super::tessellate_build_path::*;
 
 ///
 /// Changes commands for `flo_canvas` into commands for `flo_render`
@@ -146,14 +151,21 @@ impl CanvasRenderer {
     ///
     /// Sets the viewport used by this renderer
     ///
-    /// The window width and height is the overall size of the canvas (which can be considered to have 
+    /// The window width and height is the overall size of the canvas (which can be considered to have
     /// coordinates from 0,0 to window_width, window_height). The viewport, given by x and y here, is the
     /// region of the window that will actually be rendered.
     ///
     /// The viewport and window coordinates are all in pixels. The scale used when generating transformations
     /// (so with a scale of 2, a CanvasHeight request of 1080 will act as a height 2160 in the viewport).
     ///
-    pub fn set_viewport(&mut self, x: Range<f32>, y: Range<f32>, window_width: f32, window_height: f32, scale: f32) {
+    pub fn set_viewport(
+        &mut self,
+        x: Range<f32>,
+        y: Range<f32>,
+        window_width: f32,
+        window_height: f32,
+        scale: f32,
+    ) {
         // By default the x and y coordinates go from -1.0 to 1.0 and represent the viewport coordinates
 
         // Width and height of the viewport
@@ -161,8 +173,16 @@ impl CanvasRenderer {
         let height = y.end - y.start;
 
         // Widths/heights of 0.0 will cause issues with calculating ratios and scales
-        let window_width = if window_width == 0.0 { 1.0 } else { window_width };
-        let window_height = if window_height == 0.0 { 1.0 } else { window_height };
+        let window_width = if window_width == 0.0 {
+            1.0
+        } else {
+            window_width
+        };
+        let window_height = if window_height == 0.0 {
+            1.0
+        } else {
+            window_height
+        };
         let width = if width == 0.0 { 1.0 } else { width };
         let height = if height == 0.0 { 1.0 } else { height };
 
@@ -183,7 +203,9 @@ impl CanvasRenderer {
         let translate_y = (window_mid_y - viewport_mid_y) * pixel_size;
 
         // Create a viewport transform such that the top of the window is at (0,1) and the bottom is at (0,-1)
-        let viewport_transform = square_pixels * canvas::Transform2D::scale(window_scale, window_scale) * canvas::Transform2D::translate(translate_x, translate_y);
+        let viewport_transform = square_pixels
+            * canvas::Transform2D::scale(window_scale, window_scale)
+            * canvas::Transform2D::translate(translate_x, translate_y);
         let inverse_viewport_transform = viewport_transform.invert().unwrap();
 
         // Store the size of the window
@@ -194,8 +216,16 @@ impl CanvasRenderer {
 
         let viewport_width = x.end - x.start;
         let viewport_height = y.end - y.start;
-        let viewport_width = if viewport_width < 1.0 { 1.0 } else { viewport_width };
-        let viewport_height = if viewport_height < 1.0 { 1.0 } else { viewport_height };
+        let viewport_width = if viewport_width < 1.0 {
+            1.0
+        } else {
+            viewport_width
+        };
+        let viewport_height = if viewport_height < 1.0 {
+            1.0
+        } else {
+            viewport_height
+        };
 
         self.viewport_origin = (x.start, y.start);
         self.window_scale = scale;
@@ -249,7 +279,11 @@ impl CanvasRenderer {
     ///
     /// Tessellates a drawing to the layers in this renderer
     ///
-    fn tessellate<'a, DrawIter: 'a + Iterator<Item=canvas::Draw>>(&'a mut self, drawing: DrawIter, job_publisher: SinglePublisher<Vec<CanvasJob>>) -> impl 'a + Future<Output=()> {
+    fn tessellate<'a, DrawIter: 'a + Iterator<Item = canvas::Draw>>(
+        &'a mut self,
+        drawing: DrawIter,
+        job_publisher: SinglePublisher<Vec<CanvasJob>>,
+    ) -> impl 'a + Future<Output = ()> {
         async move {
             let core = Arc::clone(&self.core);
             let mut job_publisher = job_publisher;
@@ -287,8 +321,14 @@ impl CanvasRenderer {
                     Path(BezierCurve((cp1, cp2), p)) => path_state.tes_bezier_curve(cp1, cp2, p),
                     Path(ClosePath) => path_state.tes_close_path(),
 
-                    Fill => self.tes_fill(&mut path_state, &mut job_publisher, &mut pending_jobs).await,
-                    Stroke => self.tes_stroke(&mut path_state, &mut job_publisher, &mut pending_jobs).await,
+                    Fill => {
+                        self.tes_fill(&mut path_state, &mut job_publisher, &mut pending_jobs)
+                            .await
+                    }
+                    Stroke => {
+                        self.tes_stroke(&mut path_state, &mut job_publisher, &mut pending_jobs)
+                            .await
+                    }
 
                     LineWidth(width) => self.tes_line_width(width),
                     LineWidthPixels(pixel_width) => self.tes_line_width_pixels(pixel_width),
@@ -299,8 +339,12 @@ impl CanvasRenderer {
                     DashLength(length) => self.tes_dash_length(length),
                     DashOffset(offset) => self.tes_dash_offset(offset),
                     FillColor(color) => self.tes_fill_color(color),
-                    FillTexture(texture_id, min, max) => self.tes_fill_texture(self.current_namespace, texture_id, min, max),
-                    FillGradient(gradient_id, min, max) => self.tes_fill_gradient(self.current_namespace, gradient_id, min, max),
+                    FillTexture(texture_id, min, max) => {
+                        self.tes_fill_texture(self.current_namespace, texture_id, min, max)
+                    }
+                    FillGradient(gradient_id, min, max) => {
+                        self.tes_fill_gradient(self.current_namespace, gradient_id, min, max)
+                    }
                     FillTransform(transform) => self.tes_fill_transform(transform),
                     StrokeColor(color) => self.tes_stroke_color(color),
                     BlendMode(blend_mode) => self.tes_blend_mode(blend_mode),
@@ -311,7 +355,10 @@ impl CanvasRenderer {
                     MultiplyTransform(transform) => self.tes_multiply_transform(transform),
 
                     Unclip => self.tes_unclip(),
-                    Clip => self.tes_clip(&mut path_state, &mut job_publisher, &mut pending_jobs).await,
+                    Clip => {
+                        self.tes_clip(&mut path_state, &mut job_publisher, &mut pending_jobs)
+                            .await
+                    }
 
                     Store => self.tes_store(),
                     Restore => self.tes_restore(),
@@ -322,7 +369,9 @@ impl CanvasRenderer {
                     ClearCanvas(background) => self.tes_clear_canvas(background, &mut path_state),
                     Layer(layer_id) => self.tes_layer(layer_id),
                     LayerBlend(layer_id, blend_mode) => self.tes_layer_blend(layer_id, blend_mode),
-                    LayerAlpha(layer_id, layer_alpha) => self.tes_layer_alpha(layer_id, layer_alpha),
+                    LayerAlpha(layer_id, layer_alpha) => {
+                        self.tes_layer_alpha(layer_id, layer_alpha)
+                    }
                     ClearLayer => self.tes_clear_layer(&mut path_state),
                     ClearAllLayers => self.tes_clear_all_layers(&mut path_state),
                     SwapLayers(layer1, layer2) => self.tes_swap_layers(layer1, layer2),
@@ -330,12 +379,26 @@ impl CanvasRenderer {
                     ClearSprite => self.tes_clear_sprite(&mut path_state),
                     Sprite(sprite_id) => self.tes_sprite(self.current_namespace, sprite_id),
                     SpriteTransform(transform) => self.tes_sprite_transform(transform),
-                    DrawSprite(sprite_id) => self.tes_draw_sprite(self.current_namespace, sprite_id),
-                    DrawSpriteWithFilters(sprite_id, filters) => self.tes_draw_sprite_with_filters(self.current_namespace, sprite_id, filters),
-                    MoveSpriteFrom(sprite_id) => self.tes_move_sprite_from(self.current_namespace, sprite_id, &mut path_state),
+                    DrawSprite(sprite_id) => {
+                        self.tes_draw_sprite(self.current_namespace, sprite_id)
+                    }
+                    DrawSpriteWithFilters(sprite_id, filters) => self.tes_draw_sprite_with_filters(
+                        self.current_namespace,
+                        sprite_id,
+                        filters,
+                    ),
+                    MoveSpriteFrom(sprite_id) => self.tes_move_sprite_from(
+                        self.current_namespace,
+                        sprite_id,
+                        &mut path_state,
+                    ),
 
-                    Texture(texture_id, texture_op) => self.tes_texture(self.current_namespace, texture_id, texture_op),
-                    Gradient(gradient_id, gradient_op) => self.tes_gradient(self.current_namespace, gradient_id, gradient_op),
+                    Texture(texture_id, texture_op) => {
+                        self.tes_texture(self.current_namespace, texture_id, texture_op)
+                    }
+                    Gradient(gradient_id, gradient_op) => {
+                        self.tes_gradient(self.current_namespace, gradient_id, gradient_op)
+                    }
 
                     // Fonts aren't directly rendered by the canvas renderer (use a helper to convert to textures or outlines)
                     Font(font_id, font_op) => self.tes_font(font_id, font_op),
@@ -358,24 +421,28 @@ impl CanvasRenderer {
     /// Starts processing a drawing, returning a future that completes once all of the tessellation operations
     /// have finished
     ///
-    pub fn process_drawing<'a, DrawIter: 'a + Iterator<Item=canvas::Draw>>(&'a mut self, drawing: DrawIter) -> impl 'a + Future<Output=()> {
+    pub fn process_drawing<'a, DrawIter: 'a + Iterator<Item = canvas::Draw>>(
+        &'a mut self,
+        drawing: DrawIter,
+    ) -> impl 'a + Future<Output = ()> {
         // Create a copy of the core
         let core = Arc::clone(&self.core);
         let workers = self.workers.clone();
 
         // Send the jobs from the tessellator to the workers
         let mut publisher = SinglePublisher::new(2);
-        let job_results = workers.into_iter()
-            .map(|worker| {
-                let jobs = publisher.subscribe();
-                pipe(worker, jobs, |worker, items: Vec<CanvasJob>| {
-                    async move {
-                        items.into_iter()
-                            .map(|item| worker.process_job(item))
-                            .collect::<Vec<_>>()
-                    }.boxed()
-                })
-            });
+        let job_results = workers.into_iter().map(|worker| {
+            let jobs = publisher.subscribe();
+            pipe(worker, jobs, |worker, items: Vec<CanvasJob>| {
+                async move {
+                    items
+                        .into_iter()
+                        .map(|item| worker.process_job(item))
+                        .collect::<Vec<_>>()
+                }
+                .boxed()
+            })
+        });
         let mut job_results = futures::stream::select_all(job_results);
 
         // Start processing the drawing, and sending jobs to be tessellated
@@ -393,17 +460,20 @@ impl CanvasRenderer {
         };
 
         // Combine the two futures for the end result
-        futures::future::join(process_drawing, process_tessellations)
-            .map(|_| ())
+        futures::future::join(process_drawing, process_tessellations).map(|_| ())
     }
 
     ///
     /// Returns a stream of render actions after applying a set of canvas drawing operations to this renderer
     ///
-    pub fn draw<'a, DrawIter: 'a + Send + Iterator<Item=canvas::Draw>>(&'a mut self, drawing: DrawIter) -> impl 'a + Send + Stream<Item=render::RenderAction> {
+    pub fn draw<'a, DrawIter: 'a + Send + Iterator<Item = canvas::Draw>>(
+        &'a mut self,
+        drawing: DrawIter,
+    ) -> impl 'a + Send + Stream<Item = render::RenderAction> {
         // Set up the initial set of rendering actions
         let viewport_transform = self.viewport_transform;
-        let viewport_size = render::Size2D(self.viewport_size.0 as usize, self.viewport_size.1 as usize);
+        let viewport_size =
+            render::Size2D(self.viewport_size.0 as usize, self.viewport_size.1 as usize);
         let viewport_matrix = transform_to_matrix(&self.viewport_transform);
         let mut initialise = vec![
             render::RenderAction::SelectRenderTarget(MAIN_RENDER_TARGET),
@@ -413,14 +483,26 @@ impl CanvasRenderer {
         ];
 
         // Initialise the default render target
-        initialise.insert(0, render::RenderAction::CreateRenderTarget(MAIN_RENDER_TARGET, MAIN_RENDER_TEXTURE,
-                                                                      render::Size2D(self.viewport_size.0 as usize, self.viewport_size.1 as usize),
-                                                                      RenderTargetType::MultisampledTexture));
+        initialise.insert(
+            0,
+            render::RenderAction::CreateRenderTarget(
+                MAIN_RENDER_TARGET,
+                MAIN_RENDER_TEXTURE,
+                render::Size2D(self.viewport_size.0 as usize, self.viewport_size.1 as usize),
+                RenderTargetType::MultisampledTexture,
+            ),
+        );
 
         // And the 'clip mask' render surface (render target 2, texture 2)
-        initialise.insert(0, render::RenderAction::CreateRenderTarget(CLIP_RENDER_TARGET, CLIP_RENDER_TEXTURE,
-                                                                      render::Size2D(self.viewport_size.0 as usize, self.viewport_size.1 as usize),
-                                                                      RenderTargetType::MonochromeMultisampledTexture));
+        initialise.insert(
+            0,
+            render::RenderAction::CreateRenderTarget(
+                CLIP_RENDER_TARGET,
+                CLIP_RENDER_TEXTURE,
+                render::Size2D(self.viewport_size.0 as usize, self.viewport_size.1 as usize),
+                RenderTargetType::MonochromeMultisampledTexture,
+            ),
+        );
 
         // When finished, render the MSAA buffer to the main framebuffer
         let finalize = vec![
@@ -428,7 +510,11 @@ impl CanvasRenderer {
             render::RenderAction::BlendMode(render::BlendMode::SourceOver),
             render::RenderAction::SetTransform(render::Matrix::identity()),
             // Note that the framebuffer region can be updated by the renderer stream (or this instruction can be removed): see `clip_draw_framebuffer()` in renderer_stream.rs
-            render::RenderAction::DrawFrameBuffer(MAIN_RENDER_TARGET, render::FrameBufferRegion::default(), render::Alpha(1.0)),
+            render::RenderAction::DrawFrameBuffer(
+                MAIN_RENDER_TARGET,
+                render::FrameBufferRegion::default(),
+                render::Alpha(1.0),
+            ),
             render::RenderAction::ShowFrameBuffer,
             render::RenderAction::FreeRenderTarget(MAIN_RENDER_TARGET),
             render::RenderAction::FreeRenderTarget(CLIP_RENDER_TARGET),
@@ -453,15 +539,25 @@ impl CanvasRenderer {
         let processing = self.process_drawing(drawing);
 
         // Return a stream of results from processing the drawing
-        RenderStream::new(core, processing, viewport_transform, viewport_size, background_vertex_buffer, initialise, finalize)
+        RenderStream::new(
+            core,
+            processing,
+            viewport_transform,
+            viewport_size,
+            background_vertex_buffer,
+            initialise,
+            finalize,
+        )
     }
 }
 
 #[cfg(test)]
 mod test {
-    use super::*;
-    use flo_canvas::*;
     use futures::executor;
+
+    use flo_canvas::*;
+
+    use super::*;
 
     #[test]
     pub fn active_transform_after_setting_canvas_height() {
@@ -470,7 +566,16 @@ mod test {
         executor::block_on(async move {
             // Set the canvas height
             renderer.set_viewport(0.0..1024.0, 0.0..768.0, 1024.0, 768.0, 1.0);
-            renderer.draw(vec![Draw::ClearCanvas(Color::Rgba(0.0, 0.0, 0.0, 0.0)), Draw::CanvasHeight(1000.0)].into_iter()).collect::<Vec<_>>().await;
+            renderer
+                .draw(
+                    vec![
+                        Draw::ClearCanvas(Color::Rgba(0.0, 0.0, 0.0, 0.0)),
+                        Draw::CanvasHeight(1000.0),
+                    ]
+                    .into_iter(),
+                )
+                .collect::<Vec<_>>()
+                .await;
 
             // Fetch the viewport transform
             let active_transform = renderer.get_active_transform();
@@ -494,7 +599,16 @@ mod test {
         executor::block_on(async move {
             // Set the canvas height, viewport is half the window
             renderer.set_viewport(0.0..1024.0, 0.0..768.0, 2048.0, 1536.0, 1.0);
-            renderer.draw(vec![Draw::ClearCanvas(Color::Rgba(0.0, 0.0, 0.0, 0.0)), Draw::CanvasHeight(1000.0)].into_iter()).collect::<Vec<_>>().await;
+            renderer
+                .draw(
+                    vec![
+                        Draw::ClearCanvas(Color::Rgba(0.0, 0.0, 0.0, 0.0)),
+                        Draw::CanvasHeight(1000.0),
+                    ]
+                    .into_iter(),
+                )
+                .collect::<Vec<_>>()
+                .await;
 
             // Fetch the viewport transform
             let active_transform = renderer.get_active_transform();
@@ -518,7 +632,16 @@ mod test {
         executor::block_on(async move {
             // Set the canvas height
             renderer.set_viewport(0.0..1024.0, 0.0..768.0, 1024.0, 768.0, 1.0);
-            renderer.draw(vec![Draw::ClearCanvas(Color::Rgba(0.0, 0.0, 0.0, 0.0)), Draw::CanvasHeight(1000.0)].into_iter()).collect::<Vec<_>>().await;
+            renderer
+                .draw(
+                    vec![
+                        Draw::ClearCanvas(Color::Rgba(0.0, 0.0, 0.0, 0.0)),
+                        Draw::CanvasHeight(1000.0),
+                    ]
+                    .into_iter(),
+                )
+                .collect::<Vec<_>>()
+                .await;
 
             // Fetch the viewport transform
             let viewport_transform = renderer.get_viewport_transform();
@@ -542,7 +665,16 @@ mod test {
         executor::block_on(async move {
             // Set the canvas height
             renderer.set_viewport(0.0..1024.0, 0.0..768.0, 2048.0, 1536.0, 1.0);
-            renderer.draw(vec![Draw::ClearCanvas(Color::Rgba(0.0, 0.0, 0.0, 0.0)), Draw::CanvasHeight(1000.0)].into_iter()).collect::<Vec<_>>().await;
+            renderer
+                .draw(
+                    vec![
+                        Draw::ClearCanvas(Color::Rgba(0.0, 0.0, 0.0, 0.0)),
+                        Draw::CanvasHeight(1000.0),
+                    ]
+                    .into_iter(),
+                )
+                .collect::<Vec<_>>()
+                .await;
 
             // Fetch the viewport transform
             let viewport_transform = renderer.get_viewport_transform();
@@ -566,7 +698,16 @@ mod test {
         executor::block_on(async move {
             // Set the canvas height
             renderer.set_viewport(512.0..1536.0, 512.0..1280.0, 2048.0, 1536.0, 1.0);
-            renderer.draw(vec![Draw::ClearCanvas(Color::Rgba(0.0, 0.0, 0.0, 0.0)), Draw::CanvasHeight(1000.0)].into_iter()).collect::<Vec<_>>().await;
+            renderer
+                .draw(
+                    vec![
+                        Draw::ClearCanvas(Color::Rgba(0.0, 0.0, 0.0, 0.0)),
+                        Draw::CanvasHeight(1000.0),
+                    ]
+                    .into_iter(),
+                )
+                .collect::<Vec<_>>()
+                .await;
 
             // Fetch the viewport transform
             let viewport_transform = renderer.get_viewport_transform();
@@ -590,7 +731,16 @@ mod test {
         executor::block_on(async move {
             // Set the canvas height
             renderer.set_viewport(512.0..1536.0, 512.0..1280.0, 2048.0, 1536.0, 1.0);
-            renderer.draw(vec![Draw::ClearCanvas(Color::Rgba(0.0, 0.0, 0.0, 0.0)), Draw::CanvasHeight(1000.0)].into_iter()).collect::<Vec<_>>().await;
+            renderer
+                .draw(
+                    vec![
+                        Draw::ClearCanvas(Color::Rgba(0.0, 0.0, 0.0, 0.0)),
+                        Draw::CanvasHeight(1000.0),
+                    ]
+                    .into_iter(),
+                )
+                .collect::<Vec<_>>()
+                .await;
 
             // Fetch the viewport transform
             let window_transform = renderer.get_window_transform();
@@ -614,7 +764,16 @@ mod test {
         executor::block_on(async move {
             // Set the canvas height
             renderer.set_viewport(512.0..1536.0, 512.0..1280.0, 2048.0, 1536.0, 2.0);
-            renderer.draw(vec![Draw::ClearCanvas(Color::Rgba(0.0, 0.0, 0.0, 0.0)), Draw::CanvasHeight(1000.0)].into_iter()).collect::<Vec<_>>().await;
+            renderer
+                .draw(
+                    vec![
+                        Draw::ClearCanvas(Color::Rgba(0.0, 0.0, 0.0, 0.0)),
+                        Draw::CanvasHeight(1000.0),
+                    ]
+                    .into_iter(),
+                )
+                .collect::<Vec<_>>()
+                .await;
 
             // Fetch the viewport transform
             let window_transform = renderer.get_window_transform();
@@ -656,7 +815,17 @@ mod test {
         executor::block_on(async move {
             // Set up a 1:1 transform on the window and a small viewport
             renderer.set_viewport(200.0..300.0, 400.0..450.0, 1024.0, 768.0, 1.0);
-            renderer.draw(vec![Draw::ClearCanvas(Color::Rgba(0.0, 0.0, 0.0, 0.0)), Draw::CanvasHeight(768.0), Draw::CenterRegion((0.0, 0.0), (1024.0, 768.0))].into_iter()).collect::<Vec<_>>().await;
+            renderer
+                .draw(
+                    vec![
+                        Draw::ClearCanvas(Color::Rgba(0.0, 0.0, 0.0, 0.0)),
+                        Draw::CanvasHeight(768.0),
+                        Draw::CenterRegion((0.0, 0.0), (1024.0, 768.0)),
+                    ]
+                    .into_iter(),
+                )
+                .collect::<Vec<_>>()
+                .await;
 
             // Fetch the viewport transform
             let window_transform = renderer.get_window_transform();
@@ -685,7 +854,17 @@ mod test {
         executor::block_on(async move {
             // Set up a 1:1 transform on the window and a small viewport
             renderer.set_viewport(0.0..300.0, 0.0..450.0, 1024.0, 768.0, 1.0);
-            renderer.draw(vec![Draw::ClearCanvas(Color::Rgba(0.0, 0.0, 0.0, 0.0)), Draw::CanvasHeight(768.0), Draw::CenterRegion((0.0, 0.0), (1024.0, 768.0))].into_iter()).collect::<Vec<_>>().await;
+            renderer
+                .draw(
+                    vec![
+                        Draw::ClearCanvas(Color::Rgba(0.0, 0.0, 0.0, 0.0)),
+                        Draw::CanvasHeight(768.0),
+                        Draw::CenterRegion((0.0, 0.0), (1024.0, 768.0)),
+                    ]
+                    .into_iter(),
+                )
+                .collect::<Vec<_>>()
+                .await;
 
             // Fetch the viewport transform
             let window_transform = renderer.get_window_transform();

@@ -1,3 +1,9 @@
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
 use std::any;
 use std::fmt;
 
@@ -31,17 +37,20 @@ pub trait EntityChannel: Send {
     /// in the event that the message triggers a callback to the original entity. This also doesn't generate an error
     /// in the event the channel drops the message without responding to it.
     ///
-    fn send(&mut self, message: Self::Message) -> BoxFuture<'static, Result<(), EntityChannelError>>;
+    fn send(
+        &mut self,
+        message: Self::Message,
+    ) -> BoxFuture<'static, Result<(), EntityChannelError>>;
 }
 
 ///
 /// A boxed entity channel is used to hide the real type of an entity channel
 ///
-pub type BoxedEntityChannel<'a, TMessage> = Box<dyn 'a + EntityChannel<Message=TMessage>>;
+pub type BoxedEntityChannel<'a, TMessage> = Box<dyn 'a + EntityChannel<Message = TMessage>>;
 
 impl<'a, TMessage> EntityChannel for BoxedEntityChannel<'a, TMessage>
-    where
-        TMessage: Send,
+where
+    TMessage: Send,
 {
     type Message = TMessage;
 
@@ -56,16 +65,23 @@ impl<'a, TMessage> EntityChannel for BoxedEntityChannel<'a, TMessage>
     }
 
     #[inline]
-    fn send(&mut self, message: Self::Message) -> BoxFuture<'static, Result<(), EntityChannelError>> {
+    fn send(
+        &mut self,
+        message: Self::Message,
+    ) -> BoxFuture<'static, Result<(), EntityChannelError>> {
         (**self).send(message)
     }
 }
 
 impl<'a, TMessage> fmt::Debug for BoxedEntityChannel<'a, TMessage>
-    where
-        TMessage: Send,
+where
+    TMessage: Send,
 {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-        fmt.write_fmt(format_args!("BoxedEntityChannel::<{}>( -> {:?})", any::type_name::<TMessage>(), self.entity_id()))
+        fmt.write_fmt(format_args!(
+            "BoxedEntityChannel::<{}>( -> {:?})",
+            any::type_name::<TMessage>(),
+            self.entity_id()
+        ))
     }
 }

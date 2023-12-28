@@ -1,25 +1,30 @@
-use super::matrix::*;
-use super::layer_bounds::*;
-use super::resource_ids::*;
-use super::render_entity::*;
-use super::renderer_core::*;
-use super::layer_handle::*;
-use super::texture_render_request::*;
-use super::texture_filter_request::*;
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
 
-use flo_canvas as canvas;
-use flo_render as render;
-
-use ::desync::*;
-
-use futures::prelude::*;
-use futures::task::{Context, Poll};
-use futures::future::{BoxFuture};
-
+use std::collections::VecDeque;
 use std::mem;
 use std::pin::*;
 use std::sync::*;
-use std::collections::{VecDeque};
+
+use futures::future::BoxFuture;
+use futures::prelude::*;
+use futures::task::{Context, Poll};
+
+use ::desync::*;
+use flo_canvas as canvas;
+use flo_render as render;
+
+use super::layer_bounds::*;
+use super::layer_handle::*;
+use super::matrix::*;
+use super::render_entity::*;
+use super::renderer_core::*;
+use super::resource_ids::*;
+use super::texture_filter_request::*;
+use super::texture_render_request::*;
 
 ///
 /// Tri-state version of 'option' that supports 'Unknown' as well as None and Some
@@ -135,8 +140,18 @@ impl<'a> RenderStream<'a> {
     ///
     /// If rendering is suspended at the point that the processing future completes then the initial and final actions will not be taken
     ///
-    pub fn new<ProcessFuture>(core: Arc<Desync<RenderCore>>, processing_future: ProcessFuture, viewport_transform: canvas::Transform2D, viewport_size: render::Size2D, background_vertex_buffer: render::VertexBufferId, initial_actions: Vec<render::RenderAction>, final_actions: Vec<render::RenderAction>) -> RenderStream<'a>
-        where ProcessFuture: 'a + Send + Future<Output=()> {
+    pub fn new<ProcessFuture>(
+        core: Arc<Desync<RenderCore>>,
+        processing_future: ProcessFuture,
+        viewport_transform: canvas::Transform2D,
+        viewport_size: render::Size2D,
+        background_vertex_buffer: render::VertexBufferId,
+        initial_actions: Vec<render::RenderAction>,
+        final_actions: Vec<render::RenderAction>,
+    ) -> RenderStream<'a>
+    where
+        ProcessFuture: 'a + Send + Future<Output = ()>,
+    {
         RenderStream {
             core: core,
             frame_suspended: false,
@@ -164,7 +179,7 @@ impl<T> Maybe<T> {
         match self {
             Maybe::Unknown => None,
             Maybe::None => Some(None),
-            Maybe::Some(val) => Some(Some(val))
+            Maybe::Some(val) => Some(Some(val)),
         }
     }
 }
@@ -229,7 +244,12 @@ impl RenderStreamState {
         // Generate the dash texture by clobbering any existing texture
         vec![
             render::RenderAction::Create1DTextureMono(DASH_TEXTURE, render::Size1D(DASH_WIDTH)),
-            render::RenderAction::WriteTexture1D(DASH_TEXTURE, render::Position1D(0), render::Position1D(DASH_WIDTH), Arc::new(pixels)),
+            render::RenderAction::WriteTexture1D(
+                DASH_TEXTURE,
+                render::Position1D(0),
+                render::Position1D(DASH_WIDTH),
+                Arc::new(pixels),
+            ),
             render::RenderAction::CreateMipMaps(DASH_TEXTURE),
         ]
     }
@@ -244,14 +264,20 @@ impl RenderStreamState {
         // Update the content of the clip mask render target
         if let (Some(clip_buffers), Some(transform)) = (&self.clip_buffers, self.transform) {
             if Some(clip_buffers) != from.clip_buffers.as_ref() && clip_buffers.len() > 0 {
-                let render_clip_buffers = clip_buffers.iter()
-                    .rev()
-                    .map(|(vertices, indices, length)| render::RenderAction::DrawIndexedTriangles(*vertices, *indices, *length));
+                let render_clip_buffers =
+                    clip_buffers
+                        .iter()
+                        .rev()
+                        .map(|(vertices, indices, length)| {
+                            render::RenderAction::DrawIndexedTriangles(*vertices, *indices, *length)
+                        });
 
                 // Set up to render the clip buffers
                 updates.extend(vec![
                     render::RenderAction::SelectRenderTarget(CLIP_RENDER_TARGET),
-                    render::RenderAction::UseShader(render::ShaderType::Simple { clip_texture: None }),
+                    render::RenderAction::UseShader(render::ShaderType::Simple {
+                        clip_texture: None,
+                    }),
                     render::RenderAction::Clear(render::Rgba8([0, 0, 0, 255])),
                     render::RenderAction::BlendMode(render::BlendMode::AllChannelAlphaSourceOver),
                     render::RenderAction::SetTransform(transform_to_matrix(&transform)),
@@ -278,7 +304,10 @@ impl RenderStreamState {
 
         // Set the blend mode
         if let Some(blend_mode) = self.blend_mode {
-            if Some(blend_mode) != from.blend_mode || (self.render_target != from.render_target && self.render_target.is_some()) || reset_render_target {
+            if Some(blend_mode) != from.blend_mode
+                || (self.render_target != from.render_target && self.render_target.is_some())
+                || reset_render_target
+            {
                 updates.push(render::RenderAction::BlendMode(blend_mode));
             }
         }
@@ -286,16 +315,40 @@ impl RenderStreamState {
         // Update the shader we're using
         if let (Some(clip), Some(modifier)) = (self.clip_mask.value(), &self.shader_modifier) {
             let mask_textures_changed = Some(clip) != from.clip_mask.value();
-            let render_target_changed = self.render_target != from.render_target && self.render_target.is_some();
+            let render_target_changed =
+                self.render_target != from.render_target && self.render_target.is_some();
             let modifier_changed = Some(modifier) != from.shader_modifier.as_ref();
 
-            if mask_textures_changed || render_target_changed || reset_render_target || modifier_changed {
+            if mask_textures_changed
+                || render_target_changed
+                || reset_render_target
+                || modifier_changed
+            {
                 // Pick the shader based on the modifier
                 let shader = match modifier {
                     ShaderModifier::Simple => render::ShaderType::Simple { clip_texture: clip },
-                    ShaderModifier::DashPattern(_) => render::ShaderType::DashedLine { dash_texture: DASH_TEXTURE, clip_texture: clip },
-                    ShaderModifier::Texture(texture_id, matrix, repeat, alpha) => render::ShaderType::Texture { texture: *texture_id, texture_transform: *matrix, repeat: *repeat, alpha: *alpha, clip_texture: clip },
-                    ShaderModifier::Gradient(texture_id, matrix, repeat, alpha) => render::ShaderType::LinearGradient { texture: *texture_id, texture_transform: *matrix, repeat: *repeat, alpha: *alpha, clip_texture: clip }
+                    ShaderModifier::DashPattern(_) => render::ShaderType::DashedLine {
+                        dash_texture: DASH_TEXTURE,
+                        clip_texture: clip,
+                    },
+                    ShaderModifier::Texture(texture_id, matrix, repeat, alpha) => {
+                        render::ShaderType::Texture {
+                            texture: *texture_id,
+                            texture_transform: *matrix,
+                            repeat: *repeat,
+                            alpha: *alpha,
+                            clip_texture: clip,
+                        }
+                    }
+                    ShaderModifier::Gradient(texture_id, matrix, repeat, alpha) => {
+                        render::ShaderType::LinearGradient {
+                            texture: *texture_id,
+                            texture_transform: *matrix,
+                            repeat: *repeat,
+                            alpha: *alpha,
+                            clip_texture: clip,
+                        }
+                    }
                 };
 
                 // Add to the updates
@@ -306,7 +359,13 @@ impl RenderStreamState {
             if modifier_changed {
                 match modifier {
                     ShaderModifier::Simple => {}
-                    ShaderModifier::DashPattern(new_dash_pattern) => { updates.extend(self.generate_dash_pattern(new_dash_pattern).into_iter().rev()); }
+                    ShaderModifier::DashPattern(new_dash_pattern) => {
+                        updates.extend(
+                            self.generate_dash_pattern(new_dash_pattern)
+                                .into_iter()
+                                .rev(),
+                        );
+                    }
                     ShaderModifier::Texture(_, _, _, _) => {}
                     ShaderModifier::Gradient(_, _, _, _) => {}
                 }
@@ -315,8 +374,13 @@ impl RenderStreamState {
 
         // Update the transform state
         if let Some(transform) = self.transform {
-            if Some(transform) != from.transform || (self.render_target != from.render_target && self.render_target.is_some()) || reset_render_target {
-                updates.push(render::RenderAction::SetTransform(transform_to_matrix(&transform)));
+            if Some(transform) != from.transform
+                || (self.render_target != from.render_target && self.render_target.is_some())
+                || reset_render_target
+            {
+                updates.push(render::RenderAction::SetTransform(transform_to_matrix(
+                    &transform,
+                )));
             }
         }
 
@@ -328,7 +392,13 @@ impl RenderCore {
     ///
     /// Draws some bounds using viewport coordinates
     ///
-    fn render_debug_region(&mut self, active_transform: canvas::Transform2D, viewport_size: render::Size2D, debug_region: LayerBounds, invalid_bounds: &mut LayerBounds) -> Vec<render::RenderAction> {
+    fn render_debug_region(
+        &mut self,
+        active_transform: canvas::Transform2D,
+        viewport_size: render::Size2D,
+        debug_region: LayerBounds,
+        invalid_bounds: &mut LayerBounds,
+    ) -> Vec<render::RenderAction> {
         // Reverse the active transform (so we figure out coordinates that will map to the debug region)
         let render::Size2D(w, h) = viewport_size;
         let reverse_transform = active_transform.invert().unwrap();
@@ -351,27 +421,35 @@ impl RenderCore {
 
         // Draw to a temporary vertex buffer
         use render::RenderAction::*;
-        use render::{VertexBufferId, Vertex2D};
+        use render::{Vertex2D, VertexBufferId};
 
         let mut render = vec![];
         let debug_vertex_buffer = self.allocate_vertex_buffer();
 
         render.push(UseShader(render::ShaderType::Simple { clip_texture: None }));
-        render.push(CreateVertex2DBuffer(VertexBufferId(debug_vertex_buffer), vec![
-            Vertex2D::with_pos(min_x, min_y).with_color(0.4, 0.8, 0.0, 0.6),
-            Vertex2D::with_pos(min_x, max_y).with_color(0.4, 0.8, 0.0, 0.6),
-            Vertex2D::with_pos(max_x, min_y).with_color(0.4, 0.8, 0.0, 0.6),
-            Vertex2D::with_pos(max_x, max_y).with_color(0.4, 0.8, 0.0, 0.6),
-            Vertex2D::with_pos(max_x, min_y).with_color(0.4, 0.8, 0.0, 0.6),
-            Vertex2D::with_pos(min_x, max_y).with_color(0.4, 0.8, 0.0, 0.6),
-        ]));
+        render.push(CreateVertex2DBuffer(
+            VertexBufferId(debug_vertex_buffer),
+            vec![
+                Vertex2D::with_pos(min_x, min_y).with_color(0.4, 0.8, 0.0, 0.6),
+                Vertex2D::with_pos(min_x, max_y).with_color(0.4, 0.8, 0.0, 0.6),
+                Vertex2D::with_pos(max_x, min_y).with_color(0.4, 0.8, 0.0, 0.6),
+                Vertex2D::with_pos(max_x, max_y).with_color(0.4, 0.8, 0.0, 0.6),
+                Vertex2D::with_pos(max_x, min_y).with_color(0.4, 0.8, 0.0, 0.6),
+                Vertex2D::with_pos(min_x, max_y).with_color(0.4, 0.8, 0.0, 0.6),
+            ],
+        ));
         render.push(DrawTriangles(VertexBufferId(debug_vertex_buffer), 0..6));
 
         // Add back to the free list after rendering
         self.free_vertex_buffer(debug_vertex_buffer);
 
         // Update the invalid bounds
-        let region = LayerBounds { min_x, min_y, max_x, max_y };
+        let region = LayerBounds {
+            min_x,
+            min_y,
+            max_x,
+            max_y,
+        };
         let region = region.transform(&active_transform);
         invalid_bounds.combine(&region);
 
@@ -381,7 +459,13 @@ impl RenderCore {
     ///
     /// Generates the rendering actions for the layer with the specified handle
     ///
-    fn render_layer(&mut self, viewport_transform: canvas::Transform2D, layer_handle: LayerHandle, render_target: render::RenderTargetId, render_state: &mut RenderStreamState) -> Vec<render::RenderAction> {
+    fn render_layer(
+        &mut self,
+        viewport_transform: canvas::Transform2D,
+        layer_handle: LayerHandle,
+        render_target: render::RenderTargetId,
+        render_state: &mut RenderStreamState,
+    ) -> Vec<render::RenderAction> {
         use self::RenderEntity::*;
 
         let core = self;
@@ -404,11 +488,19 @@ impl RenderCore {
         render_state.is_clear = Some(false);
 
         // Commit the layer to the render buffer if needed
-        if layer.commit_before_rendering && !layer_buffer_is_clear && !initial_invalid_bounds.is_undefined() && !is_sprite {
+        if layer.commit_before_rendering
+            && !layer_buffer_is_clear
+            && !initial_invalid_bounds.is_undefined()
+            && !is_sprite
+        {
             render_order.extend(vec![
                 render::RenderAction::RenderToFrameBuffer,
                 render::RenderAction::BlendMode(render::BlendMode::SourceOver),
-                render::RenderAction::DrawFrameBuffer(render_target, initial_invalid_bounds.into(), render::Alpha(1.0)),
+                render::RenderAction::DrawFrameBuffer(
+                    render_target,
+                    initial_invalid_bounds.into(),
+                    render::Alpha(1.0),
+                ),
                 render::RenderAction::SelectRenderTarget(render_target),
                 render::RenderAction::Clear(render::Rgba8([0, 0, 0, 0])),
             ]);
@@ -418,7 +510,9 @@ impl RenderCore {
         }
 
         // Chnage the invalidated region for the layer buffer
-        render_state.invalid_bounds.combine(&layer.bounds.transform(&viewport_transform));
+        render_state
+            .invalid_bounds
+            .combine(&layer.bounds.transform(&viewport_transform));
 
         // Update to the new state for this layer
         render_order.extend(render_state.update_from_state(&initial_state));
@@ -437,12 +531,18 @@ impl RenderCore {
 
                 VertexBuffer(_buffers, _) => {
                     // Should already have sent all the vertex buffers
-                    panic!("Tessellation is not complete (found unexpected vertex buffer in layer)");
+                    panic!(
+                        "Tessellation is not complete (found unexpected vertex buffer in layer)"
+                    );
                 }
 
                 DrawIndexed(vertex_buffer, index_buffer, num_items) => {
                     // Draw the triangles
-                    render_order.push(render::RenderAction::DrawIndexedTriangles(*vertex_buffer, *index_buffer, *num_items));
+                    render_order.push(render::RenderAction::DrawIndexedTriangles(
+                        *vertex_buffer,
+                        *index_buffer,
+                        *num_items,
+                    ));
                 }
 
                 RenderSprite(namespace_id, sprite_id, sprite_transform) => {
@@ -450,7 +550,8 @@ impl RenderCore {
                     let sprite_transform = *sprite_transform;
                     let namespace_id = *namespace_id;
 
-                    if let Some(sprite_layer_handle) = core.sprites.get(&(namespace_id, sprite_id)) {
+                    if let Some(sprite_layer_handle) = core.sprites.get(&(namespace_id, sprite_id))
+                    {
                         let sprite_layer_handle = *sprite_layer_handle;
 
                         // The sprite transform is appended to the viewport transform
@@ -461,7 +562,12 @@ impl RenderCore {
                         let old_state = render_state.clone();
 
                         // Render the layer associated with the sprite
-                        let render_sprite = core.render_layer(combined_transform, sprite_layer_handle, render_target, render_state);
+                        let render_sprite = core.render_layer(
+                            combined_transform,
+                            sprite_layer_handle,
+                            render_target,
+                            render_state,
+                        );
 
                         // Render the sprite
                         render_order.extend(render_sprite);
@@ -486,32 +592,48 @@ impl RenderCore {
                     let namespace_id = *namespace_id;
                     let filters = filters.clone();
 
-                    if let Some(sprite_layer_handle) = core.sprites.get(&(namespace_id, sprite_id)) {
+                    if let Some(sprite_layer_handle) = core.sprites.get(&(namespace_id, sprite_id))
+                    {
                         let sprite_layer_handle = *sprite_layer_handle;
 
                         // Figure out the sprite size in pixels
                         let transform = active_transform * sprite_transform;
                         let sprite_layer = core.layer(sprite_layer_handle);
 
-                        // The sprite bounds are in sprite coordinates, so we need to apply the active and sprite transform to get them to 
+                        // The sprite bounds are in sprite coordinates, so we need to apply the active and sprite transform to get them to
                         let sprite_bounds_normal = sprite_layer.bounds;
-                        let sprite_bounds_viewport = sprite_bounds_normal.transform(&(viewport_transform * transform));
-                        let sprite_bounds_pixels = sprite_bounds_viewport.to_viewport_pixels(&render_state.viewport_size);
+                        let sprite_bounds_viewport =
+                            sprite_bounds_normal.transform(&(viewport_transform * transform));
+                        let sprite_bounds_pixels =
+                            sprite_bounds_viewport.to_viewport_pixels(&render_state.viewport_size);
 
                         // Clip the sprite bounds against the viewport to get the texture bounds
-                        let viewport_bounds_pixels = LayerBounds { min_x: 0.0, min_y: 0.0, max_x: render_state.viewport_size.0 as _, max_y: render_state.viewport_size.1 as _ };
-                        let texture_bounds_pixels = sprite_bounds_pixels.clip(&viewport_bounds_pixels);
+                        let viewport_bounds_pixels = LayerBounds {
+                            min_x: 0.0,
+                            min_y: 0.0,
+                            max_x: render_state.viewport_size.0 as _,
+                            max_y: render_state.viewport_size.1 as _,
+                        };
+                        let texture_bounds_pixels =
+                            sprite_bounds_pixels.clip(&viewport_bounds_pixels);
 
                         if let Some(texture_bounds_pixels) = texture_bounds_pixels {
                             use render::RenderAction::*;
-                            use render::{VertexBufferId, ShaderType, Vertex2D};
+                            use render::{ShaderType, Vertex2D, VertexBufferId};
 
                             // Calculate the radius needed by the filters (we use the maximum of all the filters here, which is simpler but not always correct)
-                            let filter_radius = filters.iter()
-                                .fold(0, |radius, filter| {
-                                    i64::max(radius, Self::texture_filter_radius_pixels(viewport_transform, render_state.viewport_size, filter))
-                                });
-                            let texture_bounds_pixels = texture_bounds_pixels.inflate(filter_radius as f32);
+                            let filter_radius = filters.iter().fold(0, |radius, filter| {
+                                i64::max(
+                                    radius,
+                                    Self::texture_filter_radius_pixels(
+                                        viewport_transform,
+                                        render_state.viewport_size,
+                                        filter,
+                                    ),
+                                )
+                            });
+                            let texture_bounds_pixels =
+                                texture_bounds_pixels.inflate(filter_radius as f32);
 
                             // The items from before the sprite should be rendered using the current state
                             let old_state = render_state.clone();
@@ -520,46 +642,92 @@ impl RenderCore {
                             let texture_bounds_pixels = texture_bounds_pixels.snap_to_pixels();
                             let temp_texture = core.allocate_texture();
                             let texture_vertex_buffer = core.allocate_vertex_buffer();
-                            let texture_size = render::Size2D(texture_bounds_pixels.width() as _, texture_bounds_pixels.height() as _);
+                            let texture_size = render::Size2D(
+                                texture_bounds_pixels.width() as _,
+                                texture_bounds_pixels.height() as _,
+                            );
 
                             core.texture_size.insert(temp_texture, texture_size);
 
-                            render_order.extend(vec![
-                                CreateTextureBgra(temp_texture, texture_size),
-                            ]);
+                            render_order
+                                .extend(vec![CreateTextureBgra(temp_texture, texture_size)]);
 
                             // Create a transform that maps the sprite onto coordinates for the current viewport
-                            let render_transform = viewport_transform * (active_transform * sprite_transform);
-                            let render_bounds = texture_bounds_pixels.to_viewport_coordinates(&render_state.viewport_size);
+                            let render_transform =
+                                viewport_transform * (active_transform * sprite_transform);
+                            let render_bounds = texture_bounds_pixels
+                                .to_viewport_coordinates(&render_state.viewport_size);
 
                             // Render the sprite to the texture
-                            render_order.extend(core.render_layer_to_texture(temp_texture, sprite_layer_handle, render_transform, render_bounds.to_sprite_bounds()));
+                            render_order.extend(core.render_layer_to_texture(
+                                temp_texture,
+                                sprite_layer_handle,
+                                render_transform,
+                                render_bounds.to_sprite_bounds(),
+                            ));
 
-                            let last_transform = render_state.transform.unwrap_or_else(|| &viewport_transform * &active_transform);
+                            let last_transform = render_state
+                                .transform
+                                .unwrap_or_else(|| &viewport_transform * &active_transform);
 
                             // Apply filters
-                            filters.iter()
-                                .for_each(|filter| {
-                                    render_order.extend(core.texture_filter_request(temp_texture, viewport_transform, render_state.viewport_size, filter));
-                                });
+                            filters.iter().for_each(|filter| {
+                                render_order.extend(core.texture_filter_request(
+                                    temp_texture,
+                                    viewport_transform,
+                                    render_state.viewport_size,
+                                    filter,
+                                ));
+                            });
 
                             // The texture transform maps viewport coordinates to texture coordinates
-                            let texture_transform =
-                                canvas::Transform2D::scale(1.0 / render_bounds.width(), 1.0 / render_bounds.height()) *
-                                    canvas::Transform2D::translate(-render_bounds.min_x, -render_bounds.min_y);
+                            let texture_transform = canvas::Transform2D::scale(
+                                1.0 / render_bounds.width(),
+                                1.0 / render_bounds.height(),
+                            ) * canvas::Transform2D::translate(
+                                -render_bounds.min_x,
+                                -render_bounds.min_y,
+                            );
 
                             // Render the texture to the screen, then free it
                             render_order.extend(vec![
                                 SetTransform(transform_to_matrix(&canvas::Transform2D::identity())),
                                 CreateMipMaps(temp_texture),
-                                CreateVertex2DBuffer(VertexBufferId(texture_vertex_buffer), vec![
-                                    Vertex2D::with_pos(render_bounds.min_x, render_bounds.min_y).with_texture_coordinates(0.0, 0.0),
-                                    Vertex2D::with_pos(render_bounds.min_x, render_bounds.max_y).with_texture_coordinates(0.0, 1.0),
-                                    Vertex2D::with_pos(render_bounds.max_x, render_bounds.min_y).with_texture_coordinates(1.0, 0.0),
-                                    Vertex2D::with_pos(render_bounds.min_x, render_bounds.max_y).with_texture_coordinates(0.0, 1.0),
-                                    Vertex2D::with_pos(render_bounds.max_x, render_bounds.max_y).with_texture_coordinates(1.0, 1.0),
-                                    Vertex2D::with_pos(render_bounds.max_x, render_bounds.min_y).with_texture_coordinates(1.0, 0.0),
-                                ]),
+                                CreateVertex2DBuffer(
+                                    VertexBufferId(texture_vertex_buffer),
+                                    vec![
+                                        Vertex2D::with_pos(
+                                            render_bounds.min_x,
+                                            render_bounds.min_y,
+                                        )
+                                        .with_texture_coordinates(0.0, 0.0),
+                                        Vertex2D::with_pos(
+                                            render_bounds.min_x,
+                                            render_bounds.max_y,
+                                        )
+                                        .with_texture_coordinates(0.0, 1.0),
+                                        Vertex2D::with_pos(
+                                            render_bounds.max_x,
+                                            render_bounds.min_y,
+                                        )
+                                        .with_texture_coordinates(1.0, 0.0),
+                                        Vertex2D::with_pos(
+                                            render_bounds.min_x,
+                                            render_bounds.max_y,
+                                        )
+                                        .with_texture_coordinates(0.0, 1.0),
+                                        Vertex2D::with_pos(
+                                            render_bounds.max_x,
+                                            render_bounds.max_y,
+                                        )
+                                        .with_texture_coordinates(1.0, 1.0),
+                                        Vertex2D::with_pos(
+                                            render_bounds.max_x,
+                                            render_bounds.min_y,
+                                        )
+                                        .with_texture_coordinates(1.0, 0.0),
+                                    ],
+                                ),
                                 UseShader(ShaderType::Texture {
                                     texture: temp_texture,
                                     texture_transform: transform_to_matrix(&texture_transform),
@@ -620,7 +788,10 @@ impl RenderCore {
                     // The preceding instructions should render according to the previous state
                     let old_state = render_state.clone();
                     render_state.clip_mask = Maybe::Some(CLIP_RENDER_TEXTURE);
-                    render_state.clip_buffers.get_or_insert_with(|| vec![]).push((*vertex_buffer, *index_buffer, *buffer_size));
+                    render_state
+                        .clip_buffers
+                        .get_or_insert_with(|| vec![])
+                        .push((*vertex_buffer, *index_buffer, *buffer_size));
 
                     // Update to the new state
                     render_order.extend(render_state.update_from_state(&old_state));
@@ -649,7 +820,8 @@ impl RenderCore {
                     // Set the shader modifier to use the dash pattern (overriding any other shader modifier)
                     let old_state = render_state.clone();
                     if dash_pattern.len() > 0 {
-                        render_state.shader_modifier = Some(ShaderModifier::DashPattern(dash_pattern.clone()));
+                        render_state.shader_modifier =
+                            Some(ShaderModifier::DashPattern(dash_pattern.clone()));
                     } else {
                         render_state.shader_modifier = Some(ShaderModifier::Simple);
                     }
@@ -661,7 +833,12 @@ impl RenderCore {
                 SetFillTexture(texture_id, matrix, repeat, alpha) => {
                     // Set the shader modifier to use the fill texture (overriding any other shader modifier)
                     let old_state = render_state.clone();
-                    render_state.shader_modifier = Some(ShaderModifier::Texture(*texture_id, *matrix, *repeat, *alpha));
+                    render_state.shader_modifier = Some(ShaderModifier::Texture(
+                        *texture_id,
+                        *matrix,
+                        *repeat,
+                        *alpha,
+                    ));
 
                     // Update to the new state
                     render_order.extend(render_state.update_from_state(&old_state));
@@ -670,7 +847,12 @@ impl RenderCore {
                 SetFillGradient(texture_id, matrix, repeat, alpha) => {
                     // Set the shader modifier to use the gradient texture (overriding any other shader modifier)
                     let old_state = render_state.clone();
-                    render_state.shader_modifier = Some(ShaderModifier::Gradient(*texture_id, *matrix, *repeat, *alpha));
+                    render_state.shader_modifier = Some(ShaderModifier::Gradient(
+                        *texture_id,
+                        *matrix,
+                        *repeat,
+                        *alpha,
+                    ));
 
                     // Update to the new state
                     render_order.extend(render_state.update_from_state(&old_state));
@@ -679,7 +861,8 @@ impl RenderCore {
         }
 
         // If the layer has 'commit after rendering' and the next layer does not have 'commit before rendering', then commit what we just rendered
-        if layer.commit_after_rendering && !render_state.invalid_bounds.is_undefined() && !is_sprite {
+        if layer.commit_after_rendering && !render_state.invalid_bounds.is_undefined() && !is_sprite
+        {
             // Work out the invalid region of the current layer
             let invalid_bounds = render_state.invalid_bounds;
 
@@ -703,13 +886,19 @@ impl RenderCore {
             render_order.extend(vec![
                 render::RenderAction::RenderToFrameBuffer,
                 render::RenderAction::BlendMode(blend_mode),
-                render::RenderAction::DrawFrameBuffer(render_target, invalid_bounds.into(), render::Alpha(alpha)),
+                render::RenderAction::DrawFrameBuffer(
+                    render_target,
+                    invalid_bounds.into(),
+                    render::Alpha(alpha),
+                ),
                 render::RenderAction::SelectRenderTarget(render_target),
                 render::RenderAction::Clear(render::Rgba8([0, 0, 0, 0])),
             ]);
 
             if blend_mode != render::BlendMode::SourceOver {
-                render_order.push(render::RenderAction::BlendMode(render::BlendMode::SourceOver));
+                render_order.push(render::RenderAction::BlendMode(
+                    render::BlendMode::SourceOver,
+                ));
             }
 
             // The render buffer is clear after this
@@ -721,23 +910,37 @@ impl RenderCore {
         return render_order;
     }
 
-
     ///
     /// Given a texture to use as a render target, renders a layer to it
     ///
     /// This will (re)create the texture as a render target
     ///
-    fn render_layer_to_texture(&mut self, texture_id: render::TextureId, layer_handle: LayerHandle, sprite_transform: canvas::Transform2D, region: canvas::SpriteBounds) -> Vec<render::RenderAction> {
+    fn render_layer_to_texture(
+        &mut self,
+        texture_id: render::TextureId,
+        layer_handle: LayerHandle,
+        sprite_transform: canvas::Transform2D,
+        region: canvas::SpriteBounds,
+    ) -> Vec<render::RenderAction> {
         let core = self;
 
         // Need to know the texture size to recreate it as a render target
         let texture_size = core.texture_size.get(&texture_id).cloned();
-        let texture_size = if let Some(texture_size) = texture_size { texture_size } else { return vec![]; };
+        let texture_size = if let Some(texture_size) = texture_size {
+            texture_size
+        } else {
+            return vec![];
+        };
 
         // If the texture size is 0 in any dimension, then create a blank texture
         if texture_size.0 < 1 || texture_size.1 < 1 {
             return vec![
-                CreateRenderTarget(RESOLVE_RENDER_TARGET, texture_id, render::Size2D(1, 1), render::RenderTargetType::Standard),
+                CreateRenderTarget(
+                    RESOLVE_RENDER_TARGET,
+                    texture_id,
+                    render::Size2D(1, 1),
+                    render::RenderTargetType::Standard,
+                ),
                 SelectRenderTarget(RESOLVE_RENDER_TARGET),
                 Clear(render::Rgba8([0, 0, 0, 0])),
                 SelectRenderTarget(MAIN_RENDER_TARGET),
@@ -752,9 +955,8 @@ impl RenderCore {
         // Create a viewport transform for the render region (-1.0 - 1.0 will be the texture size, so we just need a transform that maps the appropriate coordinates)
         let canvas::SpriteBounds(canvas::SpritePosition(x, y), canvas::SpriteSize(w, h)) = region;
 
-        let viewport_transform =
-            canvas::Transform2D::scale(2.0 / w, 2.0 / h) *
-                canvas::Transform2D::translate(-(x + (w / 2.0)), -(y + h / 2.0));
+        let viewport_transform = canvas::Transform2D::scale(2.0 / w, 2.0 / h)
+            * canvas::Transform2D::translate(-(x + (w / 2.0)), -(y + h / 2.0));
 
         // Map the viewport so the appropriate part of the sprite is visible
         let viewport_transform = viewport_transform * sprite_transform;
@@ -764,7 +966,12 @@ impl RenderCore {
 
         use render::RenderAction::*;
         render_to_texture.extend(vec![
-            CreateRenderTarget(offscreen_render_target, offscreen_texture, texture_size, render::RenderTargetType::MultisampledTexture),
+            CreateRenderTarget(
+                offscreen_render_target,
+                offscreen_texture,
+                texture_size,
+                render::RenderTargetType::MultisampledTexture,
+            ),
             SelectRenderTarget(offscreen_render_target),
             Clear(render::Rgba8([0, 0, 0, 0])),
         ]);
@@ -772,16 +979,30 @@ impl RenderCore {
         // Sprites render using the viewport transform only (even though they have a layer transform it's not actually updated later on. See how sprite_transform is calculated in RenderSprite also)
         let mut render_state = RenderStreamState::new(texture_size);
         render_state.render_target = Some(offscreen_render_target);
-        render_to_texture.extend(core.render_layer(viewport_transform, layer_handle, offscreen_render_target, &mut render_state));
+        render_to_texture.extend(core.render_layer(
+            viewport_transform,
+            layer_handle,
+            offscreen_render_target,
+            &mut render_state,
+        ));
 
         // Draw the multi-sample texture to the target texture as a normal texture
         render_to_texture.extend(vec![
-            CreateRenderTarget(RESOLVE_RENDER_TARGET, texture_id, texture_size, render::RenderTargetType::Standard),
+            CreateRenderTarget(
+                RESOLVE_RENDER_TARGET,
+                texture_id,
+                texture_size,
+                render::RenderTargetType::Standard,
+            ),
             SelectRenderTarget(RESOLVE_RENDER_TARGET),
             Clear(render::Rgba8([0, 0, 0, 0])),
             BlendMode(render::BlendMode::SourceOver),
             SetTransform(render::Matrix::identity()),
-            DrawFrameBuffer(offscreen_render_target, render::FrameBufferRegion::default(), render::Alpha(1.0)), // TODO: render_state.invalid_bounds to improve performance, but because the viewport transform is 'wrong' for sprites the invalid bounds are also 'wrong'
+            DrawFrameBuffer(
+                offscreen_render_target,
+                render::FrameBufferRegion::default(),
+                render::Alpha(1.0),
+            ), // TODO: render_state.invalid_bounds to improve performance, but because the viewport transform is 'wrong' for sprites the invalid bounds are also 'wrong'
         ]);
 
         // Return to the main framebuffer and free up the render targets
@@ -801,10 +1022,18 @@ impl RenderCore {
     ///
     /// Generates the render actions for a gaussian blur filter with the specified radius
     ///
-    fn filter_gaussian_blur(texture_id: render::TextureId, radius_pixels_x: f32, radius_pixels_y: f32) -> Vec<render::RenderAction> {
+    fn filter_gaussian_blur(
+        texture_id: render::TextureId,
+        radius_pixels_x: f32,
+        radius_pixels_y: f32,
+    ) -> Vec<render::RenderAction> {
         // Blur has no effect below a 1px radius
-        if radius_pixels_x <= 1.0 { return vec![]; };
-        if radius_pixels_y <= 1.0 { return vec![]; };
+        if radius_pixels_x <= 1.0 {
+            return vec![];
+        };
+        if radius_pixels_y <= 1.0 {
+            return vec![];
+        };
 
         // Sigma is fixed, the x and y steps are calculated from the radius
         let sigma = 0.25;
@@ -834,12 +1063,10 @@ impl RenderCore {
             render::TextureFilter::GaussianBlurVertical(sigma, y_step, kernel_size)
         };
 
-        vec![
-            render::RenderAction::FilterTexture(texture_id, vec![
-                x_filter,
-                y_filter,
-            ])
-        ]
+        vec![render::RenderAction::FilterTexture(
+            texture_id,
+            vec![x_filter, y_filter],
+        )]
     }
 
     ///
@@ -849,7 +1076,11 @@ impl RenderCore {
     /// outside of the texture are assumed to be transparent. We assume both are the same: this can make the result more expensive to calculate but
     /// makes it easier to apply multiple filters in a row and also helps with the case where a region is clipped against the viewport
     ///
-    fn texture_filter_radius_pixels(viewport_transform: canvas::Transform2D, viewport_size: render::Size2D, request: &TextureFilterRequest) -> i64 {
+    fn texture_filter_radius_pixels(
+        viewport_transform: canvas::Transform2D,
+        viewport_size: render::Size2D,
+        request: &TextureFilterRequest,
+    ) -> i64 {
         use TextureFilterRequest::*;
 
         match request {
@@ -907,13 +1138,25 @@ impl RenderCore {
     ///
     /// Applies a filter to a texture
     ///
-    fn texture_filter_request(&self, texture_id: render::TextureId, viewport_transform: canvas::Transform2D, viewport_size: render::Size2D, request: &TextureFilterRequest) -> Vec<render::RenderAction> {
+    fn texture_filter_request(
+        &self,
+        texture_id: render::TextureId,
+        viewport_transform: canvas::Transform2D,
+        viewport_size: render::Size2D,
+        request: &TextureFilterRequest,
+    ) -> Vec<render::RenderAction> {
         use TextureFilterRequest::*;
 
         match request {
             PixelBlur(radius) => Self::filter_gaussian_blur(texture_id, *radius, *radius),
-            AlphaBlend(alpha) => vec![render::RenderAction::FilterTexture(texture_id, vec![render::TextureFilter::AlphaBlend(*alpha)])],
-            Mask(texture) => vec![render::RenderAction::FilterTexture(texture_id, vec![render::TextureFilter::Mask(*texture)])],
+            AlphaBlend(alpha) => vec![render::RenderAction::FilterTexture(
+                texture_id,
+                vec![render::TextureFilter::AlphaBlend(*alpha)],
+            )],
+            Mask(texture) => vec![render::RenderAction::FilterTexture(
+                texture_id,
+                vec![render::TextureFilter::Mask(*texture)],
+            )],
 
             CanvasBlur(radius, transform) => {
                 let transform = viewport_transform * *transform;
@@ -943,7 +1186,14 @@ impl RenderCore {
                     let x_radius = x_radius / (texture_size.0 as f32);
                     let y_radius = y_radius / (texture_size.1 as f32);
 
-                    vec![render::RenderAction::FilterTexture(texture_id, vec![render::TextureFilter::DisplacementMap(*displacement_texture, x_radius, y_radius)])]
+                    vec![render::RenderAction::FilterTexture(
+                        texture_id,
+                        vec![render::TextureFilter::DisplacementMap(
+                            *displacement_texture,
+                            x_radius,
+                            y_radius,
+                        )],
+                    )]
                 } else {
                     vec![]
                 }
@@ -977,7 +1227,14 @@ impl RenderCore {
                     let x_radius = x_radius_pixels / (viewport_size.0 as f32) * ratio_x;
                     let y_radius = y_radius_pixels / (viewport_size.1 as f32) * ratio_y;
 
-                    vec![render::RenderAction::FilterTexture(texture_id, vec![render::TextureFilter::DisplacementMap(*displacement_texture, x_radius, y_radius)])]
+                    vec![render::RenderAction::FilterTexture(
+                        texture_id,
+                        vec![render::TextureFilter::DisplacementMap(
+                            *displacement_texture,
+                            x_radius,
+                            y_radius,
+                        )],
+                    )]
                 } else {
                     // Texture size is not known so we can't work out the displacement scale
                     vec![]
@@ -1002,15 +1259,41 @@ impl<'a> RenderStream<'a> {
             let background_color = [br, bg, bb, ba];
             let background_actions = vec![
                 // Generate a full-screen quad
-                render::RenderAction::CreateVertex2DBuffer(self.background_vertex_buffer, vec![
-                    render::Vertex2D { pos: [-1.0, -1.0], tex_coord: [0.0, 0.0], color: background_color },
-                    render::Vertex2D { pos: [1.0, 1.0], tex_coord: [0.0, 0.0], color: background_color },
-                    render::Vertex2D { pos: [1.0, -1.0], tex_coord: [0.0, 0.0], color: background_color },
-                    render::Vertex2D { pos: [-1.0, -1.0], tex_coord: [0.0, 0.0], color: background_color },
-                    render::Vertex2D { pos: [1.0, 1.0], tex_coord: [0.0, 0.0], color: background_color },
-                    render::Vertex2D { pos: [-1.0, 1.0], tex_coord: [0.0, 0.0], color: background_color },
-                ]),
-
+                render::RenderAction::CreateVertex2DBuffer(
+                    self.background_vertex_buffer,
+                    vec![
+                        render::Vertex2D {
+                            pos: [-1.0, -1.0],
+                            tex_coord: [0.0, 0.0],
+                            color: background_color,
+                        },
+                        render::Vertex2D {
+                            pos: [1.0, 1.0],
+                            tex_coord: [0.0, 0.0],
+                            color: background_color,
+                        },
+                        render::Vertex2D {
+                            pos: [1.0, -1.0],
+                            tex_coord: [0.0, 0.0],
+                            color: background_color,
+                        },
+                        render::Vertex2D {
+                            pos: [-1.0, -1.0],
+                            tex_coord: [0.0, 0.0],
+                            color: background_color,
+                        },
+                        render::Vertex2D {
+                            pos: [1.0, 1.0],
+                            tex_coord: [0.0, 0.0],
+                            color: background_color,
+                        },
+                        render::Vertex2D {
+                            pos: [-1.0, 1.0],
+                            tex_coord: [0.0, 0.0],
+                            color: background_color,
+                        },
+                    ],
+                ),
                 // Render the quad using the default blend mode
                 render::RenderAction::RenderToFrameBuffer,
                 render::RenderAction::SetTransform(render::Matrix::identity()),
@@ -1029,16 +1312,33 @@ impl<'a> RenderStream<'a> {
     ///
     /// This will (re)create the texture as a render target
     ///
-    fn render_layer_to_texture(&self, texture_id: render::TextureId, layer_handle: LayerHandle, region: canvas::SpriteBounds) -> Vec<render::RenderAction> {
+    fn render_layer_to_texture(
+        &self,
+        texture_id: render::TextureId,
+        layer_handle: LayerHandle,
+        region: canvas::SpriteBounds,
+    ) -> Vec<render::RenderAction> {
         self.core.sync(move |core| {
-            core.render_layer_to_texture(texture_id, layer_handle, canvas::Transform2D::identity(), region)
+            core.render_layer_to_texture(
+                texture_id,
+                layer_handle,
+                canvas::Transform2D::identity(),
+                region,
+            )
         })
     }
 
     ///
     /// Creates the rendering actions for generating a dynamic texture
     ///
-    fn render_dynamic_texture(&self, texture_id: render::TextureId, layer_handle: LayerHandle, sprite_region: canvas::SpriteBounds, canvas_size: canvas::CanvasSize, transform: canvas::Transform2D) -> Vec<render::RenderAction> {
+    fn render_dynamic_texture(
+        &self,
+        texture_id: render::TextureId,
+        layer_handle: LayerHandle,
+        sprite_region: canvas::SpriteBounds,
+        canvas_size: canvas::CanvasSize,
+        transform: canvas::Transform2D,
+    ) -> Vec<render::RenderAction> {
         // Convert the transform to viewport coordinates
         let transform = self.viewport_transform * transform;
 
@@ -1060,7 +1360,8 @@ impl<'a> RenderStream<'a> {
 
         // Set the texture size
         let size = render::Size2D(size_w as _, size_h as _);
-        self.core.sync(|core| core.texture_size.insert(texture_id, size));
+        self.core
+            .sync(|core| core.texture_size.insert(texture_id, size));
 
         // Render to the texture
         self.render_layer_to_texture(texture_id, layer_handle, sprite_region)
@@ -1069,15 +1370,16 @@ impl<'a> RenderStream<'a> {
     ///
     /// Modifies any 'draw framebuffer' operations in the pending list so that they render only the invalid region
     ///
-    fn clip_draw_framebuffer(&self, instructions: Vec<render::RenderAction>) -> Vec<render::RenderAction> {
+    fn clip_draw_framebuffer(
+        &self,
+        instructions: Vec<render::RenderAction>,
+    ) -> Vec<render::RenderAction> {
         if self.invalid_bounds.is_undefined() {
             // Remove any 'draw frame buffer' as there's nothing to draw
             let mut instructions = instructions;
-            instructions.retain(|item| {
-                match item {
-                    render::RenderAction::DrawFrameBuffer(_, _, _) => false,
-                    _ => true
-                }
+            instructions.retain(|item| match item {
+                render::RenderAction::DrawFrameBuffer(_, _, _) => false,
+                _ => true,
             });
 
             instructions
@@ -1086,19 +1388,16 @@ impl<'a> RenderStream<'a> {
             let new_bounds = self.invalid_bounds;
             let mut instructions = instructions;
 
-            instructions.iter_mut()
-                .for_each(|item| {
-                    match item {
-                        render::RenderAction::DrawFrameBuffer(target, _bounds, alpha) => {
-                            let target = *target;
-                            let alpha = *alpha;
+            instructions.iter_mut().for_each(|item| match item {
+                render::RenderAction::DrawFrameBuffer(target, _bounds, alpha) => {
+                    let target = *target;
+                    let alpha = *alpha;
 
-                            *item = render::RenderAction::DrawFrameBuffer(target, new_bounds.into(), alpha);
-                        }
+                    *item = render::RenderAction::DrawFrameBuffer(target, new_bounds.into(), alpha);
+                }
 
-                        _ => {}
-                    }
-                });
+                _ => {}
+            });
 
             instructions
         }
@@ -1107,11 +1406,17 @@ impl<'a> RenderStream<'a> {
     ///
     /// Applies a filter to a texture
     ///
-    fn texture_filter_request(&self, texture_id: render::TextureId, request: &TextureFilterRequest) -> Vec<render::RenderAction> {
+    fn texture_filter_request(
+        &self,
+        texture_id: render::TextureId,
+        request: &TextureFilterRequest,
+    ) -> Vec<render::RenderAction> {
         let viewport_transform = self.viewport_transform;
         let viewport_size = self.viewport_size;
 
-        self.core.sync(move |core| core.texture_filter_request(texture_id, viewport_transform, viewport_size, request))
+        self.core.sync(move |core| {
+            core.texture_filter_request(texture_id, viewport_transform, viewport_size, request)
+        })
     }
 
     ///
@@ -1123,12 +1428,29 @@ impl<'a> RenderStream<'a> {
         let mut render_actions = vec![];
 
         match request {
-            CreateBlankTexture(texture_id, canvas::TextureSize(w, h), canvas::TextureFormat::Rgba) => {
-                render_actions.push(render::RenderAction::CreateTextureBgra(*texture_id, render::Size2D(*w as _, *h as _)));
+            CreateBlankTexture(
+                texture_id,
+                canvas::TextureSize(w, h),
+                canvas::TextureFormat::Rgba,
+            ) => {
+                render_actions.push(render::RenderAction::CreateTextureBgra(
+                    *texture_id,
+                    render::Size2D(*w as _, *h as _),
+                ));
             }
 
-            SetBytes(texture_id, canvas::TexturePosition(x, y), canvas::TextureSize(w, h), bytes) => {
-                render_actions.push(render::RenderAction::WriteTextureData(*texture_id, render::Position2D(*x as _, *y as _), render::Position2D((x + w) as _, (y + h) as _), Arc::clone(bytes)));
+            SetBytes(
+                texture_id,
+                canvas::TexturePosition(x, y),
+                canvas::TextureSize(w, h),
+                bytes,
+            ) => {
+                render_actions.push(render::RenderAction::WriteTextureData(
+                    *texture_id,
+                    render::Position2D(*x as _, *y as _),
+                    render::Position2D((x + w) as _, (y + h) as _),
+                    Arc::clone(bytes),
+                ));
             }
 
             CreateMipMaps(texture_id) => {
@@ -1137,7 +1459,9 @@ impl<'a> RenderStream<'a> {
 
             FromSprite(texture_id, layer_handle, bounds) => {
                 // Ensure that the vertex buffers are available for this sprite
-                let send_vertex_buffers = self.core.sync(|core| core.send_vertex_buffers(*layer_handle));
+                let send_vertex_buffers = self
+                    .core
+                    .sync(|core| core.send_vertex_buffers(*layer_handle));
 
                 // Generate the instructions for rendering the contents of the sprite to a new texture
                 let rendering = self.render_layer_to_texture(*texture_id, *layer_handle, *bounds);
@@ -1148,20 +1472,35 @@ impl<'a> RenderStream<'a> {
 
             DynamicTexture(texture_id, layer_handle, bounds, size, transform, post_rendering) => {
                 // Ensure that the vertex buffers are available for this sprite
-                let send_vertex_buffers = self.core.sync(|core| core.send_vertex_buffers(*layer_handle));
+                let send_vertex_buffers = self
+                    .core
+                    .sync(|core| core.send_vertex_buffers(*layer_handle));
 
                 // Dynamic textures differ from normal sprite rendering in that the size of the texture depends on the resolution of the canvas (at the point the dynamic request was made)
-                let rendering = self.render_dynamic_texture(*texture_id, *layer_handle, *bounds, *size, *transform);
+                let rendering = self.render_dynamic_texture(
+                    *texture_id,
+                    *layer_handle,
+                    *bounds,
+                    *size,
+                    *transform,
+                );
 
                 render_actions.extend(send_vertex_buffers);
                 render_actions.extend(rendering);
 
                 // Dynamic textures can have a set of post-processing actions applied to them (eg, filters or CreateMipMaps)
-                render_actions.extend(post_rendering.iter().flat_map(|request| self.texture_render_request(request)));
+                render_actions.extend(
+                    post_rendering
+                        .iter()
+                        .flat_map(|request| self.texture_render_request(request)),
+                );
             }
 
             CopyTexture(source_texture_id, target_texture_id) => {
-                render_actions.push(render::RenderAction::CopyTexture(*source_texture_id, *target_texture_id));
+                render_actions.push(render::RenderAction::CopyTexture(
+                    *source_texture_id,
+                    *target_texture_id,
+                ));
             }
 
             Filter(texture_id, filter) => {
@@ -1176,7 +1515,10 @@ impl<'a> RenderStream<'a> {
 impl<'a> Stream for RenderStream<'a> {
     type Item = render::RenderAction;
 
-    fn poll_next(mut self: Pin<&mut Self>, context: &mut Context<'_>) -> Poll<Option<render::RenderAction>> {
+    fn poll_next(
+        mut self: Pin<&mut Self>,
+        context: &mut Context<'_>,
+    ) -> Poll<Option<render::RenderAction>> {
         // Return the next pending action if there is one
         if self.pending.len() > 0 {
             return Poll::Ready(self.pending.pop_front());
@@ -1197,11 +1539,15 @@ impl<'a> Stream for RenderStream<'a> {
 
                 // Perform any setup actions that might exist or have been generated before proceeding
                 let render::Size2D(w, h) = self.viewport_size;
-                let (setup_actions, setup_textures, release_textures, rendering_suspended) = self.core.sync(move |core|
-                    (mem::take(&mut core.setup_actions),
-                     core.setup_textures((w as _, h as _)),
-                     core.free_unused_textures(),
-                     core.frame_starts > 0));
+                let (setup_actions, setup_textures, release_textures, rendering_suspended) =
+                    self.core.sync(move |core| {
+                        (
+                            mem::take(&mut core.setup_actions),
+                            core.setup_textures((w as _, h as _)),
+                            core.free_unused_textures(),
+                            core.frame_starts > 0,
+                        )
+                    });
 
                 self.setup_textures = setup_textures;
                 self.frame_suspended = rendering_suspended;
@@ -1223,7 +1569,8 @@ impl<'a> Stream for RenderStream<'a> {
             self.pending.extend(render_requests);
 
             if retired {
-                self.core.desync(move |core| core.free_texture_render_request(setup_texture));
+                self.core
+                    .desync(move |core| core.free_texture_render_request(setup_texture));
             }
 
             if let Some(next) = self.pending.pop_front() {
@@ -1264,8 +1611,14 @@ impl<'a> Stream for RenderStream<'a> {
                 let mut render_layer = VecDeque::new();
 
                 render_layer.extend(send_vertex_buffers);
-                render_layer.extend(core.render_layer(viewport_transform, layer_handle, MAIN_RENDER_TARGET, &mut render_state));
-                render_layer.extend(RenderStreamState::new(viewport_size).update_from_state(&render_state));
+                render_layer.extend(core.render_layer(
+                    viewport_transform,
+                    layer_handle,
+                    MAIN_RENDER_TARGET,
+                    &mut render_state,
+                ));
+                render_layer
+                    .extend(RenderStreamState::new(viewport_size).update_from_state(&render_state));
 
                 // The state will update to indicate if the layer buffer is clear or not for the next layer
                 layer_buffer_is_clear = render_state.is_clear.unwrap_or(false);

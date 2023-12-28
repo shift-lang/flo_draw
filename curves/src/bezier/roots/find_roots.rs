@@ -1,5 +1,11 @@
-use crate::geo::*;
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
 use crate::bezier::*;
+use crate::geo::*;
 use crate::line::*;
 
 use smallvec::*;
@@ -9,8 +15,8 @@ use smallvec::*;
 ///
 #[inline]
 fn count_x_axis_crossings<TPoint, const N: usize>(points: &[TPoint; N]) -> usize
-    where
-        TPoint: Coordinate + Coordinate2D,
+where
+    TPoint: Coordinate + Coordinate2D,
 {
     let mut num_crossings = 0;
 
@@ -18,7 +24,11 @@ fn count_x_axis_crossings<TPoint, const N: usize>(points: &[TPoint; N]) -> usize
         let p1 = &points[idx];
         let p2 = &points[idx + 1];
 
-        if p1.y() < 0.0 && p2.y() >= 0.0 { num_crossings += 1; } else if p1.y() >= 0.0 && p2.y() < 0.0 { num_crossings += 1; }
+        if p1.y() < 0.0 && p2.y() >= 0.0 {
+            num_crossings += 1;
+        } else if p1.y() >= 0.0 && p2.y() < 0.0 {
+            num_crossings += 1;
+        }
     }
 
     return num_crossings;
@@ -29,8 +39,8 @@ fn count_x_axis_crossings<TPoint, const N: usize>(points: &[TPoint; N]) -> usize
 ///
 #[inline]
 fn flat_enough<TPoint, const N: usize>(points: &[TPoint; N]) -> bool
-    where
-        TPoint: Coordinate + Coordinate2D,
+where
+    TPoint: Coordinate + Coordinate2D,
 {
     const FLAT_ENOUGH: f64 = 0.1;
 
@@ -43,7 +53,10 @@ fn flat_enough<TPoint, const N: usize>(points: &[TPoint; N]) -> bool
     }
 
     // Measure the distance from each control point to the baseline
-    let baseline = (TPoint::from_components(&[points[0].x(), points[0].y()]), TPoint::from_components(&[points[N - 1].x(), points[N - 1].y()]));
+    let baseline = (
+        TPoint::from_components(&[points[0].x(), points[0].y()]),
+        TPoint::from_components(&[points[N - 1].x(), points[N - 1].y()]),
+    );
     let baseline_coeff = baseline.coefficients();
     let mut max_distance: f64 = 0.0;
 
@@ -62,11 +75,14 @@ fn flat_enough<TPoint, const N: usize>(points: &[TPoint; N]) -> bool
 ///
 #[inline]
 fn find_x_intercept<TPoint, const N: usize>(points: &[TPoint; N]) -> f64
-    where
-        TPoint: Coordinate + Coordinate2D,
+where
+    TPoint: Coordinate + Coordinate2D,
 {
     // Pick a guess by finding where the baseline intercepts the y-axis
-    let baseline = (TPoint::from_components(&[points[0].x(), points[0].y()]), TPoint::from_components(&[points[N - 1].x(), points[N - 1].y()]));
+    let baseline = (
+        TPoint::from_components(&[points[0].x(), points[0].y()]),
+        TPoint::from_components(&[points[N - 1].x(), points[N - 1].y()]),
+    );
     let coefficients = baseline.coefficients();
 
     // Want the intercept point, relative to the current section of curve
@@ -74,7 +90,10 @@ fn find_x_intercept<TPoint, const N: usize>(points: &[TPoint; N]) -> f64
     let t_guess = (t_guess - baseline.0.x()) / (baseline.1.x() - baseline.0.x());
 
     // Use newton-raphson to find the intercept
-    let points = points.iter().map(|point| point.y()).collect::<SmallVec<[f64; N]>>();
+    let points = points
+        .iter()
+        .map(|point| point.y())
+        .collect::<SmallVec<[f64; N]>>();
     let root = find_x_intercept_newton_raphson(points, t_guess);
 
     root
@@ -83,7 +102,10 @@ fn find_x_intercept<TPoint, const N: usize>(points: &[TPoint; N]) -> f64
 ///
 /// Optimises an estimate of a nearest point on a bezier curve using the newton-raphson method
 ///
-pub fn find_x_intercept_newton_raphson<const N: usize>(points: SmallVec<[f64; N]>, estimated_t: f64) -> f64 {
+pub fn find_x_intercept_newton_raphson<const N: usize>(
+    points: SmallVec<[f64; N]>,
+    estimated_t: f64,
+) -> f64 {
     const EPSILON: f64 = 1e-10;
     const MAX_ITERATIONS: usize = 30;
 
@@ -123,8 +145,8 @@ pub fn find_x_intercept_newton_raphson<const N: usize>(points: SmallVec<[f64; N]
 /// start to limit the effectiveness of this function.
 ///
 pub fn find_bezier_roots<TPoint, const N: usize>(points: [TPoint; N]) -> SmallVec<[f64; 4]>
-    where
-        TPoint: Coordinate + Coordinate2D,
+where
+    TPoint: Coordinate + Coordinate2D,
 {
     // See "A bezier curve-based root-finder", Philip J Schneider, Graphics Gems
 
@@ -134,7 +156,11 @@ pub fn find_bezier_roots<TPoint, const N: usize>(points: [TPoint; N]) -> SmallVe
 
     loop {
         // Get the next section to process
-        let section = if let Some(section) = sections.pop() { section } else { return roots; };
+        let section = if let Some(section) = sections.pop() {
+            section
+        } else {
+            return roots;
+        };
 
         // Find out how many times the polygon crosses the x
         let num_crossings = count_x_axis_crossings(&section);
@@ -160,8 +186,8 @@ pub fn find_bezier_roots<TPoint, const N: usize>(points: [TPoint; N]) -> SmallVe
 
 #[cfg(test)]
 mod test {
-    use super::*;
     use super::super::polynomial_to_bezier::*;
+    use super::*;
 
     #[test]
     fn find_roots_simple_polynomial() {

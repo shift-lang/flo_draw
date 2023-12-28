@@ -1,8 +1,14 @@
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
 use wgpu;
 
+use std::collections::HashMap;
+use std::hash::Hash;
 use std::sync::*;
-use std::hash::{Hash};
-use std::collections::{HashMap};
 
 ///
 /// Trait implemented by types that can be converted to a shader
@@ -16,8 +22,8 @@ pub trait WgpuShaderLoader {
 /// Caches the WGPU shaders so that they only need to be loaded once
 ///
 pub struct ShaderCache<TShader>
-    where
-        TShader: WgpuShaderLoader + Hash + Eq,
+where
+    TShader: WgpuShaderLoader + Hash + Eq,
 {
     /// The device that the shaders will be loaded on
     device: Arc<wgpu::Device>,
@@ -27,8 +33,8 @@ pub struct ShaderCache<TShader>
 }
 
 impl<TShader> ShaderCache<TShader>
-    where
-        TShader: WgpuShaderLoader + Hash + Eq + Clone,
+where
+    TShader: WgpuShaderLoader + Hash + Eq + Clone,
 {
     ///
     /// Creates an empty shader cache
@@ -54,8 +60,12 @@ impl<TShader> ShaderCache<TShader>
     /// Retrieves the specified shader, if it's in the cache
     ///
     #[inline]
-    pub fn get_shader<'a>(&'a self, shader: &TShader) -> Option<(&'a wgpu::ShaderModule, &'a str, &'a str)> {
-        self.shaders.get(shader)
+    pub fn get_shader<'a>(
+        &'a self,
+        shader: &TShader,
+    ) -> Option<(&'a wgpu::ShaderModule, &'a str, &'a str)> {
+        self.shaders
+            .get(shader)
             .map(|(shader_ref, vertex_name, fragment_name)| {
                 (&**shader_ref, vertex_name.as_str(), fragment_name.as_str())
             })

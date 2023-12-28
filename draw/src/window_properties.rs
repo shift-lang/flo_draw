@@ -1,5 +1,10 @@
-use flo_binding::*;
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
 
+use flo_binding::*;
 use flo_canvas_events::*;
 
 ///
@@ -39,22 +44,42 @@ pub trait FloWindowProperties {
 /// '()' can be used to create a window with the default title
 ///
 impl FloWindowProperties for () {
-    fn title(&self) -> BindRef<String> { BindRef::from(bind("flo_draw".to_string())) }
-    fn size(&self) -> BindRef<(u64, u64)> { BindRef::from(bind((1024, 768))) }
-    fn fullscreen(&self) -> BindRef<bool> { BindRef::from(bind(false)) }
-    fn has_decorations(&self) -> BindRef<bool> { BindRef::from(bind(true)) }
-    fn mouse_pointer(&self) -> BindRef<MousePointer> { BindRef::from(bind(MousePointer::SystemDefault)) }
+    fn title(&self) -> BindRef<String> {
+        BindRef::from(bind("flo_draw".to_string()))
+    }
+    fn size(&self) -> BindRef<(u64, u64)> {
+        BindRef::from(bind((1024, 768)))
+    }
+    fn fullscreen(&self) -> BindRef<bool> {
+        BindRef::from(bind(false))
+    }
+    fn has_decorations(&self) -> BindRef<bool> {
+        BindRef::from(bind(true))
+    }
+    fn mouse_pointer(&self) -> BindRef<MousePointer> {
+        BindRef::from(bind(MousePointer::SystemDefault))
+    }
 }
 
 ///
 /// A string can be used to set just the window title
 ///
 impl<'a> FloWindowProperties for &'a str {
-    fn title(&self) -> BindRef<String> { BindRef::from(bind(self.to_string())) }
-    fn size(&self) -> BindRef<(u64, u64)> { BindRef::from(bind((1024, 768))) }
-    fn fullscreen(&self) -> BindRef<bool> { BindRef::from(bind(false)) }
-    fn has_decorations(&self) -> BindRef<bool> { BindRef::from(bind(true)) }
-    fn mouse_pointer(&self) -> BindRef<MousePointer> { BindRef::from(bind(MousePointer::SystemDefault)) }
+    fn title(&self) -> BindRef<String> {
+        BindRef::from(bind(self.to_string()))
+    }
+    fn size(&self) -> BindRef<(u64, u64)> {
+        BindRef::from(bind((1024, 768)))
+    }
+    fn fullscreen(&self) -> BindRef<bool> {
+        BindRef::from(bind(false))
+    }
+    fn has_decorations(&self) -> BindRef<bool> {
+        BindRef::from(bind(true))
+    }
+    fn mouse_pointer(&self) -> BindRef<MousePointer> {
+        BindRef::from(bind(MousePointer::SystemDefault))
+    }
 }
 
 ///
@@ -86,9 +111,19 @@ impl WindowProperties {
 }
 
 impl FloWindowProperties for WindowProperties {
-    fn title(&self) -> BindRef<String> { self.title.clone() }
-    fn size(&self) -> BindRef<(u64, u64)> { self.size.clone() }
-    fn fullscreen(&self) -> BindRef<bool> { self.fullscreen.clone() }
-    fn has_decorations(&self) -> BindRef<bool> { self.has_decorations.clone() }
-    fn mouse_pointer(&self) -> BindRef<MousePointer> { self.mouse_pointer.clone() }
+    fn title(&self) -> BindRef<String> {
+        self.title.clone()
+    }
+    fn size(&self) -> BindRef<(u64, u64)> {
+        self.size.clone()
+    }
+    fn fullscreen(&self) -> BindRef<bool> {
+        self.fullscreen.clone()
+    }
+    fn has_decorations(&self) -> BindRef<bool> {
+        self.has_decorations.clone()
+    }
+    fn mouse_pointer(&self) -> BindRef<MousePointer> {
+        self.mouse_pointer.clone()
+    }
 }

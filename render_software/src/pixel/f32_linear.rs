@@ -1,15 +1,21 @@
-use super::alpha_blend_trait::*;
-use super::to_gamma_colorspace_trait::*;
-use super::pixel_trait::*;
-use super::u8_rgba::*;
-use super::gamma_lut::*;
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
 
-use flo_canvas as canvas;
+use std::cell::RefCell;
+use std::ops::*;
 
 use wide::*;
 
-use std::ops::*;
-use std::cell::{RefCell};
+use flo_canvas as canvas;
+
+use super::alpha_blend_trait::*;
+use super::gamma_lut::*;
+use super::pixel_trait::*;
+use super::to_gamma_colorspace_trait::*;
+use super::u8_rgba::*;
 
 ///
 /// A pixel using linear floating-point components, with the alpha value pre-multiplied
@@ -78,19 +84,25 @@ impl Pixel<4> for F32LinearPixel {
 }
 
 impl ToGammaColorSpace<U8RgbaPremultipliedPixel> for F32LinearPixel {
-    fn to_gamma_colorspace(input_pixels: &[F32LinearPixel], output_pixels: &mut [U8RgbaPremultipliedPixel], gamma: f64) {
+    fn to_gamma_colorspace(
+        input_pixels: &[F32LinearPixel],
+        output_pixels: &mut [U8RgbaPremultipliedPixel],
+        gamma: f64,
+    ) {
         thread_local! {
             // The gamma-correction look-up table is generated once per thread, saves us doing the expensive 'powf()' operation
             pub static GAMMA_LUT: RefCell<U8GammaLut> = RefCell::new(U8GammaLut::new(1.0/2.2));
         }
 
         GAMMA_LUT.with(move |gamma_lut| {
-            // This isn't re-entrant so only this function can use the gamma-correction table 
+            // This isn't re-entrant so only this function can use the gamma-correction table
             let mut gamma_lut = gamma_lut.borrow_mut();
 
             // Update the LUT if needed (should be rare, we'll generally be working on converting a whole frame at once)
             let gamma = 1.0 / gamma;
-            if gamma != gamma_lut.gamma() { *gamma_lut = U8GammaLut::new(gamma) };
+            if gamma != gamma_lut.gamma() {
+                *gamma_lut = U8GammaLut::new(gamma)
+            };
 
             // Some values we use during the conversion
             let f32x4_65535 = f32x4::splat(65535.0);
@@ -106,11 +118,13 @@ impl ToGammaColorSpace<U8RgbaPremultipliedPixel> for F32LinearPixel {
                 let [r, g, b, a] = rgba.to_array();
 
                 unsafe {
-                    *output_pixels.get_unchecked_mut(idx) = U8RgbaPremultipliedPixel::from_components([
-                        gamma_lut.look_up(r as _),
-                        gamma_lut.look_up(g as _),
-                        gamma_lut.look_up(b as _),
-                        (a >> 8) as u8]);
+                    *output_pixels.get_unchecked_mut(idx) =
+                        U8RgbaPremultipliedPixel::from_components([
+                            gamma_lut.look_up(r as _),
+                            gamma_lut.look_up(g as _),
+                            gamma_lut.look_up(b as _),
+                            (a >> 8) as u8,
+                        ]);
                 }
             }
         })
@@ -121,11 +135,17 @@ impl AlphaBlend for F32LinearPixel {
     type Component = f32;
 
     #[inline]
-    fn alpha_blend_with_function(self, dest: Self, source_alpha_fn: AlphaFunction, dest_alpha_fn: AlphaFunction) -> Self {
+    fn alpha_blend_with_function(
+        self,
+        dest: Self,
+        source_alpha_fn: AlphaFunction,
+        dest_alpha_fn: AlphaFunction,
+    ) -> Self {
         let src_alpha = self.alpha_component();
         let dst_alpha = dest.alpha_component();
 
-        source_alpha_fn.apply(self, src_alpha, dst_alpha) + dest_alpha_fn.apply(dest, src_alpha, dst_alpha)
+        source_alpha_fn.apply(self, src_alpha, dst_alpha)
+            + dest_alpha_fn.apply(dest, src_alpha, dst_alpha)
     }
 
     #[inline]
@@ -169,9 +189,13 @@ impl AlphaBlend for F32LinearPixel {
         F32LinearPixel(dest.0 * (1.0 - src_alpha))
     }
     #[inline]
-    fn source_atop(self, dest: Self) -> Self { self.alpha_blend(dest, AlphaOperation::SourceAtop) }
+    fn source_atop(self, dest: Self) -> Self {
+        self.alpha_blend(dest, AlphaOperation::SourceAtop)
+    }
     #[inline]
-    fn dest_atop(self, dest: Self) -> Self { self.alpha_blend(dest, AlphaOperation::DestAtop) }
+    fn dest_atop(self, dest: Self) -> Self {
+        self.alpha_blend(dest, AlphaOperation::DestAtop)
+    }
 }
 
 impl Add<F32LinearPixel> for F32LinearPixel {

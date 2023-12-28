@@ -1,12 +1,18 @@
-use super::traits::*;
-use super::notify_fn::*;
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
 
-use futures::*;
-use futures::task;
-use futures::task::{Poll};
-
-use std::pin::{Pin};
+use std::pin::Pin;
 use std::sync::*;
+
+use futures::task;
+use futures::task::Poll;
+use futures::*;
+
+use super::notify_fn::*;
+use super::traits::*;
 
 ///
 /// The state of the binding for a follow stream
@@ -35,9 +41,9 @@ struct FollowCore<Binding: Bound> {
 /// Stream that follows the values of a binding
 ///
 pub struct FollowStream<Binding>
-    where
-        Binding: Bound,
-        Binding::Value: Send,
+where
+    Binding: Bound,
+    Binding::Value: Send,
 {
     /// The core of this future
     core: Arc<Mutex<FollowCore<Binding>>>,
@@ -47,9 +53,9 @@ pub struct FollowStream<Binding>
 }
 
 impl<Binding> Stream for FollowStream<Binding>
-    where
-        Binding: 'static + Bound,
-        Binding::Value: 'static + Send,
+where
+    Binding: 'static + Bound,
+    Binding::Value: 'static + Send,
 {
     type Item = Binding::Value;
 
@@ -87,15 +93,15 @@ impl<Binding> Stream for FollowStream<Binding>
 ///
 /// This is the reverse operation from `bind_stream()`, which will turn a stream into a binding.
 ///
-/// Binding streams will only return the most recent state of the binding when it's requested: ie, they 
+/// Binding streams will only return the most recent state of the binding when it's requested: ie, they
 /// will skip states if a newer state is available. For this reason, don't try to treat `FollowStream`s
 /// as if they work like mpsc channels. If you need a binding where all of the states are available,
 /// one approach would be to use a `Publisher` from the `flo_stream` crate alongside `bind_stream()`.
 ///
 pub fn follow<Binding>(binding: Binding) -> FollowStream<Binding>
-    where
-        Binding: 'static + Bound,
-        Binding::Value: 'static + Send,
+where
+    Binding: 'static + Bound,
+    Binding::Value: 'static + Send,
 {
     // Generate the initial core
     let core = FollowCore {
@@ -135,16 +141,16 @@ pub fn follow<Binding>(binding: Binding) -> FollowStream<Binding>
 
 #[cfg(test)]
 mod test {
-    use super::*;
-    use super::super::*;
+    use std::thread;
+    use std::time::Duration;
 
     use futures::executor;
-    use futures::task::{ArcWake, Context, waker_ref};
+    use futures::task::{waker_ref, ArcWake, Context};
 
     use ::desync::*;
 
-    use std::thread;
-    use std::time::Duration;
+    use super::super::*;
+    use super::*;
 
     struct NotifyNothing;
 
@@ -192,13 +198,15 @@ mod test {
 
         // Read from the stream in the background
         let reader = Desync::new(vec![]);
-        let read_values = reader.after(async move {
-            let result = vec![
-                stream.next().await,
-                stream.next().await,
-            ];
-            result
-        }, |val, read_val| { *val = read_val; });
+        let read_values = reader.after(
+            async move {
+                let result = vec![stream.next().await, stream.next().await];
+                result
+            },
+            |val, read_val| {
+                *val = read_val;
+            },
+        );
 
         // Short delay so the reader starts
         thread::sleep(Duration::from_millis(10));

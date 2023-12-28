@@ -1,10 +1,16 @@
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
 use super::error::*;
 use super::texture::*;
 use crate::action::*;
 
 use gl;
 
-use std::ops::{Deref};
+use std::ops::Deref;
 
 ///
 /// An OpenGL render target
@@ -57,7 +63,13 @@ impl RenderTarget {
                     backing_texture.create_empty(width, height);
                     backing_texture.premultiplied = true;
 
-                    gl::FramebufferTexture2D(gl::FRAMEBUFFER, gl::COLOR_ATTACHMENT0, gl::TEXTURE_2D, *backing_texture, 0);
+                    gl::FramebufferTexture2D(
+                        gl::FRAMEBUFFER,
+                        gl::COLOR_ATTACHMENT0,
+                        gl::TEXTURE_2D,
+                        *backing_texture,
+                        0,
+                    );
 
                     // This type of render target uses a backing texture
                     texture = Some(backing_texture);
@@ -65,7 +77,7 @@ impl RenderTarget {
                 }
 
                 RenderTargetType::Multisampled => {
-                    // Uses a render buffer for the backing layer 
+                    // Uses a render buffer for the backing layer
                     let mut backing_renderbuffer = 0;
                     gl::GenRenderbuffers(1, &mut backing_renderbuffer);
 
@@ -74,8 +86,19 @@ impl RenderTarget {
 
                     // Define as a MSAA renderbuffer
                     gl::BindRenderbuffer(gl::RENDERBUFFER, backing_renderbuffer);
-                    gl::RenderbufferStorageMultisample(gl::RENDERBUFFER, 4, gl::RGBA8, width as gl::types::GLsizei, height as gl::types::GLsizei);
-                    gl::FramebufferRenderbuffer(gl::FRAMEBUFFER, gl::COLOR_ATTACHMENT0, gl::RENDERBUFFER, backing_renderbuffer);
+                    gl::RenderbufferStorageMultisample(
+                        gl::RENDERBUFFER,
+                        4,
+                        gl::RGBA8,
+                        width as gl::types::GLsizei,
+                        height as gl::types::GLsizei,
+                    );
+                    gl::FramebufferRenderbuffer(
+                        gl::FRAMEBUFFER,
+                        gl::COLOR_ATTACHMENT0,
+                        gl::RENDERBUFFER,
+                        backing_renderbuffer,
+                    );
 
                     gl::BindRenderbuffer(gl::RENDERBUFFER, old_renderbuffer as u32);
 
@@ -90,7 +113,13 @@ impl RenderTarget {
                     backing_texture.create_empty_multisampled(width, height, 4);
                     backing_texture.premultiplied = true;
 
-                    gl::FramebufferTexture2D(gl::FRAMEBUFFER, gl::COLOR_ATTACHMENT0, gl::TEXTURE_2D_MULTISAMPLE, *backing_texture, 0);
+                    gl::FramebufferTexture2D(
+                        gl::FRAMEBUFFER,
+                        gl::COLOR_ATTACHMENT0,
+                        gl::TEXTURE_2D_MULTISAMPLE,
+                        *backing_texture,
+                        0,
+                    );
 
                     // This type of render target uses a backing texture
                     texture = Some(backing_texture);
@@ -103,7 +132,13 @@ impl RenderTarget {
                     backing_texture.create_monochrome(width, height);
                     backing_texture.premultiplied = true;
 
-                    gl::FramebufferTexture2D(gl::FRAMEBUFFER, gl::COLOR_ATTACHMENT0, gl::TEXTURE_2D, *backing_texture, 0);
+                    gl::FramebufferTexture2D(
+                        gl::FRAMEBUFFER,
+                        gl::COLOR_ATTACHMENT0,
+                        gl::TEXTURE_2D,
+                        *backing_texture,
+                        0,
+                    );
 
                     // This type of render target uses a backing texture
                     texture = Some(backing_texture);
@@ -116,7 +151,13 @@ impl RenderTarget {
                     backing_texture.create_monochrome_multisampled(width, height, 4);
                     backing_texture.premultiplied = true;
 
-                    gl::FramebufferTexture2D(gl::FRAMEBUFFER, gl::COLOR_ATTACHMENT0, gl::TEXTURE_2D_MULTISAMPLE, *backing_texture, 0);
+                    gl::FramebufferTexture2D(
+                        gl::FRAMEBUFFER,
+                        gl::COLOR_ATTACHMENT0,
+                        gl::TEXTURE_2D_MULTISAMPLE,
+                        *backing_texture,
+                        0,
+                    );
 
                     // This type of render target uses a backing texture
                     texture = Some(backing_texture);
@@ -169,14 +210,28 @@ impl RenderTarget {
             // Bind the texture to the frame buffer
             match texture.texture_target {
                 gl::TEXTURE_1D => {
-                    gl::FramebufferTexture1D(gl::FRAMEBUFFER, gl::COLOR_ATTACHMENT0, gl::TEXTURE_1D, *texture, 0);
+                    gl::FramebufferTexture1D(
+                        gl::FRAMEBUFFER,
+                        gl::COLOR_ATTACHMENT0,
+                        gl::TEXTURE_1D,
+                        *texture,
+                        0,
+                    );
                 }
 
                 gl::TEXTURE_2D => {
-                    gl::FramebufferTexture2D(gl::FRAMEBUFFER, gl::COLOR_ATTACHMENT0, gl::TEXTURE_2D, *texture, 0);
+                    gl::FramebufferTexture2D(
+                        gl::FRAMEBUFFER,
+                        gl::COLOR_ATTACHMENT0,
+                        gl::TEXTURE_2D,
+                        *texture,
+                        0,
+                    );
                 }
 
-                _ => { return None; }
+                _ => {
+                    return None;
+                }
             }
 
             // Bind back to the original framebuffer

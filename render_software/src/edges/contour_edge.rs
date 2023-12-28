@@ -1,18 +1,24 @@
-use crate::edgeplan::*;
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
+use std::sync::*;
+
+use smallvec::*;
 
 use flo_canvas as canvas;
 use flo_canvas::curves::bezier::vectorize::*;
 
-use smallvec::*;
-
-use std::sync::*;
+use crate::edgeplan::*;
 
 ///
 /// A contour edge provides an implementation of an edge for any type that implements the `SampledContour` trait
 ///
 pub struct ContourEdge<TContour>
-    where
-        TContour: 'static + Clone + SampledContour,
+where
+    TContour: 'static + Clone + SampledContour,
 {
     /// The offset of the corner of where the contour should appear in space
     corner_offset: (f64, f64),
@@ -25,8 +31,8 @@ pub struct ContourEdge<TContour>
 }
 
 impl<TContour> ContourEdge<TContour>
-    where
-        TContour: 'static + Clone + SampledContour,
+where
+    TContour: 'static + Clone + SampledContour,
 {
     ///
     /// Creates a new edge description from a sampled contour
@@ -41,8 +47,8 @@ impl<TContour> ContourEdge<TContour>
 }
 
 impl<TContour> Clone for ContourEdge<TContour>
-    where
-        TContour: 'static + Clone + SampledContour,
+where
+    TContour: 'static + Clone + SampledContour,
 {
     #[inline]
     fn clone(&self) -> Self {
@@ -56,8 +62,8 @@ impl<TContour> Clone for ContourEdge<TContour>
 }
 
 impl<TContour> EdgeDescriptor for ContourEdge<TContour>
-    where
-        TContour: 'static + Clone + Send + Sync + SampledContour,
+where
+    TContour: 'static + Clone + Send + Sync + SampledContour,
 {
     #[inline]
     fn clone_as_object(&self) -> Arc<dyn EdgeDescriptor> {
@@ -84,7 +90,11 @@ impl<TContour> EdgeDescriptor for ContourEdge<TContour>
         (self.corner_offset, (x + w, y + h))
     }
 
-    fn intercepts(&self, y_positions: &[f64], output: &mut [SmallVec<[EdgeDescriptorIntercept; 2]>]) {
+    fn intercepts(
+        &self,
+        y_positions: &[f64],
+        output: &mut [SmallVec<[EdgeDescriptorIntercept; 2]>],
+    ) {
         for idx in 0..y_positions.len() {
             let y_pos = y_positions[idx];
 
@@ -95,11 +105,22 @@ impl<TContour> EdgeDescriptor for ContourEdge<TContour>
             // TODO: need to be able to get more information about the intercept here, this won't work to generate shards for concave shapes
             let y_pos = y_pos - y;
             if !(y_pos < 0.0 || y_pos >= h) {
-                output[idx].extend(self.contour.intercepts_on_line(y_pos).into_iter()
-                    .flat_map(|intercept| [
-                        EdgeDescriptorIntercept { direction: EdgeInterceptDirection::Toggle, x_pos: intercept.start + x, position: EdgePosition(0, 0, 0.0) },
-                        EdgeDescriptorIntercept { direction: EdgeInterceptDirection::Toggle, x_pos: intercept.end + x, position: EdgePosition(0, 0, 0.0) }
-                    ]));
+                output[idx].extend(self.contour.intercepts_on_line(y_pos).into_iter().flat_map(
+                    |intercept| {
+                        [
+                            EdgeDescriptorIntercept {
+                                direction: EdgeInterceptDirection::Toggle,
+                                x_pos: intercept.start + x,
+                                position: EdgePosition(0, 0, 0.0),
+                            },
+                            EdgeDescriptorIntercept {
+                                direction: EdgeInterceptDirection::Toggle,
+                                x_pos: intercept.end + x,
+                                position: EdgePosition(0, 0, 0.0),
+                            },
+                        ]
+                    },
+                ));
             }
         }
     }

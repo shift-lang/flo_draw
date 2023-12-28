@@ -1,3 +1,9 @@
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
 use std::collections::HashSet;
 use std::sync::*;
 #[cfg(any(feature = "timer", feature = "test-scene"))]
@@ -65,18 +71,29 @@ pub struct Recipe {
     entity_id: EntityId,
 
     /// Each step is a boxed function returning a future
-    steps: Vec<Arc<dyn Send + Sync + Fn(Arc<SceneContext>) -> BoxFuture<'static, Result<(), RecipeError>>>>,
+    steps: Vec<
+        Arc<dyn Send + Sync + Fn(Arc<SceneContext>) -> BoxFuture<'static, Result<(), RecipeError>>>,
+    >,
 }
 
 ///
 /// An intermediate build stage for a recipe step that expects a particular response to be sent to a channel
 ///
 pub struct ExpectingRecipe<TExpectedChannel> {
-    /// The recipe that the 'expect' step will be appended to 
+    /// The recipe that the 'expect' step will be appended to
     recipe: Recipe,
 
     /// Factory method to generate the expected response channel and a future for when the channel has generated all of its expected responses
-    responses: Box<dyn Send + Sync + Fn(Arc<SceneContext>) -> (TExpectedChannel, BoxFuture<'static, Result<(), RecipeError>>)>,
+    responses: Box<
+        dyn Send
+            + Sync
+            + Fn(
+                Arc<SceneContext>,
+            ) -> (
+                TExpectedChannel,
+                BoxFuture<'static, Result<(), RecipeError>>,
+            ),
+    >,
 }
 
 impl Default for Recipe {
@@ -117,10 +134,13 @@ impl Recipe {
     /// Requires the `timer` feature.
     ///
     #[cfg(any(feature = "timer", feature = "test-scene"))]
-    pub async fn run_with_timeout(&self, context: &Arc<SceneContext>, timeout: Duration) -> Result<(), RecipeError> {
+    pub async fn run_with_timeout(
+        &self,
+        context: &Arc<SceneContext>,
+        timeout: Duration,
+    ) -> Result<(), RecipeError> {
         // The timeout future is used to abort the test if it takes too long
-        let timeout = Delay::new(timeout)
-            .map(|_| Err(RecipeError::Timeout));
+        let timeout = Delay::new(timeout).map(|_| Err(RecipeError::Timeout));
 
         // Create a future to run the steps
         let steps = self.steps.clone();
@@ -144,11 +164,14 @@ impl Recipe {
     ///
     /// Creates a step for sending a generated set of messages
     ///
-    fn create_generated_step<TMessageIterator>(target_entity_id: EntityId, generate_messages: impl 'static + Send + Sync + Fn() -> TMessageIterator) -> Arc<dyn Send + Sync + Fn(Arc<SceneContext>) -> BoxFuture<'static, Result<(), RecipeError>>>
-        where
-            TMessageIterator: 'static + IntoIterator,
-            TMessageIterator::IntoIter: 'static + Send,
-            TMessageIterator::Item: 'static + Send,
+    fn create_generated_step<TMessageIterator>(
+        target_entity_id: EntityId,
+        generate_messages: impl 'static + Send + Sync + Fn() -> TMessageIterator,
+    ) -> Arc<dyn Send + Sync + Fn(Arc<SceneContext>) -> BoxFuture<'static, Result<(), RecipeError>>>
+    where
+        TMessageIterator: 'static + IntoIterator,
+        TMessageIterator::IntoIter: 'static + Send,
+        TMessageIterator::Item: 'static + Send,
     {
         Arc::new(move |context: Arc<SceneContext>| {
             let messages = generate_messages().into_iter();
@@ -163,16 +186,21 @@ impl Recipe {
                 }
 
                 Ok(())
-            }.boxed()
+            }
+            .boxed()
         })
     }
 
     ///
     /// Adds a new step to the recipe that sends a set of fixed messages to an entity
     ///
-    pub fn send_messages<TMessage>(self, target_entity_id: EntityId, messages: impl IntoIterator<Item=TMessage>) -> Recipe
-        where
-            TMessage: 'static + Clone + Send,
+    pub fn send_messages<TMessage>(
+        self,
+        target_entity_id: EntityId,
+        messages: impl IntoIterator<Item = TMessage>,
+    ) -> Recipe
+    where
+        TMessage: 'static + Clone + Send,
     {
         let messages = Mutex::new(messages.into_iter().collect::<Vec<_>>());
         self.send_generated_messages(target_entity_id, move || messages.lock().unwrap().clone())
@@ -183,11 +211,15 @@ impl Recipe {
     ///
     /// This can be used for sending messages that are not `Clone`. For messages that send responses to a channel, see `expect()`
     ///
-    pub fn send_generated_messages<TMessageIterator>(self, target_entity_id: EntityId, generate_messages: impl 'static + Send + Sync + Fn() -> TMessageIterator) -> Recipe
-        where
-            TMessageIterator: 'static + IntoIterator,
-            TMessageIterator::IntoIter: 'static + Send,
-            TMessageIterator::Item: 'static + Send,
+    pub fn send_generated_messages<TMessageIterator>(
+        self,
+        target_entity_id: EntityId,
+        generate_messages: impl 'static + Send + Sync + Fn() -> TMessageIterator,
+    ) -> Recipe
+    where
+        TMessageIterator: 'static + IntoIterator,
+        TMessageIterator::IntoIter: 'static + Send,
+        TMessageIterator::Item: 'static + Send,
     {
         let our_entity_id = self.entity_id;
         let mut steps = self.steps;
@@ -204,22 +236,32 @@ impl Recipe {
     ///
     /// Amends the step on top of the recipe so that it sends the a set of messages in parallel with the existing step
     ///
-    pub fn alongside_messages<TMessage>(self, target_entity_id: EntityId, messages: impl IntoIterator<Item=TMessage>) -> Recipe
-        where
-            TMessage: 'static + Clone + Send,
+    pub fn alongside_messages<TMessage>(
+        self,
+        target_entity_id: EntityId,
+        messages: impl IntoIterator<Item = TMessage>,
+    ) -> Recipe
+    where
+        TMessage: 'static + Clone + Send,
     {
         let messages = Mutex::new(messages.into_iter().collect::<Vec<_>>());
-        self.alongside_generated_messages(target_entity_id, move || messages.lock().unwrap().clone())
+        self.alongside_generated_messages(target_entity_id, move || {
+            messages.lock().unwrap().clone()
+        })
     }
 
     ///
     /// Amends the step on top of the recipe so that it sends the a set of generated messages in parallel with the existing step
     ///
-    pub fn alongside_generated_messages<TMessageIterator>(self, target_entity_id: EntityId, generate_messages: impl 'static + Send + Sync + Fn() -> TMessageIterator) -> Recipe
-        where
-            TMessageIterator: 'static + IntoIterator,
-            TMessageIterator::IntoIter: 'static + Send,
-            TMessageIterator::Item: 'static + Send,
+    pub fn alongside_generated_messages<TMessageIterator>(
+        self,
+        target_entity_id: EntityId,
+        generate_messages: impl 'static + Send + Sync + Fn() -> TMessageIterator,
+    ) -> Recipe
+    where
+        TMessageIterator: 'static + IntoIterator,
+        TMessageIterator::IntoIter: 'static + Send,
+        TMessageIterator::Item: 'static + Send,
     {
         let our_entity_id = self.entity_id;
         let mut steps = self.steps;
@@ -234,9 +276,9 @@ impl Recipe {
                 // Fold the errors into a single error
                 async move {
                     let results = future::join_all(vec![old_step, new_step]).await;
-                    results.into_iter()
-                        .fold(Ok(()), fold_recipe_error)
-                }.boxed()
+                    results.into_iter().fold(Ok(()), fold_recipe_error)
+                }
+                .boxed()
             });
 
             // Replace the old step with the combined step
@@ -257,9 +299,12 @@ impl Recipe {
     ///
     /// A channel that will process the responses is supplied to a factory method
     ///
-    pub fn expect<TResponse>(self, responses: impl IntoIterator<Item=TResponse>) -> ExpectingRecipe<BoxedEntityChannel<'static, TResponse>>
-        where
-            TResponse: 'static + Send + Sync + PartialEq,
+    pub fn expect<TResponse>(
+        self,
+        responses: impl IntoIterator<Item = TResponse>,
+    ) -> ExpectingRecipe<BoxedEntityChannel<'static, TResponse>>
+    where
+        TResponse: 'static + Send + Sync + PartialEq,
     {
         let entity_id = self.entity_id;
         let responses = responses.into_iter().collect::<Vec<_>>();
@@ -268,7 +313,8 @@ impl Recipe {
         ExpectingRecipe {
             recipe: self,
             responses: Box::new(move |_context| {
-                let (channel, future) = ExpectedEntityChannel::new(entity_id, Arc::clone(&responses));
+                let (channel, future) =
+                    ExpectedEntityChannel::new(entity_id, Arc::clone(&responses));
 
                 (channel.boxed(), future.boxed())
             }),
@@ -278,9 +324,19 @@ impl Recipe {
     ///
     /// Creates the 'expecting' function for matching a channel against a set of responses that we need to wait for
     ///
-    fn wait_for_channel<TResponse>(our_entity_id: EntityId, responses: Vec<TResponse>) -> impl Send + Sync + Fn(Arc<SceneContext>) -> (BoxedEntityChannel<'static, TResponse>, BoxFuture<'static, Result<(), RecipeError>>)
-        where
-            TResponse: 'static + Send + Sync + PartialEq,
+    fn wait_for_channel<TResponse>(
+        our_entity_id: EntityId,
+        responses: Vec<TResponse>,
+    ) -> impl Send
+           + Sync
+           + Fn(
+        Arc<SceneContext>,
+    ) -> (
+        BoxedEntityChannel<'static, TResponse>,
+        BoxFuture<'static, Result<(), RecipeError>>,
+    )
+    where
+        TResponse: 'static + Send + Sync + PartialEq,
     {
         let responses = Arc::new(responses);
 
@@ -325,9 +381,19 @@ impl Recipe {
     ///
     /// Creates the 'expecting' function for matching a channel against a set of responses that we need to wait for (matching them in any order)
     ///
-    fn wait_for_unordered_channel<TResponse>(our_entity_id: EntityId, responses: Vec<TResponse>) -> impl Send + Sync + Fn(Arc<SceneContext>) -> (BoxedEntityChannel<'static, TResponse>, BoxFuture<'static, Result<(), RecipeError>>)
-        where
-            TResponse: 'static + Send + Sync + PartialEq,
+    fn wait_for_unordered_channel<TResponse>(
+        our_entity_id: EntityId,
+        responses: Vec<TResponse>,
+    ) -> impl Send
+           + Sync
+           + Fn(
+        Arc<SceneContext>,
+    ) -> (
+        BoxedEntityChannel<'static, TResponse>,
+        BoxFuture<'static, Result<(), RecipeError>>,
+    )
+    where
+        TResponse: 'static + Send + Sync + PartialEq,
     {
         let responses = Arc::new(responses);
 
@@ -377,15 +443,21 @@ impl Recipe {
     /// Similar to `expect()`, this will wait for the supplied set of responses to be returned in order, but will ignore responses that
     /// don't match what was expected rather than erroring out (ie, will wait until the full response sequence is seen)
     ///
-    pub fn wait_for<TResponse>(self, responses: impl IntoIterator<Item=TResponse>) -> ExpectingRecipe<BoxedEntityChannel<'static, TResponse>>
-        where
-            TResponse: 'static + Send + Sync + PartialEq,
+    pub fn wait_for<TResponse>(
+        self,
+        responses: impl IntoIterator<Item = TResponse>,
+    ) -> ExpectingRecipe<BoxedEntityChannel<'static, TResponse>>
+    where
+        TResponse: 'static + Send + Sync + PartialEq,
     {
         let entity_id = self.entity_id;
 
         ExpectingRecipe {
             recipe: self,
-            responses: Box::new(Self::wait_for_channel(entity_id, responses.into_iter().collect())),
+            responses: Box::new(Self::wait_for_channel(
+                entity_id,
+                responses.into_iter().collect(),
+            )),
         }
     }
 
@@ -394,15 +466,21 @@ impl Recipe {
     ///
     /// Supplying a response more than once will cause it to be matched for that many times
     ///
-    pub fn wait_for_unordered<TResponse>(self, responses: impl IntoIterator<Item=TResponse>) -> ExpectingRecipe<BoxedEntityChannel<'static, TResponse>>
-        where
-            TResponse: 'static + Send + Sync + PartialEq,
+    pub fn wait_for_unordered<TResponse>(
+        self,
+        responses: impl IntoIterator<Item = TResponse>,
+    ) -> ExpectingRecipe<BoxedEntityChannel<'static, TResponse>>
+    where
+        TResponse: 'static + Send + Sync + PartialEq,
     {
         let entity_id = self.entity_id;
 
         ExpectingRecipe {
             recipe: self,
-            responses: Box::new(Self::wait_for_unordered_channel(entity_id, responses.into_iter().collect())),
+            responses: Box::new(Self::wait_for_unordered_channel(
+                entity_id,
+                responses.into_iter().collect(),
+            )),
         }
     }
 
@@ -414,7 +492,10 @@ impl Recipe {
 ///
 /// Combines two reuslts into a single error
 ///
-fn fold_recipe_error(a: Result<(), RecipeError>, b: Result<(), RecipeError>) -> Result<(), RecipeError> {
+fn fold_recipe_error(
+    a: Result<(), RecipeError>,
+    b: Result<(), RecipeError>,
+) -> Result<(), RecipeError> {
     match (a, b) {
         (Ok(()), Ok(())) => Ok(()),
         (Err(err), Ok(())) => Err(err),
@@ -435,24 +516,26 @@ fn fold_recipe_error(a: Result<(), RecipeError>, b: Result<(), RecipeError>) -> 
             Err(RecipeError::ManyErrors(b))
         }
 
-        (Err(a), Err(b)) => {
-            Err(RecipeError::ManyErrors(vec![a, b]))
-        }
+        (Err(a), Err(b)) => Err(RecipeError::ManyErrors(vec![a, b])),
     }
 }
 
 impl<TExpectedChannel> ExpectingRecipe<TExpectedChannel>
-    where
-        TExpectedChannel: 'static + Send,
+where
+    TExpectedChannel: 'static + Send,
 {
     ///
     /// Sends the messages that expect this response
     ///
-    pub fn after_sending_messages<TMessageIterator>(self, target_entity_id: EntityId, generate_messages: impl 'static + Send + Sync + Fn(TExpectedChannel) -> TMessageIterator) -> Recipe
-        where
-            TMessageIterator: 'static + IntoIterator,
-            TMessageIterator::IntoIter: 'static + Send,
-            TMessageIterator::Item: 'static + Send,
+    pub fn after_sending_messages<TMessageIterator>(
+        self,
+        target_entity_id: EntityId,
+        generate_messages: impl 'static + Send + Sync + Fn(TExpectedChannel) -> TMessageIterator,
+    ) -> Recipe
+    where
+        TMessageIterator: 'static + IntoIterator,
+        TMessageIterator::IntoIter: 'static + Send,
+        TMessageIterator::Item: 'static + Send,
     {
         let our_entity_id = self.recipe.entity_id;
         let mut steps = self.recipe.steps;
@@ -475,7 +558,8 @@ impl<TExpectedChannel> ExpectingRecipe<TExpectedChannel>
                 future.await?;
 
                 Ok(())
-            }.boxed()
+            }
+            .boxed()
         });
 
         steps.push(new_step);
@@ -488,15 +572,21 @@ impl<TExpectedChannel> ExpectingRecipe<TExpectedChannel>
 }
 
 impl<TResponse1> ExpectingRecipe<BoxedEntityChannel<'static, TResponse1>>
-    where
-        TResponse1: 'static + Send + Sync + PartialEq,
+where
+    TResponse1: 'static + Send + Sync + PartialEq,
 {
     ///
-    /// As for `Recipe::expect`, except this will extend the number of channels with expectations to 2 
+    /// As for `Recipe::expect`, except this will extend the number of channels with expectations to 2
     ///
-    pub fn expect<TResponse2>(self, responses: impl IntoIterator<Item=TResponse2>) -> ExpectingRecipe<(BoxedEntityChannel<'static, TResponse1>, BoxedEntityChannel<'static, TResponse2>)>
-        where
-            TResponse2: 'static + Send + Sync + PartialEq,
+    pub fn expect<TResponse2>(
+        self,
+        responses: impl IntoIterator<Item = TResponse2>,
+    ) -> ExpectingRecipe<(
+        BoxedEntityChannel<'static, TResponse1>,
+        BoxedEntityChannel<'static, TResponse2>,
+    )>
+    where
+        TResponse2: 'static + Send + Sync + PartialEq,
     {
         let recipe = self.recipe;
         let entity_id = recipe.entity_id;
@@ -511,12 +601,13 @@ impl<TResponse1> ExpectingRecipe<BoxedEntityChannel<'static, TResponse1>>
                 let (other_channel, other_future) = other_responses(context);
 
                 // Create the this channel
-                let (our_channel, our_future) = ExpectedEntityChannel::new(entity_id, Arc::clone(&responses));
+                let (our_channel, our_future) =
+                    ExpectedEntityChannel::new(entity_id, Arc::clone(&responses));
 
                 let future = async move {
-                    let all_responses = future::join_all(vec![other_future, our_future.boxed()]).await;
-                    all_responses.into_iter()
-                        .fold(Ok(()), fold_recipe_error)
+                    let all_responses =
+                        future::join_all(vec![other_future, our_future.boxed()]).await;
+                    all_responses.into_iter().fold(Ok(()), fold_recipe_error)
                 };
 
                 ((other_channel, our_channel.boxed()), future.boxed())
@@ -525,17 +616,28 @@ impl<TResponse1> ExpectingRecipe<BoxedEntityChannel<'static, TResponse1>>
     }
 }
 
-impl<TResponse1, TResponse2> ExpectingRecipe<(BoxedEntityChannel<'static, TResponse1>, BoxedEntityChannel<'static, TResponse2>)>
-    where
-        TResponse1: 'static + Send + Sync + PartialEq,
-        TResponse2: 'static + Send + Sync + PartialEq,
+impl<TResponse1, TResponse2>
+    ExpectingRecipe<(
+        BoxedEntityChannel<'static, TResponse1>,
+        BoxedEntityChannel<'static, TResponse2>,
+    )>
+where
+    TResponse1: 'static + Send + Sync + PartialEq,
+    TResponse2: 'static + Send + Sync + PartialEq,
 {
     ///
-    /// As for `Recipe::expect`, except this will extend the number of channels with expectations to 2 
+    /// As for `Recipe::expect`, except this will extend the number of channels with expectations to 2
     ///
-    pub fn expect<TResponse3>(self, responses: impl IntoIterator<Item=TResponse3>) -> ExpectingRecipe<(BoxedEntityChannel<'static, TResponse1>, BoxedEntityChannel<'static, TResponse2>, BoxedEntityChannel<'static, TResponse3>)>
-        where
-            TResponse3: 'static + Send + Sync + PartialEq,
+    pub fn expect<TResponse3>(
+        self,
+        responses: impl IntoIterator<Item = TResponse3>,
+    ) -> ExpectingRecipe<(
+        BoxedEntityChannel<'static, TResponse1>,
+        BoxedEntityChannel<'static, TResponse2>,
+        BoxedEntityChannel<'static, TResponse3>,
+    )>
+    where
+        TResponse3: 'static + Send + Sync + PartialEq,
     {
         let recipe = self.recipe;
         let entity_id = recipe.entity_id;
@@ -550,32 +652,49 @@ impl<TResponse1, TResponse2> ExpectingRecipe<(BoxedEntityChannel<'static, TRespo
                 let ((other_channel1, other_channel2), other_future) = other_responses(context);
 
                 // Create the this channel
-                let (our_channel, our_future) = ExpectedEntityChannel::new(entity_id, Arc::clone(&responses));
+                let (our_channel, our_future) =
+                    ExpectedEntityChannel::new(entity_id, Arc::clone(&responses));
 
                 let future = async move {
-                    let all_responses = future::join_all(vec![other_future, our_future.boxed()]).await;
-                    all_responses.into_iter()
-                        .fold(Ok(()), fold_recipe_error)
+                    let all_responses =
+                        future::join_all(vec![other_future, our_future.boxed()]).await;
+                    all_responses.into_iter().fold(Ok(()), fold_recipe_error)
                 };
 
-                ((other_channel1, other_channel2, our_channel.boxed()), future.boxed())
+                (
+                    (other_channel1, other_channel2, our_channel.boxed()),
+                    future.boxed(),
+                )
             }),
         }
     }
 }
 
-impl<TResponse1, TResponse2, TResponse3> ExpectingRecipe<(BoxedEntityChannel<'static, TResponse1>, BoxedEntityChannel<'static, TResponse2>, BoxedEntityChannel<'static, TResponse3>)>
-    where
-        TResponse1: 'static + Send + Sync + PartialEq,
-        TResponse2: 'static + Send + Sync + PartialEq,
-        TResponse3: 'static + Send + Sync + PartialEq,
+impl<TResponse1, TResponse2, TResponse3>
+    ExpectingRecipe<(
+        BoxedEntityChannel<'static, TResponse1>,
+        BoxedEntityChannel<'static, TResponse2>,
+        BoxedEntityChannel<'static, TResponse3>,
+    )>
+where
+    TResponse1: 'static + Send + Sync + PartialEq,
+    TResponse2: 'static + Send + Sync + PartialEq,
+    TResponse3: 'static + Send + Sync + PartialEq,
 {
     ///
-    /// As for `Recipe::expect`, except this will extend the number of channels with expectations to 2 
+    /// As for `Recipe::expect`, except this will extend the number of channels with expectations to 2
     ///
-    pub fn expect<TResponse4>(self, responses: impl IntoIterator<Item=TResponse4>) -> ExpectingRecipe<(BoxedEntityChannel<'static, TResponse1>, BoxedEntityChannel<'static, TResponse2>, BoxedEntityChannel<'static, TResponse3>, BoxedEntityChannel<'static, TResponse4>)>
-        where
-            TResponse4: 'static + Send + Sync + PartialEq,
+    pub fn expect<TResponse4>(
+        self,
+        responses: impl IntoIterator<Item = TResponse4>,
+    ) -> ExpectingRecipe<(
+        BoxedEntityChannel<'static, TResponse1>,
+        BoxedEntityChannel<'static, TResponse2>,
+        BoxedEntityChannel<'static, TResponse3>,
+        BoxedEntityChannel<'static, TResponse4>,
+    )>
+    where
+        TResponse4: 'static + Send + Sync + PartialEq,
     {
         let recipe = self.recipe;
         let entity_id = recipe.entity_id;
@@ -587,18 +706,28 @@ impl<TResponse1, TResponse2, TResponse3> ExpectingRecipe<(BoxedEntityChannel<'st
             recipe: recipe,
             responses: Box::new(move |context| {
                 // Request the other channel
-                let ((other_channel1, other_channel2, other_channel3), other_future) = other_responses(context);
+                let ((other_channel1, other_channel2, other_channel3), other_future) =
+                    other_responses(context);
 
                 // Create the this channel
-                let (our_channel, our_future) = ExpectedEntityChannel::new(entity_id, Arc::clone(&responses));
+                let (our_channel, our_future) =
+                    ExpectedEntityChannel::new(entity_id, Arc::clone(&responses));
 
                 let future = async move {
-                    let all_responses = future::join_all(vec![other_future, our_future.boxed()]).await;
-                    all_responses.into_iter()
-                        .fold(Ok(()), fold_recipe_error)
+                    let all_responses =
+                        future::join_all(vec![other_future, our_future.boxed()]).await;
+                    all_responses.into_iter().fold(Ok(()), fold_recipe_error)
                 };
 
-                ((other_channel1, other_channel2, other_channel3, our_channel.boxed()), future.boxed())
+                (
+                    (
+                        other_channel1,
+                        other_channel2,
+                        other_channel3,
+                        our_channel.boxed(),
+                    ),
+                    future.boxed(),
+                )
             }),
         }
     }

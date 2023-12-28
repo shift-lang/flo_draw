@@ -1,14 +1,20 @@
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
 extern crate desync;
 extern crate futures;
 
 use desync::*;
-use futures::stream;
-use futures::future;
-use futures::executor;
-use futures::sink::{SinkExt};
-use futures::stream::{StreamExt};
 use futures::channel::mpsc;
+use futures::executor;
+use futures::future;
 use futures::prelude::*;
+use futures::sink::SinkExt;
+use futures::stream;
+use futures::stream::StreamExt;
 
 use std::sync::*;
 use std::thread;
@@ -24,10 +30,14 @@ fn pipe_in_simple_stream() {
     let obj = Arc::new(Desync::new(vec![]));
 
     // Pipe the stream into the object
-    pipe_in(Arc::clone(&obj), stream, |core: &mut Vec<Result<i32, ()>>, item| {
-        core.push(Ok(item));
-        Box::pin(future::ready(()))
-    });
+    pipe_in(
+        Arc::clone(&obj),
+        stream,
+        |core: &mut Vec<Result<i32, ()>>, item| {
+            core.push(Ok(item));
+            Box::pin(future::ready(()))
+        },
+    );
 
     // Delay to allow the messages to be processed on the stream
     thread::sleep(Duration::from_millis(10));
@@ -78,7 +88,9 @@ fn pipe_through() {
     let obj = Arc::new(Desync::new(1));
 
     // Create a pipe that adds values from the stream to the value in the object
-    let mut pipe_out = pipe(Arc::clone(&obj), receiver, |core, item| future::ready(item + *core).boxed());
+    let mut pipe_out = pipe(Arc::clone(&obj), receiver, |core, item| {
+        future::ready(item + *core).boxed()
+    });
 
     // Start things running
     executor::block_on(async {
@@ -112,7 +124,9 @@ fn pipe_through_1000() {
         let obj = Arc::new(Desync::new(1));
 
         // Create a pipe that adds values from the stream to the value in the object
-        let mut pipe_out = pipe(Arc::clone(&obj), receiver, |core, item| future::ready(item + *core).boxed());
+        let mut pipe_out = pipe(Arc::clone(&obj), receiver, |core, item| {
+            future::ready(item + *core).boxed()
+        });
 
         // Start things running
         executor::block_on(async {
@@ -147,7 +161,9 @@ fn pipe_through_stream_closes() {
         let obj = Arc::new(Desync::new(1));
 
         // Create a pipe that adds values from the stream to the value in the object
-        let mut pipe_out = pipe(Arc::clone(&obj), receiver, |core, item: i32| future::ready(item + *core).boxed());
+        let mut pipe_out = pipe(Arc::clone(&obj), receiver, |core, item: i32| {
+            future::ready(item + *core).boxed()
+        });
 
         // Start things running
         executor::block_on(async {
@@ -173,7 +189,9 @@ fn pipe_through_produces_backpressure() {
     let obj = Arc::new(Desync::new(1));
 
     // Create a pipe that adds values from the stream to the value in the object
-    let mut pipe_out = pipe(Arc::clone(&obj), receiver, |core, item: i32| future::ready(item + *core).boxed());
+    let mut pipe_out = pipe(Arc::clone(&obj), receiver, |core, item: i32| {
+        future::ready(item + *core).boxed()
+    });
 
     // Set the backpressure depth to 3
     pipe_out.set_backpressure_depth(3);
@@ -185,7 +203,9 @@ fn pipe_through_produces_backpressure() {
             let mut iter = 0;
             let succeeded = loop {
                 iter = iter + 1;
-                if iter > 1000 { break false; }
+                if iter > 1000 {
+                    break false;
+                }
 
                 if sender.try_send(1) == Ok(()) {
                     break true;
@@ -202,7 +222,9 @@ fn pipe_through_produces_backpressure() {
         let mut iter = 0;
         let succeeded = loop {
             iter = iter + 1;
-            if iter > 1000 { break false; }
+            if iter > 1000 {
+                break false;
+            }
 
             if sender.try_send(2) == Ok(()) {
                 break true;

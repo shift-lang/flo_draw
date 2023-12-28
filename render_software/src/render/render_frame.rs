@@ -1,3 +1,9 @@
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
 use crate::draw::*;
 use crate::pixel::*;
 use crate::scanplan::*;
@@ -11,13 +17,17 @@ use flo_canvas as canvas;
 ///
 /// Renders and entire frame to a render target from a render source
 ///
-pub fn render_frame_with_planner<'a, TScanPlanner, TProgramRunner, TSource, TTarget>(scan_planner: TScanPlanner, program_runner: TProgramRunner, source: &TSource, target: &mut TTarget)
-    where
-        TScanPlanner: ScanPlanner,
-        TProgramRunner: PixelProgramRunner,
-        TProgramRunner::TPixel: 'static,
-        TSource: RenderSource<TScanPlanner, TProgramRunner>,
-        TTarget: RenderTarget<TProgramRunner::TPixel>,
+pub fn render_frame_with_planner<'a, TScanPlanner, TProgramRunner, TSource, TTarget>(
+    scan_planner: TScanPlanner,
+    program_runner: TProgramRunner,
+    source: &TSource,
+    target: &mut TTarget,
+) where
+    TScanPlanner: ScanPlanner,
+    TProgramRunner: PixelProgramRunner,
+    TProgramRunner::TPixel: 'static,
+    TSource: RenderSource<TScanPlanner, TProgramRunner>,
+    TTarget: RenderTarget<TProgramRunner::TPixel>,
 {
     let region_renderer = TSource::create_region_renderer(scan_planner, program_runner);
     target.render(region_renderer, source);
@@ -26,14 +36,20 @@ pub fn render_frame_with_planner<'a, TScanPlanner, TProgramRunner, TSource, TTar
 ///
 /// Renders a set of drawing instructions to a target using the default settings
 ///
-pub fn render_drawing<TTarget>(target: &mut TTarget, drawing: impl IntoIterator<Item=canvas::Draw>)
-    where
-        TTarget: RenderTarget<F32LinearPixel>,
+pub fn render_drawing<TTarget>(
+    target: &mut TTarget,
+    drawing: impl IntoIterator<Item = canvas::Draw>,
+) where
+    TTarget: RenderTarget<F32LinearPixel>,
 {
     // Prepare a canvas drawing
     let mut canvas_drawing = CanvasDrawing::<F32LinearPixel, 4>::empty();
     canvas_drawing.draw(drawing);
 
-    let renderer = CanvasDrawingRegionRenderer::new(PixelScanPlanner::default(), ScanlineRenderer::new(canvas_drawing.program_runner(target.height() as _)), target.height());
+    let renderer = CanvasDrawingRegionRenderer::new(
+        PixelScanPlanner::default(),
+        ScanlineRenderer::new(canvas_drawing.program_runner(target.height() as _)),
+        target.height(),
+    );
     target.render(renderer, &canvas_drawing);
 }

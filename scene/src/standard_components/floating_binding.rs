@@ -1,14 +1,20 @@
-use crate::error::*;
-
-use flo_binding::*;
-use flo_binding::releasable::*;
-use flo_binding::binding_context::*;
-
-use futures::prelude::*;
-use futures::channel::mpsc;
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
 
 use std::mem;
 use std::sync::*;
+
+use futures::channel::mpsc;
+use futures::prelude::*;
+
+use flo_binding::binding_context::*;
+use flo_binding::releasable::*;
+use flo_binding::*;
+
+use crate::error::*;
 
 ///
 /// A floating binding is associated with a binding target that will be bound to its true value at some unspecified point in the future
@@ -66,7 +72,10 @@ impl<TValue> FloatingState<TValue> {
     ///
     /// Maps the value contained within this floating state
     ///
-    pub fn map<TMapValue>(self, map_fn: impl FnOnce(TValue) -> TMapValue) -> FloatingState<TMapValue> {
+    pub fn map<TMapValue>(
+        self,
+        map_fn: impl FnOnce(TValue) -> TMapValue,
+    ) -> FloatingState<TMapValue> {
         match self {
             FloatingState::Waiting => FloatingState::Waiting,
             FloatingState::Abandoned => FloatingState::Abandoned,
@@ -80,9 +89,15 @@ impl<TValue> FloatingState<TValue> {
     ///
     pub fn unwrap(self) -> TValue {
         match self {
-            FloatingState::Waiting => panic!("called `FloatingState::unwrap()` on a `Waiting` value"),
-            FloatingState::Abandoned => panic!("called `FloatingState::unwrap()` on an `Abandoned` value"),
-            FloatingState::Missing => panic!("called `FloatingState::unwrap()` on a `Missing` value"),
+            FloatingState::Waiting => {
+                panic!("called `FloatingState::unwrap()` on a `Waiting` value")
+            }
+            FloatingState::Abandoned => {
+                panic!("called `FloatingState::unwrap()` on an `Abandoned` value")
+            }
+            FloatingState::Missing => {
+                panic!("called `FloatingState::unwrap()` on a `Missing` value")
+            }
             FloatingState::Value(value) => value,
         }
     }
@@ -108,8 +123,8 @@ impl<TValue> Clone for FloatingBinding<TValue> {
 }
 
 impl<TValue> Changeable for FloatingBinding<TValue>
-    where
-        TValue: Changeable
+where
+    TValue: Changeable,
 {
     fn when_changed(&self, what: Arc<dyn Notifiable>) -> Box<dyn Releasable> {
         let mut core = self.core.lock().unwrap();
@@ -138,9 +153,9 @@ impl<TValue> Changeable for FloatingBinding<TValue>
 }
 
 impl<TValue> Bound for FloatingBinding<TValue>
-    where
-        TValue: 'static + Clone + Send + Bound,
-        TValue::Value: 'static + Clone + Send,
+where
+    TValue: 'static + Clone + Send + Bound,
+    TValue::Value: 'static + Clone + Send,
 {
     type Value = FloatingState<TValue::Value>;
 
@@ -179,18 +194,24 @@ impl<TValue> Bound for FloatingBinding<TValue>
 
             FloatingState::Value(binding) => {
                 // Use a mapped binding to map the value and create a new watcher from that
-                binding.map_binding(|value| FloatingState::Value(value)).watch(what)
+                binding
+                    .map_binding(|value| FloatingState::Value(value))
+                    .watch(what)
             }
 
-            FloatingState::Abandoned => Arc::new(NotifyWatcher::new(move || FloatingState::Abandoned, what).0),
-            FloatingState::Missing => Arc::new(NotifyWatcher::new(move || FloatingState::Missing, what).0),
+            FloatingState::Abandoned => {
+                Arc::new(NotifyWatcher::new(move || FloatingState::Abandoned, what).0)
+            }
+            FloatingState::Missing => {
+                Arc::new(NotifyWatcher::new(move || FloatingState::Missing, what).0)
+            }
         }
     }
 }
 
 impl<TValue> FloatingBindingTarget<TValue>
-    where
-        TValue: 'static + Bound,
+where
+    TValue: 'static + Bound,
 {
     ///
     /// Finishes the binding for this target
@@ -203,11 +224,19 @@ impl<TValue> FloatingBindingTarget<TValue>
             // Fetch the core
             let mut core = self.core.lock().unwrap();
 
-            // Copy the values to be notified 
-            let to_notify = core.when_changed.iter().map(|notifiable| notifiable.clone_for_inspection()).collect::<Vec<_>>();
+            // Copy the values to be notified
+            let to_notify = core
+                .when_changed
+                .iter()
+                .map(|notifiable| notifiable.clone_for_inspection())
+                .collect::<Vec<_>>();
             if !to_notify.is_empty() {
                 // Take ownership of the notifiables
-                let mut to_notify = core.when_changed.iter().map(|notifiable| notifiable.clone_for_inspection()).collect::<Vec<_>>();
+                let mut to_notify = core
+                    .when_changed
+                    .iter()
+                    .map(|notifiable| notifiable.clone_for_inspection())
+                    .collect::<Vec<_>>();
                 mem::swap(&mut to_notify, &mut core.when_changed);
 
                 // Notify via the BindRef
@@ -217,8 +246,9 @@ impl<TValue> FloatingBindingTarget<TValue>
                         to_notify.retain(|item| item.is_in_use());
 
                         // Notify anything that's left
-                        to_notify.iter()
-                            .for_each(|notifiable| { notifiable.mark_as_changed(); });
+                        to_notify.iter().for_each(|notifiable| {
+                            notifiable.mark_as_changed();
+                        });
 
                         // Drop the notifications from the core if there's nothing left
                         if to_notify.is_empty() {
@@ -241,8 +271,9 @@ impl<TValue> FloatingBindingTarget<TValue>
         };
 
         // Notify anything that's listening that the binding is available
-        to_notify.into_iter()
-            .for_each(|notifiable| { notifiable.mark_as_changed(); });
+        to_notify.into_iter().for_each(|notifiable| {
+            notifiable.mark_as_changed();
+        });
 
         // Everything else notifies via the new bindref from now on, so we don't need the when_changed list any more
         self.core.lock().unwrap().when_changed = vec![];
@@ -259,11 +290,16 @@ impl<TValue> FloatingBindingTarget<TValue>
             core.binding = FloatingState::Missing;
 
             // Notify everything
-            core.when_changed.iter().map(|notifiable| notifiable.clone_for_inspection()).collect::<Vec<_>>()
+            core.when_changed
+                .iter()
+                .map(|notifiable| notifiable.clone_for_inspection())
+                .collect::<Vec<_>>()
         };
 
         // Send out any needed notifications about the binding being abandoned
-        to_notify.into_iter().for_each(|notifiable| { notifiable.mark_as_changed(); });
+        to_notify.into_iter().for_each(|notifiable| {
+            notifiable.mark_as_changed();
+        });
     }
 }
 
@@ -277,7 +313,10 @@ impl<TValue> Drop for FloatingBindingTarget<TValue> {
                 core.binding = FloatingState::Abandoned;
 
                 // Notify everything
-                core.when_changed.iter().map(|notifiable| notifiable.clone_for_inspection()).collect::<Vec<_>>()
+                core.when_changed
+                    .iter()
+                    .map(|notifiable| notifiable.clone_for_inspection())
+                    .collect::<Vec<_>>()
             } else {
                 // Nothing to notify
                 vec![]
@@ -285,14 +324,16 @@ impl<TValue> Drop for FloatingBindingTarget<TValue> {
         };
 
         // Send out any needed notifications about the binding being abandoned
-        to_notify.into_iter().for_each(|notifiable| { notifiable.mark_as_changed(); });
+        to_notify.into_iter().for_each(|notifiable| {
+            notifiable.mark_as_changed();
+        });
     }
 }
 
 impl<TValue> FloatingBinding<TValue>
-    where
-        TValue: 'static + Clone + Send + Bound,
-        TValue::Value: 'static + Clone + Send,
+where
+    TValue: 'static + Clone + Send + Bound,
+    TValue::Value: 'static + Clone + Send,
 {
     ///
     /// Creates a new floating binding in the waiting state and a target for setting the final binding
@@ -322,17 +363,17 @@ impl<TValue> FloatingBinding<TValue>
     /// binding is not yet available, or an error if the binding is unavaiable for any reason.
     ///
     /// This can be used in combination with `when_changed()` to wait for a binding to become available without
-    /// using a future. Note that using `map_binding()` can also be used to supply a default value during the 
+    /// using a future. Note that using `map_binding()` can also be used to supply a default value during the
     /// period where the full binding is unavailable.
     ///
     pub fn try_get_binding(&self) -> Result<Option<TValue>, BindingError> {
         let core = self.core.lock().unwrap();
 
         match &core.binding {
-            FloatingState::Abandoned => { Err(BindingError::Abandoned) }
-            FloatingState::Missing => { Err(BindingError::Missing) }
-            FloatingState::Value(value) => { Ok(Some(value.clone())) }
-            FloatingState::Waiting => { Ok(None) }
+            FloatingState::Abandoned => Err(BindingError::Abandoned),
+            FloatingState::Missing => Err(BindingError::Missing),
+            FloatingState::Value(value) => Ok(Some(value.clone())),
+            FloatingState::Waiting => Ok(None),
         }
     }
 
@@ -349,14 +390,22 @@ impl<TValue> FloatingBinding<TValue>
 
             // Short-circuit if the binding is already known or abandoned, otherwise follow updates to this binding
             match &core.binding {
-                FloatingState::Abandoned => { return Err(BindingError::Abandoned); }
-                FloatingState::Missing => { return Err(BindingError::Missing); }
-                FloatingState::Value(value) => { return Ok(value.clone()); }
+                FloatingState::Abandoned => {
+                    return Err(BindingError::Abandoned);
+                }
+                FloatingState::Missing => {
+                    return Err(BindingError::Missing);
+                }
+                FloatingState::Value(value) => {
+                    return Ok(value.clone());
+                }
                 FloatingState::Waiting => {
                     // Add a notification every time the value in this object changes
                     let (mut send, recv) = mpsc::channel(1);
 
-                    let monitor_lifetime = ReleasableNotifiable::new(notify(move || { send.try_send(()).ok(); }));
+                    let monitor_lifetime = ReleasableNotifiable::new(notify(move || {
+                        send.try_send(()).ok();
+                    }));
                     core.when_changed.push(monitor_lifetime.clone_as_owned());
 
                     (recv, monitor_lifetime)
@@ -370,9 +419,15 @@ impl<TValue> FloatingBinding<TValue>
 
             // Keep waiting until the core leaves the 'waiting' state
             match &core.binding {
-                FloatingState::Abandoned => { return Err(BindingError::Abandoned); }
-                FloatingState::Missing => { return Err(BindingError::Missing); }
-                FloatingState::Value(value) => { return Ok(value.clone()); }
+                FloatingState::Abandoned => {
+                    return Err(BindingError::Abandoned);
+                }
+                FloatingState::Missing => {
+                    return Err(BindingError::Missing);
+                }
+                FloatingState::Value(value) => {
+                    return Ok(value.clone());
+                }
                 FloatingState::Waiting => {}
             }
         }

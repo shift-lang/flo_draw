@@ -1,15 +1,21 @@
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
 use crate::pixel::*;
 use crate::scanplan::*;
 
 use flo_canvas as canvas;
 
-use std::marker::{PhantomData};
-use std::ops::{Range};
+use std::marker::PhantomData;
+use std::ops::Range;
 use std::sync::*;
 
 pub struct TextureData<TTexture>
-    where
-        TTexture: Send + Sync,
+where
+    TTexture: Send + Sync,
 {
     /// The texture that this program will read from
     texture: Arc<TTexture>,
@@ -22,9 +28,9 @@ pub struct TextureData<TTexture>
 /// Program that pixels from a texture, without doing any filtering or mipmapping
 ///
 pub struct BasicTextureProgram<TTextureReader, TTexture>
-    where
-        TTexture: Send + Sync,
-        TTextureReader: TextureReader<TTexture>,
+where
+    TTexture: Send + Sync,
+    TTextureReader: TextureReader<TTexture>,
 {
     /// Placeholder for the texture data
     texture: PhantomData<Arc<TTexture>>,
@@ -34,9 +40,9 @@ pub struct BasicTextureProgram<TTextureReader, TTexture>
 }
 
 impl<TTextureReader, TTexture> Default for BasicTextureProgram<TTextureReader, TTexture>
-    where
-        TTexture: Send + Sync,
-        TTextureReader: TextureReader<TTexture>,
+where
+    TTexture: Send + Sync,
+    TTextureReader: TextureReader<TTexture>,
 {
     ///
     /// Creates a basic texture program that will read from the specified texture
@@ -50,8 +56,8 @@ impl<TTextureReader, TTexture> Default for BasicTextureProgram<TTextureReader, T
 }
 
 impl<TTexture> TextureData<TTexture>
-    where
-        TTexture: Send + Sync,
+where
+    TTexture: Send + Sync,
 {
     ///
     /// Creates texture data from a texture and the transform to use
@@ -67,15 +73,23 @@ impl<TTexture> TextureData<TTexture>
 }
 
 impl<TTextureReader, TTexture> PixelProgram for BasicTextureProgram<TTextureReader, TTexture>
-    where
-        TTexture: Send + Sync,
-        TTextureReader: TextureReader<TTexture> + Copy + AlphaBlend,
+where
+    TTexture: Send + Sync,
+    TTextureReader: TextureReader<TTexture> + Copy + AlphaBlend,
 {
     type Pixel = TTextureReader;
     type ProgramData = TextureData<TTexture>;
 
     #[inline]
-    fn draw_pixels(&self, _data_cache: &PixelProgramRenderCache<Self::Pixel>, target: &mut [Self::Pixel], pixel_range: Range<i32>, x_transform: &ScanlineTransform, y_pos: f64, data: &Self::ProgramData) {
+    fn draw_pixels(
+        &self,
+        _data_cache: &PixelProgramRenderCache<Self::Pixel>,
+        target: &mut [Self::Pixel],
+        pixel_range: Range<i32>,
+        x_transform: &ScanlineTransform,
+        y_pos: f64,
+        data: &Self::ProgramData,
+    ) {
         // Read the data
         let texture = &*data.texture;
         let [[a, b, c], [d, e, f]] = data.transform;
@@ -88,7 +102,7 @@ impl<TTextureReader, TTexture> PixelProgram for BasicTextureProgram<TTextureRead
         let eyf = e * y_pos + f;
         let dx = x_transform.pixel_size();
 
-        // Calculate the position of teh 
+        // Calculate the position of teh
         let mut x_pos = x_pos;
         for pixel in target[(pixel_range.start as usize)..(pixel_range.end as usize)].iter_mut() {
             // Calculate the texture position

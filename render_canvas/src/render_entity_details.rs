@@ -1,7 +1,13 @@
-use super::layer_bounds::*;
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
 
-use flo_render::*;
 use flo_canvas as canvas;
+use flo_render::*;
+
+use super::layer_bounds::*;
 
 ///
 /// Provides information about a render entity
@@ -15,7 +21,10 @@ impl RenderEntityDetails {
     ///
     /// Creates a new details object from a set of vertices
     ///
-    pub fn from_vertices<'a>(vertices: impl IntoIterator<Item=&'a Vertex2D>, transform: &canvas::Transform2D) -> RenderEntityDetails {
+    pub fn from_vertices<'a>(
+        vertices: impl IntoIterator<Item = &'a Vertex2D>,
+        transform: &canvas::Transform2D,
+    ) -> RenderEntityDetails {
         // Work out the minimum and maximu
         let mut min = (f32::MAX, f32::MAX);
         let mut max = (f32::MIN, f32::MIN);
@@ -38,8 +47,6 @@ impl RenderEntityDetails {
         };
         let bounds = bounds.transform(transform);
 
-        RenderEntityDetails {
-            bounds
-        }
+        RenderEntityDetails { bounds }
     }
 }

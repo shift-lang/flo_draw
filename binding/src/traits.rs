@@ -1,7 +1,13 @@
-use crate::bindref::*;
-use crate::map_binding::*;
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
 
 use std::sync::*;
+
+use crate::bindref::*;
+use crate::map_binding::*;
 
 ///
 /// Trait implemented by items with dependencies that need to be notified when they have changed
@@ -36,7 +42,7 @@ pub trait Changeable {
     ///
     /// Supplies a function to be notified when this item is changed
     ///
-    /// This will always fire if the value has been changed since it was last 
+    /// This will always fire if the value has been changed since it was last
     /// read. The notification may fire more often than this depending on the
     /// implementation of the `Changeable` trait.
     ///
@@ -59,8 +65,8 @@ pub trait Bound: Changeable + Send + Sync {
     fn get(&self) -> Self::Value;
 
     ///
-    /// Creates a watcher: this provides a way to retrieve the value stored in this 
-    /// binding, and will call the notification function if the value has changed 
+    /// Creates a watcher: this provides a way to retrieve the value stored in this
+    /// binding, and will call the notification function if the value has changed
     /// since it was last read.
     ///
     /// This is a non-async version of the `follow()` function.
@@ -78,21 +84,21 @@ pub trait WithBound<Value>: Changeable + Send + Sync {
     /// to send notifiations
     ///
     fn with_ref<F, T>(&self, f: F) -> T
-        where
-            F: FnOnce(&Value) -> T;
+    where
+        F: FnOnce(&Value) -> T;
     ///
     /// Mutate instead of replacing value stored in this binding, return true
     /// to send notifiations
     ///
     fn with_mut<F>(&self, f: F)
-        where
-            F: FnOnce(&mut Value) -> bool;
+    where
+        F: FnOnce(&mut Value) -> bool;
 }
 
 ///
 /// Trait implemented by something that is bound to a value that can be changed
 ///
-/// Bindings are similar in behaviour to Arc<Mutex<Value>>, so it's possible to set 
+/// Bindings are similar in behaviour to Arc<Mutex<Value>>, so it's possible to set
 /// the value of their target even when the binding itself is not mutable.
 ///
 pub trait MutableBound: Bound {
@@ -159,9 +165,9 @@ pub trait BoundValueComputeExt: Sized {
     /// ```
     ///
     fn compute<TResultValue, TComputeFn>(&self, map_fn: TComputeFn) -> BindRef<TResultValue>
-        where
-            TResultValue: 'static + Clone + Send,
-            TComputeFn: 'static + Send + Sync + Fn(&Self) -> TResultValue;
+    where
+        TResultValue: 'static + Clone + Send,
+        TComputeFn: 'static + Send + Sync + Fn(&Self) -> TResultValue;
 }
 
 ///
@@ -200,7 +206,7 @@ pub trait BoundValueMapExt {
     /// ```
     ///
     fn map_binding<TMapValue, TMapFn>(&self, map_fn: TMapFn) -> MapBinding<Self, TMapValue, TMapFn>
-        where
-            TMapValue: 'static + Clone + Send,
-            TMapFn: 'static + Send + Sync + Fn(Self::Value) -> TMapValue;
+    where
+        TMapValue: 'static + Clone + Send,
+        TMapFn: 'static + Send + Sync + Fn(Self::Value) -> TMapValue;
 }

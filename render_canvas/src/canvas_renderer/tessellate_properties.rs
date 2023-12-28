@@ -1,12 +1,18 @@
-use crate::fill_state::*;
-use crate::render_entity::*;
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
 
-use super::canvas_renderer::*;
+use lyon::tessellation::FillRule;
 
 use flo_canvas as canvas;
 use flo_render as render;
 
-use lyon::tessellation::{FillRule};
+use crate::fill_state::*;
+use crate::render_entity::*;
+
+use super::canvas_renderer::*;
 
 impl CanvasRenderer {
     ///
@@ -14,7 +20,12 @@ impl CanvasRenderer {
     ///
     pub(super) fn render_color(color: canvas::Color) -> render::Rgba8 {
         let (r, g, b, a) = color.to_rgba_components();
-        let (r, g, b, a) = (Self::col_to_u8(r), Self::col_to_u8(g), Self::col_to_u8(b), Self::col_to_u8(a));
+        let (r, g, b, a) = (
+            Self::col_to_u8(r),
+            Self::col_to_u8(g),
+            Self::col_to_u8(b),
+            Self::col_to_u8(a),
+        );
 
         render::Rgba8([r, g, b, a])
     }
@@ -35,7 +46,12 @@ impl CanvasRenderer {
     /// Set the line width
     #[inline]
     pub(super) fn tes_line_width(&mut self, width: f32) {
-        self.core.sync(|core| core.layer(self.current_layer).state.stroke_settings.line_width = width);
+        self.core.sync(|core| {
+            core.layer(self.current_layer)
+                .state
+                .stroke_settings
+                .line_width = width
+        });
     }
 
     /// Set the line width in pixels
@@ -48,19 +64,26 @@ impl CanvasRenderer {
         let scale = (transform[0][0] * transform[0][0] + transform[1][0] * transform[1][0]).sqrt();
         let width = pixel_width / scale;
 
-        self.core.sync(|core| core.layer(self.current_layer).state.stroke_settings.line_width = width);
+        self.core.sync(|core| {
+            core.layer(self.current_layer)
+                .state
+                .stroke_settings
+                .line_width = width
+        });
     }
 
     /// Line join
     #[inline]
     pub(super) fn tes_line_join(&mut self, join_type: canvas::LineJoin) {
-        self.core.sync(|core| core.layer(self.current_layer).state.stroke_settings.join = join_type);
+        self.core
+            .sync(|core| core.layer(self.current_layer).state.stroke_settings.join = join_type);
     }
 
     /// The cap to use on lines
     #[inline]
     pub(super) fn tes_line_cap(&mut self, cap_type: canvas::LineCap) {
-        self.core.sync(|core| core.layer(self.current_layer).state.stroke_settings.cap = cap_type);
+        self.core
+            .sync(|core| core.layer(self.current_layer).state.stroke_settings.cap = cap_type);
     }
 
     /// The winding rule to use when filling areas
@@ -69,54 +92,94 @@ impl CanvasRenderer {
         use canvas::WindingRule::*;
 
         match winding_rule {
-            EvenOdd => self.core.sync(|core| core.layer(self.current_layer).state.winding_rule = FillRule::EvenOdd),
-            NonZero => self.core.sync(|core| core.layer(self.current_layer).state.winding_rule = FillRule::NonZero)
+            EvenOdd => self
+                .core
+                .sync(|core| core.layer(self.current_layer).state.winding_rule = FillRule::EvenOdd),
+            NonZero => self
+                .core
+                .sync(|core| core.layer(self.current_layer).state.winding_rule = FillRule::NonZero),
         }
     }
 
     /// Resets the dash pattern to empty (which is a solid line)
     #[inline]
     pub(super) fn tes_new_dash_pattern(&mut self) {
-        self.core.sync(|core| core.layer(self.current_layer).state.stroke_settings.dash_pattern = vec![]);
+        self.core.sync(|core| {
+            core.layer(self.current_layer)
+                .state
+                .stroke_settings
+                .dash_pattern = vec![]
+        });
     }
 
     /// Adds a dash to the current dash pattern
     #[inline]
     pub(super) fn tes_dash_length(&mut self, dash_length: f32) {
-        self.core.sync(|core| core.layer(self.current_layer).state.stroke_settings.dash_pattern.push(dash_length));
+        self.core.sync(|core| {
+            core.layer(self.current_layer)
+                .state
+                .stroke_settings
+                .dash_pattern
+                .push(dash_length)
+        });
     }
 
     /// Sets the offset for the dash pattern
     #[inline]
     pub(super) fn tes_dash_offset(&mut self, offset: f32) {
-        self.core.sync(|core| core.layer(self.current_layer).state.stroke_settings.dash_offset = offset);
+        self.core.sync(|core| {
+            core.layer(self.current_layer)
+                .state
+                .stroke_settings
+                .dash_offset = offset
+        });
     }
 
     /// Set the fill color
     #[inline]
     pub(super) fn tes_fill_color(&mut self, color: canvas::Color) {
-        self.core.sync(|core| core.layer(self.current_layer).state.fill_color = FillState::Color(Self::render_color(color)));
+        self.core.sync(|core| {
+            core.layer(self.current_layer).state.fill_color =
+                FillState::Color(Self::render_color(color))
+        });
     }
 
     /// Set a fill texture
     #[inline]
-    pub(super) fn tes_fill_texture(&mut self, namespace_id: usize, texture_id: canvas::TextureId, (x1, y1): (f32, f32), (x2, y2): (f32, f32)) {
+    pub(super) fn tes_fill_texture(
+        &mut self,
+        namespace_id: usize,
+        texture_id: canvas::TextureId,
+        (x1, y1): (f32, f32),
+        (x2, y2): (f32, f32),
+    ) {
         self.core.sync(|core| {
             // Check that the texture is ready for rendering (this also commits it at the point it's selected)
             let render_texture = core.texture_for_rendering(namespace_id, texture_id);
             if let Some(render_texture) = render_texture {
                 // Choose this texture
-                let alpha = core.texture_alpha.get(&(namespace_id, texture_id)).cloned().unwrap_or(1.0);
+                let alpha = core
+                    .texture_alpha
+                    .get(&(namespace_id, texture_id))
+                    .cloned()
+                    .unwrap_or(1.0);
                 let layer = core.layer(self.current_layer);
 
-                layer.state.fill_color = FillState::texture_fill(render_texture, texture_id, x1, y1, x2, y2, alpha)
+                layer.state.fill_color =
+                    FillState::texture_fill(render_texture, texture_id, x1, y1, x2, y2, alpha)
             }
         });
     }
 
     /// Set a fill gradient
     #[inline]
-    pub(super) fn tes_fill_gradient(&mut self, namespace_id: usize, gradient_id: canvas::GradientId, (x1, y1): (f32, f32), (x2, y2): (f32, f32)) {
+    pub(super) fn tes_fill_gradient(
+        &mut self,
+        namespace_id: usize,
+        gradient_id: canvas::GradientId,
+        (x1, y1): (f32, f32),
+        (x2, y2): (f32, f32),
+    ) {
         self.core.sync(|core| {
             // Check that the texture is ready for rendering (this also commits it at the point it's selected)
             let render_gradient = core.gradient_for_rendering(namespace_id, gradient_id);
@@ -124,7 +187,8 @@ impl CanvasRenderer {
                 // Choose this gradient
                 let layer = core.layer(self.current_layer);
 
-                layer.state.fill_color = FillState::linear_gradient_fill(render_gradient, gradient_id, x1, y1, x2, y2);
+                layer.state.fill_color =
+                    FillState::linear_gradient_fill(render_gradient, gradient_id, x1, y1, x2, y2);
             }
         });
     }
@@ -135,7 +199,9 @@ impl CanvasRenderer {
         self.core.sync(|core| {
             let layer = core.layer(self.current_layer);
 
-            let transform = transform.invert().unwrap_or_else(|| canvas::Transform2D::identity());
+            let transform = transform
+                .invert()
+                .unwrap_or_else(|| canvas::Transform2D::identity());
             layer.state.fill_color = layer.state.fill_color.transform(&transform);
         });
     }
@@ -143,7 +209,12 @@ impl CanvasRenderer {
     // Set the line color
     #[inline]
     pub(super) fn tes_stroke_color(&mut self, color: canvas::Color) {
-        self.core.sync(|core| core.layer(self.current_layer).state.stroke_settings.stroke_color = Self::render_color(color));
+        self.core.sync(|core| {
+            core.layer(self.current_layer)
+                .state
+                .stroke_settings
+                .stroke_color = Self::render_color(color)
+        });
     }
 
     /// Set how future renderings are blended with one another
@@ -171,7 +242,9 @@ impl CanvasRenderer {
                 Lighten => render::BlendMode::SourceOver,
             };
 
-            core.layer(self.current_layer).render_order.push(RenderEntity::SetBlendMode(blend_mode));
+            core.layer(self.current_layer)
+                .render_order
+                .push(RenderEntity::SetBlendMode(blend_mode));
         });
     }
 }

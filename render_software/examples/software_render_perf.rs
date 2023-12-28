@@ -1,3 +1,9 @@
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
 //!
 //! Measures the performance of various stages of the software rendering process
 //!
@@ -10,17 +16,17 @@
 //! second' like we do here.
 //!
 
-use flo_render_software::edgeplan::EdgeDescriptor;
-use flo_render_software::pixel::*;
-use flo_render_software::edges::*;
-use flo_render_software::edgeplan::*;
-use flo_render_software::scanplan::*;
 use flo_canvas::curves::arc::*;
 use flo_canvas::curves::geo::*;
+use flo_render_software::edgeplan::EdgeDescriptor;
+use flo_render_software::edgeplan::*;
+use flo_render_software::edges::*;
+use flo_render_software::pixel::*;
+use flo_render_software::scanplan::*;
 
 use smallvec::*;
 
-use std::time::{Instant, Duration};
+use std::time::{Duration, Instant};
 
 struct TimingResult {
     /// The number of times the function was called
@@ -58,23 +64,27 @@ impl TimingResult {
     /// Creates a summary of this timing result
     ///
     pub fn summary(&self) -> String {
-        format!("{} calls made in {}. {} per call, {:.1} calls per frame",
-                self.iterations,
-                format_seconds((self.total_time.as_nanos() as f64) / 1e9),
-                format_seconds(self.time_per_call),
-                self.calls_per_frame)
+        format!(
+            "{} calls made in {}. {} per call, {:.1} calls per frame",
+            self.iterations,
+            format_seconds((self.total_time.as_nanos() as f64) / 1e9),
+            format_seconds(self.time_per_call),
+            self.calls_per_frame
+        )
     }
 
     ///
     /// Creates a summary of this timing result with an FPS value
     ///
     pub fn summary_fps(&self) -> String {
-        format!("{} calls made in {}. {} per call, {:.1} calls per frame ({:.1} fps)",
-                self.iterations,
-                format_seconds((self.total_time.as_nanos() as f64) / 1e9),
-                format_seconds(self.time_per_call),
-                self.calls_per_frame,
-                1.0 / self.time_per_call)
+        format!(
+            "{} calls made in {}. {} per call, {:.1} calls per frame ({:.1} fps)",
+            self.iterations,
+            format_seconds((self.total_time.as_nanos() as f64) / 1e9),
+            format_seconds(self.time_per_call),
+            self.calls_per_frame,
+            1.0 / self.time_per_call
+        )
     }
 }
 
@@ -82,7 +92,7 @@ impl TimingResult {
 /// Calls a function `iterations` times and times it
 ///
 fn time<T>(iterations: usize, action: impl FnMut() -> T) -> TimingResult {
-    use std::hint::{black_box};
+    use std::hint::black_box;
 
     let mut action = action;
 
@@ -99,7 +109,7 @@ fn time<T>(iterations: usize, action: impl FnMut() -> T) -> TimingResult {
         black_box(action());
     }
 
-    // Convert the time to 
+    // Convert the time to
     let total_time = Instant::now().duration_since(start_time);
     let total_seconds = (total_time.as_nanos() as f64) / 1_000_000_000.0;
 
@@ -116,7 +126,7 @@ fn print_header(name: &str) {
 }
 
 fn main() {
-    use std::hint::{black_box};
+    use std::hint::black_box;
 
     // Simple pixel fill
     print_header("Basic pixel fill");
@@ -140,7 +150,9 @@ fn main() {
     });
     let simple_fill_u8_frame_unchecked = time(1_000, || {
         for idx in 0..frame.len() {
-            unsafe { *frame.get_unchecked_mut(idx) = val; }
+            unsafe {
+                *frame.get_unchecked_mut(idx) = val;
+            }
         }
 
         black_box(&mut frame);
@@ -155,7 +167,8 @@ fn main() {
     let simple_fill_unchecked = time(100_000, || {
         for idx in 0..(f32_pix.len()) {
             unsafe {
-                *f32_pix.get_unchecked_mut(idx) = F32LinearPixel::from_components([0.1, 0.2, 0.3, 0.4]);
+                *f32_pix.get_unchecked_mut(idx) =
+                    F32LinearPixel::from_components([0.1, 0.2, 0.3, 0.4]);
             }
         }
         black_box(&mut f32_pix);
@@ -172,7 +185,8 @@ fn main() {
         for _ in 0..1080 {
             for idx in 0..(f32_pix.len()) {
                 unsafe {
-                    *f32_pix.get_unchecked_mut(idx) = F32LinearPixel::from_components([0.1, 0.2, 0.3, 0.4]);
+                    *f32_pix.get_unchecked_mut(idx) =
+                        F32LinearPixel::from_components([0.1, 0.2, 0.3, 0.4]);
                 }
             }
             black_box(&mut f32_pix);
@@ -203,16 +217,43 @@ fn main() {
         }
     });
 
-    println!("  U8 simple fill frame iterator: {}", simple_fill_u8_frame.summary_fps());
-    println!("  U8 simple fill frame checked: {}", simple_fill_u8_frame_checked.summary_fps());
-    println!("  U8 simple fill frame unchecked: {}", simple_fill_u8_frame_unchecked.summary_fps());
+    println!(
+        "  U8 simple fill frame iterator: {}",
+        simple_fill_u8_frame.summary_fps()
+    );
+    println!(
+        "  U8 simple fill frame checked: {}",
+        simple_fill_u8_frame_checked.summary_fps()
+    );
+    println!(
+        "  U8 simple fill frame unchecked: {}",
+        simple_fill_u8_frame_unchecked.summary_fps()
+    );
     println!("  F32 simple fill: {}", simple_fill.summary());
-    println!("  F32 simple fill unchecked: {}", simple_fill_unchecked.summary());
-    println!("  F32 simple fill frame: {}", simple_fill_frame.summary_fps());
-    println!("  F32 simple fill frame unchecked: {}", simple_fill_frame_unchecked.summary_fps());
-    println!("  F32 simple fill frame iterator: {}", simple_fill_frame_iterator.summary_fps());
-    println!("  F32 partial fill frame indexed: {}", partial_fill_frame.summary_fps());
-    println!("  F32 partial fill frame iterator: {}", partial_fill_frame_iterator.summary_fps());
+    println!(
+        "  F32 simple fill unchecked: {}",
+        simple_fill_unchecked.summary()
+    );
+    println!(
+        "  F32 simple fill frame: {}",
+        simple_fill_frame.summary_fps()
+    );
+    println!(
+        "  F32 simple fill frame unchecked: {}",
+        simple_fill_frame_unchecked.summary_fps()
+    );
+    println!(
+        "  F32 simple fill frame iterator: {}",
+        simple_fill_frame_iterator.summary_fps()
+    );
+    println!(
+        "  F32 partial fill frame indexed: {}",
+        partial_fill_frame.summary_fps()
+    );
+    println!(
+        "  F32 partial fill frame iterator: {}",
+        partial_fill_frame_iterator.summary_fps()
+    );
 
     // Gamma correct from an f32 and an i32 buffer
     print_header("Gamma correct to generate output");
@@ -225,7 +266,15 @@ fn main() {
         F32LinearPixel::to_gamma_colorspace(&f32_pix, target_buf, 2.2);
         black_box(&target_buf);
     });
-    let u32_pix = vec![U32LinearPixel::from_components([32768u32.into(), 32768u32.into(), 32768u32.into(), 65535u32.into()]); 1920];
+    let u32_pix = vec![
+        U32LinearPixel::from_components([
+            32768u32.into(),
+            32768u32.into(),
+            32768u32.into(),
+            65535u32.into()
+        ]);
+        1920
+    ];
     let gamma_correct_i32 = time(100_000, || {
         U32LinearPixel::to_gamma_colorspace(&u32_pix, target_buf, 2.2);
         black_box(&target_buf);
@@ -244,39 +293,94 @@ fn main() {
         }
     });
 
-    println!("  F32 to_gamma_color_space: {}", gamma_correct_f32.summary());
-    println!("  I32 to_gamma_color_space: {}", gamma_correct_i32.summary());
-    println!("  F32 to_gamma_color_space whole frame: {}", gamma_correct_f32_frame.summary_fps());
-    println!("  I32 to_gamma_color_space whole frame: {}", gamma_correct_i32_frame.summary_fps());
+    println!(
+        "  F32 to_gamma_color_space: {}",
+        gamma_correct_f32.summary()
+    );
+    println!(
+        "  I32 to_gamma_color_space: {}",
+        gamma_correct_i32.summary()
+    );
+    println!(
+        "  F32 to_gamma_color_space whole frame: {}",
+        gamma_correct_f32_frame.summary_fps()
+    );
+    println!(
+        "  I32 to_gamma_color_space whole frame: {}",
+        gamma_correct_i32_frame.summary_fps()
+    );
 
     // Alpha blend
     print_header("Alpha blending");
     let mut f32_pix = vec![F32LinearPixel::from_components([0.5, 0.5, 0.5, 1.0]); 1920];
     let blend_val = F32LinearPixel::from_components([0.1, 0.2, 0.3, 0.4]);
-    let alpha_blend_f32 = time(100_000, || { f32_pix.iter_mut().for_each(|pix| { black_box(pix.source_over(blend_val)); }); });
-    let alpha_blend_f32_frame = time(1_000, || { for _ in 0..1080 { f32_pix.iter_mut().for_each(|pix| { black_box(pix.source_over(blend_val)); }); } });
+    let alpha_blend_f32 = time(100_000, || {
+        f32_pix.iter_mut().for_each(|pix| {
+            black_box(pix.source_over(blend_val));
+        });
+    });
+    let alpha_blend_f32_frame = time(1_000, || {
+        for _ in 0..1080 {
+            f32_pix.iter_mut().for_each(|pix| {
+                black_box(pix.source_over(blend_val));
+            });
+        }
+    });
     println!("  F32 alpha blend line: {}", alpha_blend_f32.summary());
-    println!("  F32 alpha blend whole frame: {}", alpha_blend_f32_frame.summary_fps());
+    println!(
+        "  F32 alpha blend whole frame: {}",
+        alpha_blend_f32_frame.summary_fps()
+    );
 
     // Scan conversion
     print_header("Scan conversion");
     let circle = Circle::new(Coord2(1920.0 / 2.0, 1080.0 / 2.0), 1080.0 / 2.0);
     let circle_path = circle.to_path::<BezierSubpath>();
 
-    let prepare_as_bezier = time(10_000, || { black_box(circle.to_path::<BezierSubpath>().to_even_odd_edge(ShapeId::new()).prepare_to_render()) });
-    let prepare_flattened = time(10_000, || { black_box(circle.to_path::<BezierSubpath>().to_flattened_non_zero_edge(ShapeId::new()).prepare_to_render()) });
-    let flatten = time(10_000, || { black_box(circle_path.clone().flatten_to_polyline(1.0, 0.25)); });
+    let prepare_as_bezier = time(10_000, || {
+        black_box(
+            circle
+                .to_path::<BezierSubpath>()
+                .to_even_odd_edge(ShapeId::new())
+                .prepare_to_render(),
+        )
+    });
+    let prepare_flattened = time(10_000, || {
+        black_box(
+            circle
+                .to_path::<BezierSubpath>()
+                .to_flattened_non_zero_edge(ShapeId::new())
+                .prepare_to_render(),
+        )
+    });
+    let flatten = time(10_000, || {
+        black_box(circle_path.clone().flatten_to_polyline(1.0, 0.25));
+    });
 
-    println!("  Prepare to render bezier circle: {}", prepare_as_bezier.summary());
-    println!("  Prepare to render flattened bezier (v high res): {}", prepare_flattened.summary());
+    println!(
+        "  Prepare to render bezier circle: {}",
+        prepare_as_bezier.summary()
+    );
+    println!(
+        "  Prepare to render flattened bezier (v high res): {}",
+        prepare_flattened.summary()
+    );
     println!("  Flatten (pixel res): {}", flatten.summary());
 
     // Note that `to_flattened_even_odd_edge` assumes a coordinate scheme of -1 to 1 so it tends to generate much higher resolution images than are needed
     let mut circle_edge = circle_path.clone().to_even_odd_edge(ShapeId::new());
     let mut circle_edge_nonzero = circle_path.clone().to_non_zero_edge(ShapeId::new());
-    let mut circle_flattened = circle_path.clone().to_flattened_even_odd_edge(ShapeId::new());
-    let mut circle_polyline = circle_path.clone().flatten_to_polyline(1.0, 0.25).to_even_odd_edge(ShapeId::new());
-    let mut circle_polyline_nonzero = circle_path.clone().flatten_to_polyline(1.0, 0.25).to_non_zero_edge(ShapeId::new());
+    let mut circle_flattened = circle_path
+        .clone()
+        .to_flattened_even_odd_edge(ShapeId::new());
+    let mut circle_polyline = circle_path
+        .clone()
+        .flatten_to_polyline(1.0, 0.25)
+        .to_even_odd_edge(ShapeId::new());
+    let mut circle_polyline_nonzero = circle_path
+        .clone()
+        .flatten_to_polyline(1.0, 0.25)
+        .to_non_zero_edge(ShapeId::new());
     circle_edge.prepare_to_render();
     circle_edge_nonzero.prepare_to_render();
     circle_flattened.prepare_to_render();
@@ -285,73 +389,138 @@ fn main() {
 
     let scan_convert_bezier = time(1_000, || {
         let mut output = vec![smallvec![]; 1080];
-        circle_edge.intercepts(&(0..1080).map(|y_pos| y_pos as f64).collect::<Vec<_>>(), &mut output);
+        circle_edge.intercepts(
+            &(0..1080).map(|y_pos| y_pos as f64).collect::<Vec<_>>(),
+            &mut output,
+        );
         black_box(&mut output);
     });
     let scan_convert_bezier_nonzero = time(1_000, || {
         let mut output = vec![smallvec![]; 1080];
-        circle_edge_nonzero.intercepts(&(0..1080).map(|y_pos| y_pos as f64).collect::<Vec<_>>(), &mut output);
+        circle_edge_nonzero.intercepts(
+            &(0..1080).map(|y_pos| y_pos as f64).collect::<Vec<_>>(),
+            &mut output,
+        );
         black_box(&mut output);
     });
     let scan_convert_flattened = time(1_000, || {
         let mut output = vec![smallvec![]; 1080];
-        circle_flattened.intercepts(&(0..1080).map(|y_pos| y_pos as f64).collect::<Vec<_>>(), &mut output);
+        circle_flattened.intercepts(
+            &(0..1080).map(|y_pos| y_pos as f64).collect::<Vec<_>>(),
+            &mut output,
+        );
         black_box(&mut output);
     });
     let scan_convert_polyline = time(10_000, || {
         let mut output = vec![smallvec![]; 1080];
-        circle_polyline.intercepts(&(0..1080).map(|y_pos| y_pos as f64).collect::<Vec<_>>(), &mut output);
+        circle_polyline.intercepts(
+            &(0..1080).map(|y_pos| y_pos as f64).collect::<Vec<_>>(),
+            &mut output,
+        );
         black_box(&mut output);
     });
     let scan_convert_polyline_nonzero = time(10_000, || {
         let mut output = vec![smallvec![]; 1080];
-        circle_polyline_nonzero.intercepts(&(0..1080).map(|y_pos| y_pos as f64).collect::<Vec<_>>(), &mut output);
+        circle_polyline_nonzero.intercepts(
+            &(0..1080).map(|y_pos| y_pos as f64).collect::<Vec<_>>(),
+            &mut output,
+        );
         black_box(&mut output);
     });
     let scan_convert_polyline_nonzero_shards = time(10_000, || {
         let y_positions = (0..1080).map(|y_pos| y_pos as f64).collect::<Vec<_>>();
         let shards = shard_intercepts_from_edge(&circle_polyline_nonzero, &y_positions);
 
-        shards.for_each(|shard| { black_box(shard); });
+        shards.for_each(|shard| {
+            black_box(shard);
+        });
     });
     let scan_convert_bezier_partial = time(10_000, || {
         let mut output = vec![smallvec![]; 1080];
-        circle_edge.intercepts(&(500..506).map(|y_pos| y_pos as f64).collect::<Vec<_>>(), &mut output);
+        circle_edge.intercepts(
+            &(500..506).map(|y_pos| y_pos as f64).collect::<Vec<_>>(),
+            &mut output,
+        );
         black_box(&mut output);
     });
     let scan_convert_polyline_partial = time(10_000, || {
         let mut output = vec![smallvec![]; 1080];
-        circle_polyline.intercepts(&(500..506).map(|y_pos| y_pos as f64).collect::<Vec<_>>(), &mut output);
+        circle_polyline.intercepts(
+            &(500..506).map(|y_pos| y_pos as f64).collect::<Vec<_>>(),
+            &mut output,
+        );
         black_box(&mut output);
     });
 
-    println!("  Scan convert bezier circle: {}", scan_convert_bezier.summary_fps());
-    println!("  Scan convert bezier circle (non-zero winding rule): {}", scan_convert_bezier_nonzero.summary_fps());
-    println!("  Scan convert flattened circle (v high res): {}", scan_convert_flattened.summary_fps());
-    println!("  Scan convert flattened circle (pixel res) ({} lines): {}", circle_polyline.len(), scan_convert_polyline.summary_fps());
-    println!("  Scan convert flattened circle (pixel res, non-zero winding rule) ({} lines): {}", circle_polyline.len(), scan_convert_polyline_nonzero.summary_fps());
-    println!("  Scan convert flattened circle (pixel res, non-zero winding rule, shards) ({} lines): {}", circle_polyline.len(), scan_convert_polyline_nonzero_shards.summary_fps());
-    println!("  Scan convert bezier circle (partial): {}", scan_convert_bezier_partial.summary());
-    println!("  Scan convert flattened circle (partial) ({} lines, {} regions): {}", circle_polyline.len(), circle_polyline.num_regions(), scan_convert_polyline_partial.summary());
+    println!(
+        "  Scan convert bezier circle: {}",
+        scan_convert_bezier.summary_fps()
+    );
+    println!(
+        "  Scan convert bezier circle (non-zero winding rule): {}",
+        scan_convert_bezier_nonzero.summary_fps()
+    );
+    println!(
+        "  Scan convert flattened circle (v high res): {}",
+        scan_convert_flattened.summary_fps()
+    );
+    println!(
+        "  Scan convert flattened circle (pixel res) ({} lines): {}",
+        circle_polyline.len(),
+        scan_convert_polyline.summary_fps()
+    );
+    println!(
+        "  Scan convert flattened circle (pixel res, non-zero winding rule) ({} lines): {}",
+        circle_polyline.len(),
+        scan_convert_polyline_nonzero.summary_fps()
+    );
+    println!(
+        "  Scan convert flattened circle (pixel res, non-zero winding rule, shards) ({} lines): {}",
+        circle_polyline.len(),
+        scan_convert_polyline_nonzero_shards.summary_fps()
+    );
+    println!(
+        "  Scan convert bezier circle (partial): {}",
+        scan_convert_bezier_partial.summary()
+    );
+    println!(
+        "  Scan convert flattened circle (partial) ({} lines, {} regions): {}",
+        circle_polyline.len(),
+        circle_polyline.num_regions(),
+        scan_convert_polyline_partial.summary()
+    );
 
     let prepare_and_scan_convert_bezier = time(10_000, || {
         let mut circle_edge_nonzero = circle_path.clone().to_non_zero_edge(ShapeId::new());
         circle_edge_nonzero.prepare_to_render();
 
         let mut output = vec![smallvec![]; 1080];
-        circle_edge_nonzero.intercepts(&(0..1080).map(|y_pos| y_pos as f64).collect::<Vec<_>>(), &mut output);
+        circle_edge_nonzero.intercepts(
+            &(0..1080).map(|y_pos| y_pos as f64).collect::<Vec<_>>(),
+            &mut output,
+        );
         black_box(&mut output);
     });
 
     let prepare_and_scan_convert_polyline = time(10_000, || {
-        let mut circle_edge_nonzero = circle_path.clone().to_flattened_non_zero_edge(ShapeId::new());
+        let mut circle_edge_nonzero = circle_path
+            .clone()
+            .to_flattened_non_zero_edge(ShapeId::new());
         circle_edge_nonzero.prepare_to_render();
 
         let mut output = vec![smallvec![]; 1080];
-        circle_edge_nonzero.intercepts(&(0..1080).map(|y_pos| y_pos as f64).collect::<Vec<_>>(), &mut output);
+        circle_edge_nonzero.intercepts(
+            &(0..1080).map(|y_pos| y_pos as f64).collect::<Vec<_>>(),
+            &mut output,
+        );
         black_box(&mut output);
     });
-    println!("  Prepare and scan convert bezier: {}", prepare_and_scan_convert_bezier.summary_fps());
-    println!("  Prepare and scan convert flattened bezier: {}", prepare_and_scan_convert_polyline.summary_fps());
+    println!(
+        "  Prepare and scan convert bezier: {}",
+        prepare_and_scan_convert_bezier.summary_fps()
+    );
+    println!(
+        "  Prepare and scan convert flattened bezier: {}",
+        prepare_and_scan_convert_polyline.summary_fps()
+    );
 }
-

@@ -1,8 +1,14 @@
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
 use crate::pixel::*;
 use crate::scanplan::*;
 
-use std::marker::{PhantomData};
-use std::ops::{Range};
+use std::marker::PhantomData;
+use std::ops::Range;
 use std::sync::*;
 
 /// Data for a pixel drawn using a blending algorithm
@@ -16,8 +22,8 @@ pub struct BlendColorProgram<TPixel: Copy + Send + Sync> {
 }
 
 impl<TPixel: Copy + Send + Sync> Default for BlendColorProgram<TPixel>
-    where
-        TPixel: AlphaBlend
+where
+    TPixel: AlphaBlend,
 {
     fn default() -> Self {
         BlendColorProgram { pixel: PhantomData }
@@ -25,14 +31,22 @@ impl<TPixel: Copy + Send + Sync> Default for BlendColorProgram<TPixel>
 }
 
 impl<TPixel: Copy + Send + Sync> PixelProgram for BlendColorProgram<TPixel>
-    where
-        TPixel: AlphaBlend
+where
+    TPixel: AlphaBlend,
 {
     type Pixel = TPixel;
     type ProgramData = BlendColorData<TPixel>;
 
     #[inline]
-    fn draw_pixels(&self, _data_cache: &PixelProgramRenderCache<Self::Pixel>, target: &mut [Self::Pixel], x_range: Range<i32>, _: &ScanlineTransform, _y_pos: f64, program_data: &Self::ProgramData) {
+    fn draw_pixels(
+        &self,
+        _data_cache: &PixelProgramRenderCache<Self::Pixel>,
+        target: &mut [Self::Pixel],
+        x_range: Range<i32>,
+        _: &ScanlineTransform,
+        _y_pos: f64,
+        program_data: &Self::ProgramData,
+    ) {
         let op = program_data.0.get_function::<TPixel>();
 
         for pixel in target[(x_range.start as usize)..(x_range.end as usize)].iter_mut() {

@@ -1,19 +1,30 @@
-use super::path::*;
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
 use super::super::super::geo::*;
+use super::path::*;
 
 use itertools::*;
 
 ///
 /// Determines if a set of points are in a clockwise ordering (assuming that a positive y value indicates an upwards direction)
 ///
-pub fn points_are_clockwise<Point: Coordinate + Coordinate2D, PointIter: Iterator<Item=Point>>(mut points: PointIter) -> bool {
+pub fn points_are_clockwise<Point: Coordinate + Coordinate2D, PointIter: Iterator<Item = Point>>(
+    mut points: PointIter,
+) -> bool {
     // Technique suggested in https://stackoverflow.com/questions/1165647/how-to-determine-if-a-list-of-polygon-points-are-in-clockwise-order
     let mut total = 0.0;
 
     // The first point needs to be repeated at the end of the sequence
     let first_point = points.next();
     if let Some(first_point) = first_point {
-        let points = vec![first_point].into_iter().chain(points).chain(vec![first_point].into_iter());
+        let points = vec![first_point]
+            .into_iter()
+            .chain(points)
+            .chain(vec![first_point].into_iter());
 
         // Sum over the edges to determine if the points are clockwise
         for (start, end) in points.tuple_windows() {
@@ -35,8 +46,8 @@ pub trait PathWithIsClockwise {
 }
 
 impl<P: BezierPath> PathWithIsClockwise for P
-    where
-        P::Point: Coordinate + Coordinate2D,
+where
+    P::Point: Coordinate + Coordinate2D,
 {
     #[inline]
     fn is_clockwise(&self) -> bool {

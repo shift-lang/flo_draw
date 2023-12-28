@@ -1,8 +1,14 @@
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
 //!
 //! # flo_curves
 //!
-//! `flo_curves` is a library of routines for inspecting and manipulating curves, with a focus on cubic Bézier curves. In 
-//! this library, you'll find routines for computing points on curves, performing collision detection between curves and 
+//! `flo_curves` is a library of routines for inspecting and manipulating curves, with a focus on cubic Bézier curves. In
+//! this library, you'll find routines for computing points on curves, performing collision detection between curves and
 //! lines or other curves, all the way up to routines for combining paths made up of multiple curves.
 //!
 //! Anyone doing any work with Bézier curves will likely find something in this library that is of use, but its range of
@@ -30,9 +36,9 @@
 //! ```
 //! # use flo_curves::*;
 //! # use flo_curves::bezier;
-//! # 
+//! #
 //! # let curve = bezier::Curve::from_points(Coord2(1.0, 2.0), (Coord2(2.0, 0.0), Coord2(3.0, 5.0)), Coord2(4.0, 2.0));
-//! # 
+//! #
 //! let pos = curve.point_at_pos(0.5);
 //! ```
 //!
@@ -41,7 +47,7 @@
 //! ```
 //! use flo_curves::*;
 //! use flo_curves::bezier;
-//! # 
+//! #
 //! # let curve1 = bezier::Curve::from_points(Coord2(1.0, 2.0), (Coord2(2.0, 0.0), Coord2(3.0, 5.0)), Coord2(4.0, 2.0));
 //! # let curve2 = bezier::Curve::from_points(Coord2(2.0, 1.0), (Coord2(0.0, 2.0), Coord2(5.0, 3.0)), Coord2(2.0, 4.0));
 //!
@@ -86,33 +92,31 @@
 //!
 
 #![warn(bare_trait_objects)]
-
 // Breaks the exported API if auto-fixed (can remove these with a version bump)
 #![allow(clippy::ptr_arg)]
 #![allow(clippy::from_over_into)]
 #![allow(clippy::new_without_default)]
 #![allow(clippy::type_complexity)]
-
 // Breaks stylistic choices/algorithm readability
-#![allow(clippy::redundant_field_names)]                // Used for consistency when initialising some types
-#![allow(clippy::collapsible_if)]                       // Often used to clarify algorithm structure (rewrites need to be at least as clear)
-#![allow(clippy::collapsible_else_if)]                  // Often used to clarify algorithm structure
-#![allow(clippy::if_same_then_else)]                    // Often used to clarify algorithm structure
-#![allow(clippy::module_inception)]                     // The 'line' module has a 'Line' type in it, for example. Makes sense the file is called 'line'...
-#![allow(clippy::let_and_return)]                       // Often we want to say what the return value means (eg: calling something 'tangent' instead of just 'de_cateljau3' is much more clear)
+#![allow(clippy::redundant_field_names)] // Used for consistency when initialising some types
+#![allow(clippy::collapsible_if)] // Often used to clarify algorithm structure (rewrites need to be at least as clear)
+#![allow(clippy::collapsible_else_if)] // Often used to clarify algorithm structure
+#![allow(clippy::if_same_then_else)] // Often used to clarify algorithm structure
+#![allow(clippy::module_inception)] // The 'line' module has a 'Line' type in it, for example. Makes sense the file is called 'line'...
+#![allow(clippy::let_and_return)] // Often we want to say what the return value means (eg: calling something 'tangent' instead of just 'de_cateljau3' is much more clear)
 
 #[macro_use]
 mod test_assert;
-mod consts;
-pub mod bezier;
-pub mod line;
 pub mod arc;
+pub mod bezier;
+mod consts;
 pub mod debug;
+pub mod line;
 
 pub mod geo;
 
 pub use self::geo::*;
 
-pub use self::bezier::BezierCurveFactory;
 pub use self::bezier::BezierCurve;
+pub use self::bezier::BezierCurveFactory;
 pub use self::line::Line;

@@ -1,17 +1,24 @@
-use super::polyline_edge::*;
-use super::flattened_bezier_subpath_edge::*;
-use crate::edgeplan::*;
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
 
-use flo_canvas as canvas;
-use flo_canvas::curves::bezier::path::*;
-use flo_canvas::curves::geo::*;
-use flo_canvas::curves::bezier::*;
+use std::ops::Range;
+use std::sync::*;
+use std::vec;
 
 use smallvec::*;
 
-use std::ops::{Range};
-use std::sync::*;
-use std::vec;
+use flo_canvas as canvas;
+use flo_canvas::curves::bezier::path::*;
+use flo_canvas::curves::bezier::*;
+use flo_canvas::curves::geo::*;
+
+use crate::edgeplan::*;
+
+use super::flattened_bezier_subpath_edge::*;
+use super::polyline_edge::*;
 
 // These values are good for 4k rendering when flattening curves
 const DETAIL: f64 = 2.0 / 4000.0;
@@ -44,7 +51,7 @@ pub struct BezierSubpathEvenOddEdge {
 ///
 /// Represents a closed bezier subpath
 ///
-/// To become an edge, this needs to be combined with a winding rule style and a 
+/// To become an edge, this needs to be combined with a winding rule style and a
 ///
 #[derive(Clone)]
 pub struct BezierSubpath {
@@ -98,7 +105,11 @@ impl Geo for BezierSubpath {
 impl SubpathCurve {
     /// Converts this to a 'normal' curve
     fn as_curve(&self) -> Curve<Coord2> {
-        Curve::from_points(Coord2(self.wx.0, self.wy.0), (Coord2(self.wx.1, self.wy.1), Coord2(self.wx.2, self.wy.2)), Coord2(self.wx.3, self.wy.3))
+        Curve::from_points(
+            Coord2(self.wx.0, self.wy.0),
+            (Coord2(self.wx.1, self.wy.1), Coord2(self.wx.2, self.wy.2)),
+            Coord2(self.wx.3, self.wy.3),
+        )
     }
 
     ///
@@ -142,8 +153,15 @@ impl BezierPath for BezierSubpath {
     }
 
     fn points(&self) -> Self::PointIter {
-        self.curves.iter()
-            .map(|curve| (Coord2(curve.wx.1, curve.wy.1), Coord2(curve.wx.2, curve.wy.2), Coord2(curve.wx.3, curve.wy.3)))
+        self.curves
+            .iter()
+            .map(|curve| {
+                (
+                    Coord2(curve.wx.1, curve.wy.1),
+                    Coord2(curve.wx.2, curve.wy.2),
+                    Coord2(curve.wx.3, curve.wy.3),
+                )
+            })
             .collect::<Vec<_>>()
             .into_iter()
     }
@@ -153,7 +171,10 @@ impl BezierPath for BezierSubpath {
 /// A bezier subpath can be used as the target of a bezier path factory
 ///
 impl BezierPathFactory for BezierSubpath {
-    fn from_points<FromIter: IntoIterator<Item=(Coord2, Coord2, Coord2)>>(start_point: Coord2, points: FromIter) -> Self {
+    fn from_points<FromIter: IntoIterator<Item = (Coord2, Coord2, Coord2)>>(
+        start_point: Coord2,
+        points: FromIter,
+    ) -> Self {
         // This should be much smaller than a pixel: we exclude very short curves whose control polygon is smaller than this
         const MIN_DISTANCE: f64 = 1e-6;
 
@@ -166,7 +187,10 @@ impl BezierPathFactory for BezierSubpath {
         let mut max_y = f64::MIN;
 
         for (cp1, cp2, end_point) in points {
-            if last_point.is_near_to(&end_point, MIN_DISTANCE) && control_polygon_length(&Curve::from_points(last_point, (cp1, cp2), end_point)) <= MIN_DISTANCE {
+            if last_point.is_near_to(&end_point, MIN_DISTANCE)
+                && control_polygon_length(&Curve::from_points(last_point, (cp1, cp2), end_point))
+                    <= MIN_DISTANCE
+            {
                 // This curve is very short, so we exclude it from the path
                 continue;
             }
@@ -197,16 +221,31 @@ impl BezierPathFactory for BezierSubpath {
         }
 
         // Move the last point if it's 'close enough' (probably we removed a final short curve rather than the path being left open)
-        if curves.len() > 0 && start_point != last_point && last_point.is_near_to(&start_point, MIN_DISTANCE) {
+        if curves.len() > 0
+            && start_point != last_point
+            && last_point.is_near_to(&start_point, MIN_DISTANCE)
+        {
             let last_curve = curves.last_mut().unwrap();
 
             last_curve.wx.3 = start_point.x();
             last_curve.wy.3 = start_point.y();
 
-            last_curve.wdy = derivative4(last_curve.wy.0, last_curve.wy.1, last_curve.wy.2, last_curve.wy.3);
+            last_curve.wdy = derivative4(
+                last_curve.wy.0,
+                last_curve.wy.1,
+                last_curve.wy.2,
+                last_curve.wy.3,
+            );
         } else {
             // If a subpath isn't closed, then rays might 'escape'
-            debug_assert!(start_point == last_point, "Bezier subpaths must be closed ({}, {} != {}, {})", start_point.x(), start_point.y(), last_point.x(), last_point.y());
+            debug_assert!(
+                start_point == last_point,
+                "Bezier subpaths must be closed ({}, {} != {}, {})",
+                start_point.x(),
+                start_point.y(),
+                last_point.x(),
+                last_point.y()
+            );
         }
 
         if curves.len() == 0 {
@@ -228,8 +267,12 @@ impl BezierSubpath {
     ///
     #[inline]
     pub fn prepare_to_render(&mut self) {
-        let space = Space1D::from_data(self.curves.iter().enumerate()
-            .map(|(idx, curve)| (curve.y_bounds.clone(), idx)));
+        let space = Space1D::from_data(
+            self.curves
+                .iter()
+                .enumerate()
+                .map(|(idx, curve)| (curve.y_bounds.clone(), idx)),
+        );
         self.space = Some(space);
     }
 
@@ -252,7 +295,7 @@ impl BezierSubpath {
     ///
     /// `prepare_to_render()` must be called before this can be used
     ///
-    pub fn intercepts_on_line(&self, y_pos: f64) -> impl Iterator<Item=BezierSubpathIntercept> {
+    pub fn intercepts_on_line(&self, y_pos: f64) -> impl Iterator<Item = BezierSubpathIntercept> {
         // How close two intercepts have to be to invoke the 'double intercept' algorithm. This really depends on the precision of `solve_basis_for_t'
         const VERY_CLOSE_X: f64 = 1e-6;
 
@@ -266,9 +309,16 @@ impl BezierSubpath {
                 .unwrap()
                 .data_at_point(y_pos)
                 .map(|idx| (*idx, &self.curves[*idx]))
-                .flat_map(|(idx, curve)| solve_basis_for_t(curve.wy.0, curve.wy.1, curve.wy.2, curve.wy.3, y_pos).into_iter()
-                    .filter(|t| *t >= 0.0 && *t <= 1.0)
-                    .map(move |t| BezierSubpathIntercept { x_pos: de_casteljau4(t, curve.wx.0, curve.wx.1, curve.wx.2, curve.wx.3), curve_idx: idx, t: t }))
+                .flat_map(|(idx, curve)| {
+                    solve_basis_for_t(curve.wy.0, curve.wy.1, curve.wy.2, curve.wy.3, y_pos)
+                        .into_iter()
+                        .filter(|t| *t >= 0.0 && *t <= 1.0)
+                        .map(move |t| BezierSubpathIntercept {
+                            x_pos: de_casteljau4(t, curve.wx.0, curve.wx.1, curve.wx.2, curve.wx.3),
+                            curve_idx: idx,
+                            t: t,
+                        })
+                })
                 .collect::<SmallVec<[_; 4]>>()
         } else {
             smallvec![]
@@ -287,7 +337,10 @@ impl BezierSubpath {
                 // Fetch the two intercepts that we want to check for doubling up
                 let mut overlap_idx = intercept_idx + 1;
 
-                while overlap_idx < intercepts.len() && (intercepts[intercept_idx].x_pos - intercepts[overlap_idx].x_pos).abs() <= VERY_CLOSE_X {
+                while overlap_idx < intercepts.len()
+                    && (intercepts[intercept_idx].x_pos - intercepts[overlap_idx].x_pos).abs()
+                        <= VERY_CLOSE_X
+                {
                     let prev = &intercepts[intercept_idx];
                     let next = &intercepts[overlap_idx];
 
@@ -296,11 +349,21 @@ impl BezierSubpath {
                         let prev_curve = &self.curves[prev.curve_idx];
                         let next_curve = &self.curves[next.curve_idx];
 
-                        let prev_tangent_y = de_casteljau3(prev.t, prev_curve.wdy.0, prev_curve.wdy.1, prev_curve.wdy.2);
+                        let prev_tangent_y = de_casteljau3(
+                            prev.t,
+                            prev_curve.wdy.0,
+                            prev_curve.wdy.1,
+                            prev_curve.wdy.2,
+                        );
                         let prev_normal_x = -prev_tangent_y;
                         let prev_side = prev_normal_x.signum();
 
-                        let next_tangent_y = de_casteljau3(next.t, next_curve.wdy.0, next_curve.wdy.1, next_curve.wdy.2);
+                        let next_tangent_y = de_casteljau3(
+                            next.t,
+                            next_curve.wdy.0,
+                            next_curve.wdy.1,
+                            next_curve.wdy.2,
+                        );
                         let next_normal_x = -next_tangent_y;
                         let next_side = next_normal_x.signum();
 
@@ -312,9 +375,12 @@ impl BezierSubpath {
                                 let next_as_curve = next_curve.as_curve();
                                 let prev_section = prev_as_curve.section(prev.t, 1.0);
                                 let next_section = next_as_curve.section(0.0, next.t);
-                                let length = control_polygon_length(&prev_section) + control_polygon_length(&next_section);
+                                let length = control_polygon_length(&prev_section)
+                                    + control_polygon_length(&next_section);
 
-                                if length < MIN_CONTROL_POLYGON_LENGTH || (prev.t >= 1.0 && next.t <= 0.0) {
+                                if length < MIN_CONTROL_POLYGON_LENGTH
+                                    || (prev.t >= 1.0 && next.t <= 0.0)
+                                {
                                     // Points are very close in terms of curve arc length
                                     intercepts.remove(overlap_idx);
                                 } else {
@@ -325,9 +391,12 @@ impl BezierSubpath {
                                 let next_as_curve = next_curve.as_curve();
                                 let prev_section = prev_as_curve.section(0.0, prev.t);
                                 let next_section = next_as_curve.section(next.t, 1.0);
-                                let length = control_polygon_length(&prev_section) + control_polygon_length(&next_section);
+                                let length = control_polygon_length(&prev_section)
+                                    + control_polygon_length(&next_section);
 
-                                if length < MIN_CONTROL_POLYGON_LENGTH || (prev.t <= 0.0 && next.t >= 1.0) {
+                                if length < MIN_CONTROL_POLYGON_LENGTH
+                                    || (prev.t <= 0.0 && next.t >= 1.0)
+                                {
                                     // Points are very close in terms of curve arc length
                                     intercepts.remove(overlap_idx);
                                 } else {
@@ -359,19 +428,22 @@ impl BezierSubpath {
     ///
     pub fn transform(&self, transform: &canvas::Transform2D) -> BezierSubpath {
         // Transform the curves
-        let curves = self.curves.iter().map(|curve| curve.transform(&transform)).collect::<Vec<_>>();
+        let curves = self
+            .curves
+            .iter()
+            .map(|curve| curve.transform(&transform))
+            .collect::<Vec<_>>();
 
         // Calculate the bounding box
-        let x_bounds = curves.iter()
-            .fold(f64::MAX..f64::MIN, |x_bounds, curve| {
-                let curve_x_bounds = bounding_box4::<_, Bounds<f64>>(curve.wx.0, curve.wx.1, curve.wx.2, curve.wx.3);
+        let x_bounds = curves.iter().fold(f64::MAX..f64::MIN, |x_bounds, curve| {
+            let curve_x_bounds =
+                bounding_box4::<_, Bounds<f64>>(curve.wx.0, curve.wx.1, curve.wx.2, curve.wx.3);
 
-                x_bounds.start.min(curve_x_bounds.min())..x_bounds.end.max(curve_x_bounds.max())
-            });
-        let y_bounds = curves.iter()
-            .fold(f64::MAX..f64::MIN, |y_bounds, curve| {
-                y_bounds.start.min(curve.y_bounds.start)..y_bounds.end.max(curve.y_bounds.end)
-            });
+            x_bounds.start.min(curve_x_bounds.min())..x_bounds.end.max(curve_x_bounds.max())
+        });
+        let y_bounds = curves.iter().fold(f64::MAX..f64::MIN, |y_bounds, curve| {
+            y_bounds.start.min(curve.y_bounds.start)..y_bounds.end.max(curve.y_bounds.end)
+        });
 
         BezierSubpath {
             curves: curves,
@@ -406,7 +478,7 @@ impl BezierSubpath {
     ///
     pub fn to_flattened_non_zero_edge(self, shape_id: ShapeId) -> FlattenedBezierNonZeroEdge {
         FlattenedBezierNonZeroEdge {
-            shape_id: shape_id,
+            shape_id,
             path: FlattenedBezierSubpath::from_subpath(self, DETAIL, FLATNESS),
         }
     }
@@ -416,7 +488,7 @@ impl BezierSubpath {
     ///
     pub fn to_flattened_even_odd_edge(self, shape_id: ShapeId) -> FlattenedBezierEvenOddEdge {
         FlattenedBezierEvenOddEdge {
-            shape_id: shape_id,
+            shape_id,
             path: FlattenedBezierSubpath::from_subpath(self, DETAIL, FLATNESS),
         }
     }
@@ -429,9 +501,13 @@ impl BezierSubpath {
 
         // TODO: this just creates the most basic polygon possible
         let start_point = Coord2(self.curves[0].wx.0, self.curves[0].wy.0);
-        Polyline::new(iter::once(start_point)
-            .chain(self.curves.into_iter()
-                .flat_map(|curve| flatten_curve(&curve, min_length, flatness))))
+        Polyline::new(
+            iter::once(start_point).chain(
+                self.curves
+                    .into_iter()
+                    .flat_map(|curve| flatten_curve(&curve, min_length, flatness)),
+            ),
+        )
     }
 }
 
@@ -442,7 +518,10 @@ fn flatten_curve(curve: &SubpathCurve, min_length: f64, flatness: f64) -> Vec<Co
     // Create a curve from the subpath curve
     let curve = Curve::from_points(
         Coord2(curve.wx.0, curve.wy.0),
-        (Coord2(curve.wx.1, curve.wy.1), Coord2(curve.wx.2, curve.wy.2)),
+        (
+            Coord2(curve.wx.1, curve.wy.1),
+            Coord2(curve.wx.2, curve.wy.2),
+        ),
         Coord2(curve.wx.3, curve.wy.3),
     );
 
@@ -455,7 +534,10 @@ fn flatten_curve(curve: &SubpathCurve, min_length: f64, flatness: f64) -> Vec<Co
         let sp = section.start_point();
         let ep = section.end_point();
 
-        if section.flatness() < flatness || (sp.is_near_to(&ep, min_length) && sp.is_near_to(&section.point_at_pos(0.5), min_length)) {
+        if section.flatness() < flatness
+            || (sp.is_near_to(&ep, min_length)
+                && sp.is_near_to(&section.point_at_pos(0.5), min_length))
+        {
             // Section is either very short or flat so can be added to the result
             result.push(section.end_point());
         } else {
@@ -482,11 +564,16 @@ impl EdgeDescriptor for BezierSubpathEvenOddEdge {
     }
 
     #[inline]
-    fn shape(&self) -> ShapeId { self.shape_id }
+    fn shape(&self) -> ShapeId {
+        self.shape_id
+    }
 
     #[inline]
     fn bounding_box(&self) -> ((f64, f64), (f64, f64)) {
-        ((self.subpath.x_bounds.start, self.subpath.y_bounds.start), (self.subpath.x_bounds.end, self.subpath.y_bounds.end))
+        (
+            (self.subpath.x_bounds.start, self.subpath.y_bounds.start),
+            (self.subpath.x_bounds.end, self.subpath.y_bounds.end),
+        )
     }
 
     fn transform(&self, transform: &canvas::Transform2D) -> Arc<dyn EdgeDescriptor> {
@@ -502,7 +589,11 @@ impl EdgeDescriptor for BezierSubpathEvenOddEdge {
     }
 
     #[inline]
-    fn intercepts(&self, y_positions: &[f64], output: &mut [SmallVec<[EdgeDescriptorIntercept; 2]>]) {
+    fn intercepts(
+        &self,
+        y_positions: &[f64],
+        output: &mut [SmallVec<[EdgeDescriptorIntercept; 2]>],
+    ) {
         let mut y_pos_iter = y_positions.iter();
         let mut output_iter = output.iter_mut();
 
@@ -510,8 +601,15 @@ impl EdgeDescriptor for BezierSubpathEvenOddEdge {
             let intercepts = self.subpath.intercepts_on_line(*y_pos);
 
             if self.subpath.y_bounds.contains(y_pos) {
-                output.extend(intercepts.into_iter()
-                    .map(|intercept| EdgeDescriptorIntercept { direction: EdgeInterceptDirection::Toggle, x_pos: intercept.x_pos, position: EdgePosition(0, intercept.curve_idx, intercept.t) }));
+                output.extend(
+                    intercepts
+                        .into_iter()
+                        .map(|intercept| EdgeDescriptorIntercept {
+                            direction: EdgeInterceptDirection::Toggle,
+                            x_pos: intercept.x_pos,
+                            position: EdgePosition(0, intercept.curve_idx, intercept.t),
+                        }),
+                );
             }
         }
     }
@@ -559,11 +657,16 @@ impl EdgeDescriptor for BezierSubpathNonZeroEdge {
     }
 
     #[inline]
-    fn shape(&self) -> ShapeId { self.shape_id }
+    fn shape(&self) -> ShapeId {
+        self.shape_id
+    }
 
     #[inline]
     fn bounding_box(&self) -> ((f64, f64), (f64, f64)) {
-        ((self.subpath.x_bounds.start, self.subpath.y_bounds.start), (self.subpath.x_bounds.end, self.subpath.y_bounds.end))
+        (
+            (self.subpath.x_bounds.start, self.subpath.y_bounds.start),
+            (self.subpath.x_bounds.end, self.subpath.y_bounds.end),
+        )
     }
 
     fn transform(&self, transform: &canvas::Transform2D) -> Arc<dyn EdgeDescriptor> {
@@ -579,7 +682,11 @@ impl EdgeDescriptor for BezierSubpathNonZeroEdge {
     }
 
     #[inline]
-    fn intercepts(&self, y_positions: &[f64], output: &mut [SmallVec<[EdgeDescriptorIntercept; 2]>]) {
+    fn intercepts(
+        &self,
+        y_positions: &[f64],
+        output: &mut [SmallVec<[EdgeDescriptorIntercept; 2]>],
+    ) {
         let mut y_pos_iter = y_positions.iter();
         let mut output_iter = output.iter_mut();
 
@@ -587,7 +694,8 @@ impl EdgeDescriptor for BezierSubpathNonZeroEdge {
             let intercepts = self.subpath.intercepts_on_line(*y_pos);
 
             if self.subpath.y_bounds.contains(y_pos) {
-                *output = intercepts.into_iter()
+                *output = intercepts
+                    .into_iter()
                     .map(|intercept| {
                         // Compute the direction that the ray is crossing the curve
                         let t = intercept.t;
@@ -602,11 +710,20 @@ impl EdgeDescriptor for BezierSubpathNonZeroEdge {
                         //let side    = (normal.x() * 1.0 + normal.y() * 0.0).signum();  // Dot product with the 'ray' direction of the scanline
 
                         if side <= 0.0 {
-                            EdgeDescriptorIntercept { direction: EdgeInterceptDirection::DirectionOut, x_pos: intercept.x_pos, position: EdgePosition(0, intercept.curve_idx, intercept.t) }
+                            EdgeDescriptorIntercept {
+                                direction: EdgeInterceptDirection::DirectionOut,
+                                x_pos: intercept.x_pos,
+                                position: EdgePosition(0, intercept.curve_idx, intercept.t),
+                            }
                         } else {
-                            EdgeDescriptorIntercept { direction: EdgeInterceptDirection::DirectionIn, x_pos: intercept.x_pos, position: EdgePosition(0, intercept.curve_idx, intercept.t) }
+                            EdgeDescriptorIntercept {
+                                direction: EdgeInterceptDirection::DirectionIn,
+                                x_pos: intercept.x_pos,
+                                position: EdgePosition(0, intercept.curve_idx, intercept.t),
+                            }
                         }
-                    }).collect();
+                    })
+                    .collect();
             } else {
                 *output = smallvec![];
             }

@@ -1,13 +1,19 @@
-use super::scheduler_thread::*;
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
 use super::job_queue::*;
 use super::queue_state::*;
+use super::scheduler_thread::*;
 use super::wake_queue::*;
 
-use std::sync::*;
 use std::collections::vec_deque::*;
+use std::sync::*;
 
 use futures::task;
-use futures::task::{Context};
+use futures::task::Context;
 
 ///
 /// The scheduler core contains the internal data used by the scheduler
@@ -71,8 +77,7 @@ impl SchedulerCore {
 
         // The queue must be idle or pending to be claimable
         match queue_core.state {
-            QueueState::Pending |
-            QueueState::Idle => {
+            QueueState::Pending | QueueState::Idle => {
                 // Move the queue to the running state
                 queue_core.state = QueueState::Running;
 
@@ -97,13 +102,13 @@ impl SchedulerCore {
             let mut core = queue.core.lock().expect("JobQueue core lock");
 
             // Signal any waiting condition variables
-            core.wake_blocked.iter_mut()
-                .for_each(|cond_var| {
-                    if let Some(cond_var) = cond_var.upgrade() {
-                        cond_var.notify_one();
-                    }
-                });
-            core.wake_blocked.retain(|cond_var| cond_var.strong_count() > 0);
+            core.wake_blocked.iter_mut().for_each(|cond_var| {
+                if let Some(cond_var) = cond_var.upgrade() {
+                    cond_var.notify_one();
+                }
+            });
+            core.wake_blocked
+                .retain(|cond_var| cond_var.strong_count() > 0);
 
             match core.state {
                 QueueState::Idle => {
@@ -132,16 +137,21 @@ impl SchedulerCore {
         };
 
         if reschedule {
-            self.schedule.lock().expect("Schedule lock").push_back(queue.clone());
+            self.schedule
+                .lock()
+                .expect("Schedule lock")
+                .push_back(queue.clone());
             self.schedule_thread(core);
         }
     }
 
     ///
-    /// Finds the next queue that should be run. If this returns successfully, the queue will 
+    /// Finds the next queue that should be run. If this returns successfully, the queue will
     /// be marked as running.
     ///
-    pub(super) fn next_to_run(schedule: &Arc<Mutex<VecDeque<Arc<JobQueue>>>>) -> Option<Arc<JobQueue>> {
+    pub(super) fn next_to_run(
+        schedule: &Arc<Mutex<VecDeque<Arc<JobQueue>>>>,
+    ) -> Option<Arc<JobQueue>> {
         // Search the queues...
         let mut schedule = schedule.lock().expect("Schedule lock");
 
@@ -150,8 +160,7 @@ impl SchedulerCore {
             let mut core = q.core.lock().expect("JobQueue core lock");
 
             match core.state {
-                QueueState::Pending |
-                QueueState::WaitingForPoll(_) => {
+                QueueState::Pending | QueueState::WaitingForPoll(_) => {
                     // Queue is ready to run. Mark it as running and return it
                     core.state = QueueState::Running;
                     return Some(q.clone());
@@ -213,10 +222,14 @@ impl SchedulerCore {
     ///
     /// Attempts to schedule a task on a dormant thread
     ///
-    pub(super) fn schedule_dormant<NextJob, RunJob, JobData>(&self, next_job: NextJob, job: RunJob) -> bool
-        where
-            RunJob: 'static + Send + Fn(JobData) -> (),
-            NextJob: 'static + Send + Fn() -> Option<JobData>,
+    pub(super) fn schedule_dormant<NextJob, RunJob, JobData>(
+        &self,
+        next_job: NextJob,
+        job: RunJob,
+    ) -> bool
+    where
+        RunJob: 'static + Send + Fn(JobData) -> (),
+        NextJob: 'static + Send + Fn() -> Option<JobData>,
     {
         // Try to despawn any threads that have finished since the last time we were called
         self.remove_finished_threads();

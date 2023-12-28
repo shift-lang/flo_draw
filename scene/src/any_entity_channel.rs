@@ -1,17 +1,23 @@
-use crate::error::*;
-use crate::entity_id::*;
-use crate::entity_channel::*;
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
 
+use std::any::{type_name, Any};
+
+use futures::future::BoxFuture;
 use futures::prelude::*;
-use futures::future::{BoxFuture};
 
-use std::any::{Any, type_name};
+use crate::entity_channel::*;
+use crate::entity_id::*;
+use crate::error::*;
 
 ///
 /// Accepts a dynamically typed message
 ///
-/// This takes a type of `Option<Message>`, boxed up as `Box<dyn Send + Any>`. The option type is used so that the 
-/// underlying message can be extracted using `take()`. This is generally used as an intermediate stage for converting 
+/// This takes a type of `Option<Message>`, boxed up as `Box<dyn Send + Any>`. The option type is used so that the
+/// underlying message can be extracted using `take()`. This is generally used as an intermediate stage for converting
 /// a channel between types.
 ///
 pub struct AnyEntityChannel {
@@ -22,7 +28,9 @@ pub struct AnyEntityChannel {
     is_closed: Box<dyn Send + Fn() -> bool>,
 
     /// The dynamic send function for this channel
-    send: Box<dyn Send + Fn(Box<dyn Send + Any>) -> BoxFuture<'static, Result<(), EntityChannelError>>>,
+    send: Box<
+        dyn Send + Fn(Box<dyn Send + Any>) -> BoxFuture<'static, Result<(), EntityChannelError>>,
+    >,
 }
 
 impl AnyEntityChannel {
@@ -30,16 +38,14 @@ impl AnyEntityChannel {
     /// Converts a channel to an 'any' channel
     ///
     pub fn from_channel<TChannel>(channel: TChannel) -> AnyEntityChannel
-        where
-            TChannel: 'static + EntityChannel + Clone,
-            TChannel::Message: 'static,
+    where
+        TChannel: 'static + EntityChannel + Clone,
+        TChannel::Message: 'static,
     {
         let entity_id = channel.entity_id();
 
         let closed_channel = channel.clone();
-        let is_closed = Box::new(move || {
-            closed_channel.is_closed()
-        });
+        let is_closed = Box::new(move || closed_channel.is_closed());
 
         let send = Box::new(move |boxed_message: Box<dyn Send + Any>| {
             let mut channel = channel.clone();
@@ -48,24 +54,29 @@ impl AnyEntityChannel {
             let mut message = boxed_message;
 
             // Unbox the request. We use `Option<TChannel::Message>` so we can take the message out of the box
-            let send_future = if let Some(message) = message.downcast_mut::<Option<TChannel::Message>>() {
-                if let Some(message) = message.take() {
-                    // Create the future to send the message
-                    Ok(channel.send(message))
+            let send_future =
+                if let Some(message) = message.downcast_mut::<Option<TChannel::Message>>() {
+                    if let Some(message) = message.take() {
+                        // Create the future to send the message
+                        Ok(channel.send(message))
+                    } else {
+                        // The message was missing
+                        Err(EntityChannelError::MissingMessage)
+                    }
                 } else {
-                    // The message was missing
-                    Err(EntityChannelError::MissingMessage)
-                }
-            } else {
-                // Did not downcast
-                Err(EntityChannelError::WrongMessageType(format!("{}", type_name::<TChannel::Message>())))
-            };
+                    // Did not downcast
+                    Err(EntityChannelError::WrongMessageType(format!(
+                        "{}",
+                        type_name::<TChannel::Message>()
+                    )))
+                };
 
             async move {
                 send_future?.await?;
 
                 Ok(())
-            }.boxed()
+            }
+            .boxed()
         });
 
         AnyEntityChannel {
@@ -90,7 +101,10 @@ impl EntityChannel for AnyEntityChannel {
     }
 
     #[inline]
-    fn send(&mut self, message: Box<dyn Send + Any>) -> BoxFuture<'static, Result<(), EntityChannelError>> {
+    fn send(
+        &mut self,
+        message: Box<dyn Send + Any>,
+    ) -> BoxFuture<'static, Result<(), EntityChannelError>> {
         (self.send)(message)
     }
 }

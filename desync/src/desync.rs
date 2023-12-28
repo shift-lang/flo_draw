@@ -1,19 +1,25 @@
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
 //!
 //! The main `Desync` struct
 //!
 
 use super::scheduler::*;
 
-use std::sync::{Arc};
-use std::marker::{PhantomData};
-use futures::prelude::*;
 use futures::channel::oneshot;
-use futures::future::{Future, BoxFuture};
+use futures::future::{BoxFuture, Future};
+use futures::prelude::*;
+use std::marker::PhantomData;
+use std::sync::Arc;
 
-use std::cell::{UnsafeCell};
+use std::cell::UnsafeCell;
 use std::mem;
-use std::panic::{UnwindSafe};
-use std::result::{Result};
+use std::panic::UnwindSafe;
+use std::result::Result;
 
 ///
 /// A data storage structure used to govern synchronous and asynchronous access to an underlying object.
@@ -57,7 +63,7 @@ impl<T: 'static + Send> Desync<T> {
         let queue = queue();
 
         Desync {
-            queue: queue,
+            queue,
             data: Box::into_raw(Box::new(data)),
             _marker: PhantomData,
         }
@@ -74,7 +80,9 @@ impl<T: 'static + Send> Desync<T> {
     #[inline]
     #[deprecated(since = "0.3.0", note = "please use `desync` instead")]
     pub fn r#async<TFn>(&self, job: TFn)
-        where TFn: 'static + Send + FnOnce(&mut T) -> () {
+    where
+        TFn: 'static + Send + FnOnce(&mut T) -> (),
+    {
         self.desync(job)
     }
 
@@ -87,7 +95,9 @@ impl<T: 'static + Send> Desync<T> {
     /// performed synchronously with respect to this object.
     ///
     pub fn desync<TFn>(&self, job: TFn)
-        where TFn: 'static + Send + FnOnce(&mut T) -> () {
+    where
+        TFn: 'static + Send + FnOnce(&mut T) -> (),
+    {
         // As drop() is the last thing called, we know that this object will still exist at the point where the queue makes the asynchronous callback
         let data = DataRef::<T>(self.data);
 
@@ -100,10 +110,13 @@ impl<T: 'static + Send> Desync<T> {
     ///
     /// Performs an operation synchronously on this item. This will be queued with any other
     /// jobs that this item may be performing, and this function will not return until the
-    /// job is complete and the result is available. 
+    /// job is complete and the result is available.
     ///
     pub fn sync<TFn, Result>(&self, job: TFn) -> Result
-        where TFn: Send + FnOnce(&mut T) -> Result, Result: Send {
+    where
+        TFn: Send + FnOnce(&mut T) -> Result,
+        Result: Send,
+    {
         let result = {
             // As drop() is the last thing called, we know that this object will still exist at the point where the callback occurs
             // Exclusivity is guaranteed because the queue executes only one task at a time
@@ -119,10 +132,13 @@ impl<T: 'static + Send> Desync<T> {
     }
 
     ///
-    /// Performs an operation synchronously on this item, 
+    /// Performs an operation synchronously on this item,
     ///
     pub fn try_sync<TFn, FnResult>(&self, job: TFn) -> Result<FnResult, TrySyncError>
-        where TFn: Send + FnOnce(&mut T) -> FnResult, FnResult: Send {
+    where
+        TFn: Send + FnOnce(&mut T) -> FnResult,
+        FnResult: Send,
+    {
         let result = {
             // As drop() is the last thing called, we know that this object will still exist at the point where the callback occurs
             let data = DataRef::<T>(self.data);
@@ -140,15 +156,23 @@ impl<T: 'static + Send> Desync<T> {
     /// Deprecated name for `future_desync`
     ///
     #[inline]
-    #[deprecated(since = "0.7.0", note = "please use either `future_desync` or `future_sync` to schedule futures")]
-    pub fn future<TFn, TOutput>(&self, job: TFn) -> impl Future<Output=Result<TOutput, oneshot::Canceled>> + Send
-        where TFn: 'static + Send + for<'a> FnOnce(&'a mut T) -> BoxFuture<'a, TOutput>,
-              TOutput: 'static + Send {
+    #[deprecated(
+        since = "0.7.0",
+        note = "please use either `future_desync` or `future_sync` to schedule futures"
+    )]
+    pub fn future<TFn, TOutput>(
+        &self,
+        job: TFn,
+    ) -> impl Future<Output = Result<TOutput, oneshot::Canceled>> + Send
+    where
+        TFn: 'static + Send + for<'a> FnOnce(&'a mut T) -> BoxFuture<'a, TOutput>,
+        TOutput: 'static + Send,
+    {
         self.future_desync(job)
     }
 
     ///
-    /// Performs an operation asynchronously on the contents of this item, returning the 
+    /// Performs an operation asynchronously on the contents of this item, returning the
     /// result via a future.
     ///
     /// The future will be scheduled in the background, so it will make progress even if the current scheduler is
@@ -173,9 +197,9 @@ impl<T: 'static + Send> Desync<T> {
     /// or `future_desync()` calls, so it's possible to easily mix async and traditional threaded code in one program.
     ///
     pub fn future_desync<TFn, TOutput>(&self, job: TFn) -> SchedulerFuture<TOutput>
-        where
-            TFn: 'static + Send + for<'borrow> FnOnce(&'borrow mut T) -> BoxFuture<'borrow, TOutput>,
-            TOutput: 'static + Send,
+    where
+        TFn: 'static + Send + for<'borrow> FnOnce(&'borrow mut T) -> BoxFuture<'borrow, TOutput>,
+        TOutput: 'static + Send,
     {
         // The future will have a lifetime shorter than the lifetime of this structure, and exclusivity is guaranteed
         // because queues only execute one task at a time
@@ -185,9 +209,7 @@ impl<T: 'static + Send> Desync<T> {
             let data = data.0;
             let job = job(unsafe { &mut *data });
 
-            async {
-                job.await
-            }
+            async { job.await }
         })
     }
 
@@ -203,17 +225,20 @@ impl<T: 'static + Send> Desync<T> {
     /// to use while it's running (in much the same way `sync()` can in synchronous contexts). The need to dispatch to
     /// the awaiting context can make this future slightly slower than `future_desync()`
     ///
-    /// Desync has a feature that makes it possible to wait synchronously for futures to complete: slightly 
+    /// Desync has a feature that makes it possible to wait synchronously for futures to complete: slightly
     /// counter-intuitively this is found in the future returned by `future_desync()` function rather than this function,
     /// which is synchronous with the current async context instead of with the current thread.
     ///
     /// The normal `sync()` and `desync()` methods will schedule their operations in order around any `future_sync()`
     /// or `future_desync()` calls, so it's possible to easily mix async and traditional threaded code in one program.
     ///
-    pub fn future_sync<'a, TFn, TOutput>(&'a self, job: TFn) -> impl 'a + Future<Output=Result<TOutput, oneshot::Canceled>> + Send
-        where
-            TFn: 'a + Send + for<'borrow> FnOnce(&'borrow mut T) -> BoxFuture<'borrow, TOutput>,
-            TOutput: 'a + Send,
+    pub fn future_sync<'a, TFn, TOutput>(
+        &'a self,
+        job: TFn,
+    ) -> impl 'a + Future<Output = Result<TOutput, oneshot::Canceled>> + Send
+    where
+        TFn: 'a + Send + for<'borrow> FnOnce(&'borrow mut T) -> BoxFuture<'borrow, TOutput>,
+        TOutput: 'a + Send,
     {
         // The future will have a lifetime shorter than the lifetime of this structure
         let data = DataRef::<T>(self.data);
@@ -222,9 +247,7 @@ impl<T: 'static + Send> Desync<T> {
             let data = data.0;
             let job = job(unsafe { &mut *data });
 
-            async {
-                job.await
-            }
+            async { job.await }
         })
     }
 
@@ -232,17 +255,22 @@ impl<T: 'static + Send> Desync<T> {
     /// After the pending operations for this item are performed, waits for the
     /// supplied future to complete and then calls the specified function
     ///
-    pub fn after<TFn, Res, Fut>(&self, after: Fut, job: TFn) -> impl Future<Output=Result<Res, oneshot::Canceled>> + Send
-        where
-            Res: 'static + Send,
-            Fut: 'static + Future + Send,
-            TFn: 'static + Send + FnOnce(&mut T, Fut::Output) -> Res
+    pub fn after<TFn, Res, Fut>(
+        &self,
+        after: Fut,
+        job: TFn,
+    ) -> impl Future<Output = Result<Res, oneshot::Canceled>> + Send
+    where
+        Res: 'static + Send,
+        Fut: 'static + Future + Send,
+        TFn: 'static + Send + FnOnce(&mut T, Fut::Output) -> Res,
     {
         self.future_desync(move |data| {
             async move {
                 let future_result = after.await;
                 job(data, future_result)
-            }.boxed()
+            }
+            .boxed()
         })
     }
 }

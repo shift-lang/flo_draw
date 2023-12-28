@@ -1,5 +1,11 @@
-use super::super::bezier::*;
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
 use super::super::bezier::path::*;
+use super::super::bezier::*;
 
 use std::f64;
 
@@ -58,7 +64,7 @@ impl<Coord: Coordinate2D + Coordinate> Circle<Coord> {
     ///
     /// Returns a set of bezier curves that approximate this circle
     ///
-    pub fn to_curves<Curve: BezierCurveFactory<Point=Coord>>(&self) -> Vec<Curve> {
+    pub fn to_curves<Curve: BezierCurveFactory<Point = Coord>>(&self) -> Vec<Curve> {
         // Angles to put the curves at (we need 4 curves for a decent approximation of a circle)
         let start_angle = f64::consts::PI / 4.0;
         let section_angle = f64::consts::PI / 2.0;
@@ -66,10 +72,12 @@ impl<Coord: Coordinate2D + Coordinate> Circle<Coord> {
             start_angle,
             start_angle + section_angle,
             start_angle + section_angle * 2.0,
-            start_angle + section_angle * 3.0];
+            start_angle + section_angle * 3.0,
+        ];
 
         // Convert the angles into curves
-        angles.iter()
+        angles
+            .iter()
             .map(|angle| self.arc(*angle, angle + section_angle).to_bezier_curve())
             .collect()
     }
@@ -77,15 +85,18 @@ impl<Coord: Coordinate2D + Coordinate> Circle<Coord> {
     ///
     /// Returns a path that approximates this circle
     ///
-    pub fn to_path<P: BezierPathFactory<Point=Coord>>(&self) -> P {
+    pub fn to_path<P: BezierPathFactory<Point = Coord>>(&self) -> P {
         let curves = self.to_curves::<Curve<_>>();
 
-        P::from_points(curves[0].start_point(), curves.into_iter().map(|curve| {
-            let (cp1, cp2) = curve.control_points();
-            let end_point = curve.end_point();
+        P::from_points(
+            curves[0].start_point(),
+            curves.into_iter().map(|curve| {
+                let (cp1, cp2) = curve.control_points();
+                let end_point = curve.end_point();
 
-            (cp1, cp2, end_point)
-        }))
+                (cp1, cp2, end_point)
+            }),
+        )
     }
 }
 
@@ -96,7 +107,7 @@ impl<'a, Coord: Coordinate2D + Coordinate> CircularArc<'a, Coord> {
     /// If this arc covers an angle > 90 degrees, the curve will
     /// be very inaccurate.
     ///
-    pub fn to_bezier_curve<Curve: BezierCurveFactory<Point=Coord>>(&self) -> Curve {
+    pub fn to_bezier_curve<Curve: BezierCurveFactory<Point = Coord>>(&self) -> Curve {
         // Algorithm described here: https://www.tinaja.com/glib/bezcirc2.pdf
         // Curve for the unit arc with its center at (1,0)
         let theta = self.end_radians - self.start_radians;
@@ -109,7 +120,10 @@ impl<'a, Coord: Coordinate2D + Coordinate> CircularArc<'a, Coord> {
         fn rotate(x: f64, y: f64, theta: f64) -> (f64, f64) {
             let (cos_theta, sin_theta) = (theta.cos(), theta.sin());
 
-            (x * cos_theta + y * sin_theta, x * -sin_theta + y * cos_theta)
+            (
+                x * cos_theta + y * sin_theta,
+                x * -sin_theta + y * cos_theta,
+            )
         }
 
         let angle = -(f64::consts::PI / 2.0 - (theta / 2.0));

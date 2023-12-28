@@ -1,11 +1,17 @@
-use super::ray_cast::*;
-use super::super::path::*;
-use super::super::graph_path::*;
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
 use super::super::super::super::geo::*;
+use super::super::graph_path::*;
+use super::super::path::*;
+use super::ray_cast::*;
 
 //
 // This uses a simple ray casting algorithm to perform the addition
-// 
+//
 // Basic idea is to cast a ray at an edge which is currently uncategorised, and mark the edges it crosses as interior or
 // exterior depending on whether or not we consider it as crossing into or out of the final shape.
 //
@@ -19,7 +25,9 @@ impl<Point: Coordinate + Coordinate2D> GraphPath<Point, PathLabel> {
     ///
     pub fn set_exterior_by_adding(&mut self) {
         // Use an even-odd winding rule (all edges are considered 'external')
-        self.set_edge_kinds_by_ray_casting(|path_crossings| (path_crossings[0] & 1) != 0 || (path_crossings[1] & 1) != 0);
+        self.set_edge_kinds_by_ray_casting(|path_crossings| {
+            (path_crossings[0] & 1) != 0 || (path_crossings[1] & 1) != 0
+        });
     }
 
     ///
@@ -27,42 +35,49 @@ impl<Point: Coordinate + Coordinate2D> GraphPath<Point, PathLabel> {
     ///
     pub fn set_exterior_by_removing_interior_points(&mut self) {
         // All points inside the path are considered 'interior' (non-zero winding rule)
-        self.set_edge_kinds_by_ray_casting(|path_crossings| path_crossings[0] != 0 || path_crossings[1] != 0);
+        self.set_edge_kinds_by_ray_casting(|path_crossings| {
+            path_crossings[0] != 0 || path_crossings[1] != 0
+        });
     }
 }
 
 ///
 /// Generates the path formed by adding two sets of paths
 ///
-/// Each of the two paths passed into this function is assumed not to overlap themselves. IE, this does not perform self-intersection 
+/// Each of the two paths passed into this function is assumed not to overlap themselves. IE, this does not perform self-intersection
 /// on either `path1` or `path2`. This provides both a performance optimisation and finer control over how self-intersecting paths are
 /// handled. See `path_remove_interior_points()` and `path_remove_overlapped_points()` for a way to eliminate overlaps.
 ///
 /// The input vectors represent the external edges of the path to add (a single BezierPath cannot have any holes in it, so a set of them
 /// effectively represents a path intended to be rendered with an even-odd winding rule)
 ///
-pub fn path_add<POut>(path1: &Vec<impl BezierPath<Point=POut::Point>>, path2: &Vec<impl BezierPath<Point=POut::Point>>, accuracy: f64) -> Vec<POut>
-    where
-        POut: BezierPathFactory,
-        POut::Point: Coordinate + Coordinate2D,
+pub fn path_add<POut>(
+    path1: &Vec<impl BezierPath<Point = POut::Point>>,
+    path2: &Vec<impl BezierPath<Point = POut::Point>>,
+    accuracy: f64,
+) -> Vec<POut>
+where
+    POut: BezierPathFactory,
+    POut::Point: Coordinate + Coordinate2D,
 {
     // If either path is empty, short-circuit by returning the other
     if path1.is_empty() {
-        return path2.iter()
-            .map(|path| POut::from_path(path))
-            .collect();
+        return path2.iter().map(|path| POut::from_path(path)).collect();
     } else if path2.is_empty() {
-        return path1.iter()
-            .map(|path| POut::from_path(path))
-            .collect();
+        return path1.iter().map(|path| POut::from_path(path)).collect();
     }
 
     // Create the graph path from the source side
     let mut merged_path = GraphPath::new();
-    merged_path = merged_path.merge(GraphPath::from_merged_paths(path1.iter().map(|path| (path, PathLabel(0)))));
+    merged_path = merged_path.merge(GraphPath::from_merged_paths(
+        path1.iter().map(|path| (path, PathLabel(0))),
+    ));
 
     // Collide with the target side to generate a full path
-    merged_path = merged_path.collide(GraphPath::from_merged_paths(path2.iter().map(|path| (path, PathLabel(1)))), accuracy);
+    merged_path = merged_path.collide(
+        GraphPath::from_merged_paths(path2.iter().map(|path| (path, PathLabel(1)))),
+        accuracy,
+    );
     merged_path.round(accuracy);
 
     // Set the exterior edges using the 'add' algorithm
@@ -74,23 +89,28 @@ pub fn path_add<POut>(path1: &Vec<impl BezierPath<Point=POut::Point>>, path2: &V
 }
 
 ///
-/// Generates the path formed by removing any interior points from an existing path. This considers only the outermost edges of the 
+/// Generates the path formed by removing any interior points from an existing path. This considers only the outermost edges of the
 /// path to be the true edges, so if there are sub-paths inside an outer path, they will be removed.
 ///
 /// This is a strict version of the 'non-zero' winding rule. It's useful for things like a path that was generated from a brush stroke
-/// and might self-overlap: this can be passed a drawing of a loop made by overlapping the ends and it will output two non-overlapping 
+/// and might self-overlap: this can be passed a drawing of a loop made by overlapping the ends and it will output two non-overlapping
 /// subpaths.
 ///
 /// See `path_remove_overlapped_points()` for a version that considers all edges within the path to be exterior edges.
 ///
-pub fn path_remove_interior_points<P1: BezierPath, POut: BezierPathFactory>(path: &Vec<P1>, accuracy: f64) -> Vec<POut>
-    where
-        P1::Point: Coordinate + Coordinate2D,
-        POut: BezierPathFactory<Point=P1::Point>,
+pub fn path_remove_interior_points<P1: BezierPath, POut: BezierPathFactory>(
+    path: &Vec<P1>,
+    accuracy: f64,
+) -> Vec<POut>
+where
+    P1::Point: Coordinate + Coordinate2D,
+    POut: BezierPathFactory<Point = P1::Point>,
 {
     // Create the graph path from the source side
     let mut merged_path = GraphPath::new();
-    merged_path = merged_path.merge(GraphPath::from_merged_paths(path.iter().map(|path| (path, PathLabel(0)))));
+    merged_path = merged_path.merge(GraphPath::from_merged_paths(
+        path.iter().map(|path| (path, PathLabel(0))),
+    ));
 
     // Collide the path with itself to find the intersections
     merged_path.self_collide(accuracy);
@@ -120,14 +140,19 @@ pub fn path_remove_interior_points<P1: BezierPath, POut: BezierPathFactory>(path
 /// Note that calling 'subtract' is a more reliable way to cut a hole in an existing path than relying on a winding rule, as
 /// winding rules presuppose you can tell if a subpath is inside or outside of an existing path.
 ///
-pub fn path_remove_overlapped_points<P1: BezierPath, POut: BezierPathFactory>(path: &Vec<P1>, accuracy: f64) -> Vec<POut>
-    where
-        P1::Point: Coordinate + Coordinate2D,
-        POut: BezierPathFactory<Point=P1::Point>,
+pub fn path_remove_overlapped_points<P1: BezierPath, POut: BezierPathFactory>(
+    path: &Vec<P1>,
+    accuracy: f64,
+) -> Vec<POut>
+where
+    P1::Point: Coordinate + Coordinate2D,
+    POut: BezierPathFactory<Point = P1::Point>,
 {
     // Create the graph path from the source side
     let mut merged_path = GraphPath::new();
-    merged_path = merged_path.merge(GraphPath::from_merged_paths(path.iter().map(|path| (path, PathLabel(0)))));
+    merged_path = merged_path.merge(GraphPath::from_merged_paths(
+        path.iter().map(|path| (path, PathLabel(0))),
+    ));
 
     // Collide the path with itself to find the intersections
     merged_path.self_collide(accuracy);

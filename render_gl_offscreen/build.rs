@@ -1,3 +1,9 @@
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
 #[cfg(not(target_os = "linux"))]
 fn main() {
     // No build steps to take for non-linux OSes
@@ -6,7 +12,7 @@ fn main() {
 #[cfg(target_os = "linux")]
 fn main() {
     use std::env;
-    use std::path::{PathBuf};
+    use std::path::PathBuf;
 
     // Linux build: generate bindings for gbm
     let out = PathBuf::from(env::var("OUT_DIR").unwrap());

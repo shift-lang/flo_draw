@@ -1,3 +1,9 @@
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
 use crate::draw::*;
 use crate::draw_stream::*;
 
@@ -42,7 +48,7 @@ impl DrawingTarget {
     ///
     /// Sends some drawing instructions to this target
     ///
-    pub fn write<Drawing: Send + IntoIterator<Item=Draw>>(&self, drawing: Drawing) {
+    pub fn write<Drawing: Send + IntoIterator<Item = Draw>>(&self, drawing: Drawing) {
         // Write the drawing instructions to the pending queue
         let waker = self.stream_core.sync(move |core| {
             core.write(drawing.into_iter());
@@ -57,8 +63,8 @@ impl DrawingTarget {
     /// Provides a way to draw on this target via a graphics context
     ///
     pub fn draw<FnAction>(&self, action: FnAction)
-        where
-            FnAction: Send + FnOnce(&mut DrawGraphicsContext) -> (),
+    where
+        FnAction: Send + FnOnce(&mut DrawGraphicsContext) -> (),
     {
         // Fill a buffer with the drawing actions
         let mut draw_actions = vec![];
@@ -74,7 +80,7 @@ impl DrawingTarget {
     ///
     /// Sends the results of a future to this target
     ///
-    pub fn receive<DrawStream: Unpin + Stream<Item=Draw>>(
+    pub fn receive<DrawStream: Unpin + Stream<Item = Draw>>(
         self,
         actions: DrawStream,
     ) -> impl Future {

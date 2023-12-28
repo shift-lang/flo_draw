@@ -1,13 +1,19 @@
-use super::fit::*;
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
 use super::basis::*;
-use super::solve::*;
-use super::length::*;
-use super::search::*;
 use super::bounds::*;
-use super::section::*;
-use super::subdivide::*;
-use super::nearest_point::*;
 use super::characteristics::*;
+use super::fit::*;
+use super::length::*;
+use super::nearest_point::*;
+use super::search::*;
+use super::section::*;
+use super::solve::*;
+use super::subdivide::*;
 
 use crate::geo::*;
 use crate::line::*;
@@ -19,14 +25,22 @@ pub trait BezierCurveFactory: BezierCurve {
     ///
     /// Creates a new bezier curve of the same type from some points
     ///
-    fn from_points(start: Self::Point, control_points: (Self::Point, Self::Point), end: Self::Point) -> Self;
+    fn from_points(
+        start: Self::Point,
+        control_points: (Self::Point, Self::Point),
+        end: Self::Point,
+    ) -> Self;
 
     ///
     /// Creates a new bezier curve of this type from an equivalent curve of another type
     ///
     #[inline]
-    fn from_curve<Curve: BezierCurve<Point=Self::Point>>(curve: &Curve) -> Self {
-        Self::from_points(curve.start_point(), curve.control_points(), curve.end_point())
+    fn from_curve<Curve: BezierCurve<Point = Self::Point>>(curve: &Curve) -> Self {
+        Self::from_points(
+            curve.start_point(),
+            curve.control_points(),
+            curve.end_point(),
+        )
     }
 
     ///
@@ -57,11 +71,7 @@ pub trait BezierCurve: Geo + Clone + Sized {
     ///
     #[inline]
     fn all_points(&self) -> (Self::Point, (Self::Point, Self::Point), Self::Point) {
-        (
-            self.start_point(),
-            self.control_points(),
-            self.end_point()
-        )
+        (self.start_point(), self.control_points(), self.end_point())
     }
 
     ///
@@ -82,7 +92,7 @@ pub trait BezierCurve: Geo + Clone + Sized {
     ///
     /// Reverses the direction of this curve
     ///
-    fn reverse<Curve: BezierCurveFactory<Point=Self::Point>>(self) -> Curve {
+    fn reverse<Curve: BezierCurveFactory<Point = Self::Point>>(self) -> Curve {
         let (cp1, cp2) = self.control_points();
         Curve::from_points(self.end_point(), (cp2, cp1), self.start_point())
     }
@@ -93,14 +103,20 @@ pub trait BezierCurve: Geo + Clone + Sized {
     #[inline]
     fn point_at_pos(&self, t: f64) -> Self::Point {
         let control_points = self.control_points();
-        basis(t, self.start_point(), control_points.0, control_points.1, self.end_point())
+        basis(
+            t,
+            self.start_point(),
+            control_points.0,
+            control_points.1,
+            self.end_point(),
+        )
     }
 
     ///
     /// Given a point that is on or very close to the curve, returns the t value where the point can be found
     /// (or None if the point is not very close to the curve)
     ///
-    /// To find the nearest points on the curve where the point is far away, consider using `nearest_t()`, and 
+    /// To find the nearest points on the curve where the point is far away, consider using `nearest_t()`, and
     /// `nearest_point()` instead. For interactive applications, ray casting with `curve_intersects_ray()` might
     /// be better used to find which area of a curve a user might be trying to indicate.
     ///
@@ -113,18 +129,30 @@ pub trait BezierCurve: Geo + Clone + Sized {
     /// Given a value t from 0 to 1, finds a point on this curve and subdivides it, returning the two resulting curves
     ///
     #[inline]
-    fn subdivide<Curve: BezierCurveFactory<Point=Self::Point>>(&self, t: f64) -> (Curve, Curve) {
+    fn subdivide<Curve: BezierCurveFactory<Point = Self::Point>>(&self, t: f64) -> (Curve, Curve) {
         let control_points = self.control_points();
-        let (first_curve, second_curve) = subdivide4(t, self.start_point(), control_points.0, control_points.1, self.end_point());
+        let (first_curve, second_curve) = subdivide4(
+            t,
+            self.start_point(),
+            control_points.0,
+            control_points.1,
+            self.end_point(),
+        );
 
-        (Curve::from_points(first_curve.0, (first_curve.1, first_curve.2), first_curve.3),
-         Curve::from_points(second_curve.0, (second_curve.1, second_curve.2), second_curve.3))
+        (
+            Curve::from_points(first_curve.0, (first_curve.1, first_curve.2), first_curve.3),
+            Curve::from_points(
+                second_curve.0,
+                (second_curve.1, second_curve.2),
+                second_curve.3,
+            ),
+        )
     }
 
     ///
     /// Computes the bounds of this bezier curve
     ///
-    fn bounding_box<Bounds: BoundingBox<Point=Self::Point>>(&self) -> Bounds {
+    fn bounding_box<Bounds: BoundingBox<Point = Self::Point>>(&self) -> Bounds {
         // Fetch the various points and the derivative of this curve
         let start = self.start_point();
         let end = self.end_point();
@@ -139,7 +167,7 @@ pub trait BezierCurve: Geo + Clone + Sized {
     /// This will produce a bounding box that contains the curve but which may be larger than necessary
     ///
     #[inline]
-    fn fast_bounding_box<Bounds: BoundingBox<Point=Self::Point>>(&self) -> Bounds {
+    fn fast_bounding_box<Bounds: BoundingBox<Point = Self::Point>>(&self) -> Bounds {
         let start = self.start_point();
         let end = self.end_point();
         let control_points = self.control_points();
@@ -159,7 +187,11 @@ pub trait BezierCurve: Geo + Clone + Sized {
     /// Given a function that determines if a searched-for point is within a bounding box, searches the
     /// curve for the t values for the corresponding points
     ///
-    fn search_with_bounds<MatchFn: Fn(Self::Point, Self::Point) -> bool>(&self, max_error: f64, match_fn: MatchFn) -> Vec<f64> {
+    fn search_with_bounds<MatchFn: Fn(Self::Point, Self::Point) -> bool>(
+        &self,
+        max_error: f64,
+        match_fn: MatchFn,
+    ) -> Vec<f64> {
         // Fetch the various points and the derivative of this curve
         let start = self.start_point();
         let end = self.end_point();
@@ -212,7 +244,11 @@ impl<Coord: Coordinate> Geo for Curve<Coord> {
 }
 
 impl<Coord: Coordinate> BezierCurveFactory for Curve<Coord> {
-    fn from_points(start: Coord, (control_point1, control_point2): (Coord, Coord), end: Coord) -> Self {
+    fn from_points(
+        start: Coord,
+        (control_point1, control_point2): (Coord, Coord),
+        end: Coord,
+    ) -> Self {
         Curve {
             start_point: start,
             control_points: (control_point1, control_point2),
@@ -242,7 +278,7 @@ impl<Coord: Coordinate> HasBoundingBox for Curve<Coord> {
     ///
     /// Computes the bounds of this bezier curve
     ///
-    fn get_bounding_box<Bounds: BoundingBox<Point=Self::Point>>(&self) -> Bounds {
+    fn get_bounding_box<Bounds: BoundingBox<Point = Self::Point>>(&self) -> Bounds {
         self.bounding_box()
     }
 }
@@ -296,8 +332,8 @@ pub trait BezierCurve2D: BezierCurve {
 }
 
 impl<T: BezierCurve> BezierCurve2D for T
-    where
-        T::Point: Coordinate + Coordinate2D,
+where
+    T::Point: Coordinate + Coordinate2D,
 {
     #[inline]
     fn characteristics(&self) -> CurveCategory {
@@ -337,6 +373,9 @@ impl<T: BezierCurve> BezierCurve2D for T
         let (sp, (cp1, cp2), ep) = self.all_points();
         let coefficents = (sp, ep).coefficients();
 
-        coefficents.distance_to(&cp1).abs().max(coefficents.distance_to(&cp2).abs())
+        coefficents
+            .distance_to(&cp1)
+            .abs()
+            .max(coefficents.distance_to(&cp2).abs())
     }
 }

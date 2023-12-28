@@ -1,3 +1,9 @@
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
 use std::sync::*;
 use std::thread;
 use std::time::{Duration, Instant};
@@ -8,9 +14,9 @@ use futures::stream;
 use num_complex::*;
 use rayon::iter::*;
 
-use flo_draw::*;
 use flo_draw::binding::*;
 use flo_draw::canvas::*;
+use flo_draw::*;
 
 ///
 /// Renders the mandelbrot set, demonstrates how to render from multiple threads and communicate with bindings
@@ -66,15 +72,15 @@ pub fn main() {
             let mut events = events;
             while let Some(evt) = events.next().await {
                 match evt {
-                    DrawEvent::Resize(new_width, new_height) => {
-                        if width.get() != new_width as _ || height.get() != new_height as _ {
-                            width.set(new_width as _);
-                            height.set(new_height as _);
+                    DrawEvent::Resized(size) => {
+                        if width.get() != size.width as _ || height.get() != size.height as _ {
+                            width.set(size.width as _);
+                            height.set(size.height as _);
                             update_num.set(update_num.get() + 1);
                         }
                     }
 
-                    DrawEvent::Pointer(PointerAction::Move, _, state) => {
+                    DrawEvent::CursorMoved { state } => {
                         // Draw a rectangle around where the image will zoom in
                         canvas.draw(|gc| {
                             gc.layer(LayerId(1));

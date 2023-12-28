@@ -1,11 +1,17 @@
-use super::super::curve::*;
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
 use super::super::basis::*;
+use super::super::curve::*;
+use crate::consts::*;
 use crate::geo::*;
 use crate::line::*;
-use crate::consts::*;
 
-use smallvec::*;
 use roots::{find_roots_cubic, find_roots_quadratic, Roots};
+use smallvec::*;
 
 ///
 /// Solves the roots for a set of cubic coefficients
@@ -37,9 +43,12 @@ fn solve_roots(p: (f64, f64, f64, f64)) -> Roots<f64> {
 /// Return value is a vector of (curve_t, line_t, intersection_point) values. The `line_t` value can be outside the
 /// original line, so this will return all the points on the curve that lie on a line of infinite length.
 ///
-pub fn curve_intersects_ray<C: BezierCurve, L: Line<Point=C::Point>>(curve: &C, line: &L) -> SmallVec<[(f64, f64, C::Point); 4]>
-    where
-        C::Point: Coordinate2D,
+pub fn curve_intersects_ray<C: BezierCurve, L: Line<Point = C::Point>>(
+    curve: &C,
+    line: &L,
+) -> SmallVec<[(f64, f64, C::Point); 4]>
+where
+    C::Point: Coordinate2D,
 {
     // Based upon https://www.particleincell.com/2013/cubic-line-intersection/
 
@@ -63,7 +72,7 @@ pub fn curve_intersects_ray<C: BezierCurve, L: Line<Point=C::Point>>(curve: &C, 
         a * bx.0 + b * by.0,
         a * bx.1 + b * by.1,
         a * bx.2 + b * by.2,
-        a * bx.3 + b * by.3 + c
+        a * bx.3 + b * by.3 + c,
     );
 
     let roots = solve_roots(p);
@@ -72,36 +81,37 @@ pub fn curve_intersects_ray<C: BezierCurve, L: Line<Point=C::Point>>(curve: &C, 
         Roots::One(r) => SmallVec::from_slice(&r),
         Roots::Two(r) => SmallVec::from_slice(&r),
         Roots::Three(r) => SmallVec::from_slice(&r),
-        Roots::Four(r) => SmallVec::from_buf(r)
+        Roots::Four(r) => SmallVec::from_buf(r),
     };
 
     let mut result = smallvec![];
     for t in roots.into_iter() {
         // Allow a small amount of 'slop' for items at the start/end as the root finding is not exact
-        let t =
-            if t < 0.0 && t > -0.01 {
-                // If the line passes close enough to the start of the curve, set t to 0
-                let factor = (a * a + b * b).sqrt();
-                let (a, b, c) = (a / factor, b / factor, c / factor);
-                let start_point = &w1;
+        let t = if t < 0.0 && t > -0.01 {
+            // If the line passes close enough to the start of the curve, set t to 0
+            let factor = (a * a + b * b).sqrt();
+            let (a, b, c) = (a / factor, b / factor, c / factor);
+            let start_point = &w1;
 
-                if (start_point.x() * a + start_point.y() * b + c).abs() < SMALL_DISTANCE {
-                    0.0
-                } else {
-                    t
-                }
-            } else if t > 1.0 && t < 1.01 {
-                // If the line passes close enough to the end of the curve, set t to 1 
-                let factor = (a * a + b * b).sqrt();
-                let (a, b, c) = (a / factor, b / factor, c / factor);
-                let end_point = &w4;
+            if (start_point.x() * a + start_point.y() * b + c).abs() < SMALL_DISTANCE {
+                0.0
+            } else {
+                t
+            }
+        } else if t > 1.0 && t < 1.01 {
+            // If the line passes close enough to the end of the curve, set t to 1
+            let factor = (a * a + b * b).sqrt();
+            let (a, b, c) = (a / factor, b / factor, c / factor);
+            let end_point = &w4;
 
-                if (end_point.x() * a + end_point.y() * b + c).abs() < SMALL_DISTANCE {
-                    1.0
-                } else {
-                    t
-                }
-            } else { t };
+            if (end_point.x() * a + end_point.y() * b + c).abs() < SMALL_DISTANCE {
+                1.0
+            } else {
+                t
+            }
+        } else {
+            t
+        };
 
         if (0.0..=1.0).contains(&t) {
             // Calculate the position on the curve
@@ -133,9 +143,12 @@ pub fn curve_intersects_ray<C: BezierCurve, L: Line<Point=C::Point>>(curve: &C, 
 ///
 /// Return value is a vector of (curve_t, line_t, intersection_point) values
 ///
-pub fn curve_intersects_line<C: BezierCurve, L: Line<Point=C::Point>>(curve: &C, line: &L) -> SmallVec<[(f64, f64, C::Point); 4]>
-    where
-        C::Point: Coordinate2D,
+pub fn curve_intersects_line<C: BezierCurve, L: Line<Point = C::Point>>(
+    curve: &C,
+    line: &L,
+) -> SmallVec<[(f64, f64, C::Point); 4]>
+where
+    C::Point: Coordinate2D,
 {
     let mut ray_intersections = curve_intersects_ray(curve, line);
     ray_intersections.retain(|(_t, s, _pos)| (&mut 0.0..=&mut 1.0).contains(&s));

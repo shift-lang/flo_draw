@@ -1,11 +1,17 @@
-#![allow(clippy::comparison_chain)]         // I think the two instances in here are clearer written the way they are
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
 
-use crate::bezier::path::ray::*;
-use crate::bezier::path::path::*;
-use crate::bezier::path::graph_path::*;
-use crate::bezier::path::is_clockwise::*;
+#![allow(clippy::comparison_chain)] // I think the two instances in here are clearer written the way they are
+
 use crate::bezier::curve::*;
 use crate::bezier::normal::*;
+use crate::bezier::path::graph_path::*;
+use crate::bezier::path::is_clockwise::*;
+use crate::bezier::path::path::*;
+use crate::bezier::path::ray::*;
 use crate::geo::*;
 
 use smallvec::*;
@@ -20,8 +26,8 @@ pub enum PathDirection {
 }
 
 impl<'a, P: BezierPath> From<&'a P> for PathDirection
-    where
-        P::Point: Coordinate2D,
+where
+    P::Point: Coordinate2D,
 {
     #[inline]
     fn from(path: &'a P) -> PathDirection {
@@ -112,7 +118,10 @@ impl<Point: Coordinate + Coordinate2D> GraphPath<Point, PathLabel> {
     /// will hit the edge belonging to the second shape first, and if it's leaving it will hit the edge belonging to the first
     /// shape first. This ensures that the behaviour is consistent when the ray's direction is reversed.
     ///
-    pub fn set_edge_kinds_by_ray_casting<FnIsInside: Fn(&SmallVec<[i32; 8]>) -> bool>(&mut self, is_inside: FnIsInside) {
+    pub fn set_edge_kinds_by_ray_casting<FnIsInside: Fn(&SmallVec<[i32; 8]>) -> bool>(
+        &mut self,
+        is_inside: FnIsInside,
+    ) {
         for point_idx in 0..self.num_points() {
             for next_edge in self.edge_refs_for_point(point_idx) {
                 // Only process edges that have not yet been categorised
@@ -157,10 +166,24 @@ impl<Point: Coordinate + Coordinate2D> GraphPath<Point, PathLabel> {
 
                         if !is_inside(&first_shape_crossings) {
                             // Later shapes are crossed before earlier shapes when the ray is outside the first shape
-                            overlapping_group.sort_by(|(collision_a, _, _, _), (collision_b, _, _, _)| collision_b.edge().edge_idx.cmp(&collision_a.edge().edge_idx))
+                            overlapping_group.sort_by(
+                                |(collision_a, _, _, _), (collision_b, _, _, _)| {
+                                    collision_b
+                                        .edge()
+                                        .edge_idx
+                                        .cmp(&collision_a.edge().edge_idx)
+                                },
+                            )
                         } else {
                             // Earlier shapes are crossed before later shapes when the ray is inside the first shape
-                            overlapping_group.sort_by(|(collision_a, _, _, _), (collision_b, _, _, _)| collision_a.edge().edge_idx.cmp(&collision_b.edge().edge_idx))
+                            overlapping_group.sort_by(
+                                |(collision_a, _, _, _), (collision_b, _, _, _)| {
+                                    collision_a
+                                        .edge()
+                                        .edge_idx
+                                        .cmp(&collision_b.edge().edge_idx)
+                                },
+                            )
                         }
 
                         overlapping_group
@@ -180,7 +203,9 @@ impl<Point: Coordinate + Coordinate2D> GraphPath<Point, PathLabel> {
                         let side = ray_direction.dot(&normal).signum() as i32;
 
                         // Extend the path_crossings vector to accomodate all of the paths included by this ray
-                        while path_crossings.len() <= path_number as usize { path_crossings.push(0); }
+                        while path_crossings.len() <= path_number as usize {
+                            path_crossings.push(0);
+                        }
 
                         if side < 0 {
                             path_crossings[path_number as usize] -= 1;
@@ -193,7 +218,8 @@ impl<Point: Coordinate + Coordinate2D> GraphPath<Point, PathLabel> {
                     let is_inside = is_inside(&path_crossings);
 
                     // Filter the edges to those that are not hit by a ray close to the end or at an intersection
-                    let mut edges_to_set = overlapping_group.into_iter()
+                    let mut edges_to_set = overlapping_group
+                        .into_iter()
                         .filter(|(collision, curve_t, _line_t, _pos)| {
                             // Rays passing close to intersections or the end of a curve are more likely to be out-of-order
                             let is_intersection = collision.is_intersection();
@@ -208,7 +234,9 @@ impl<Point: Coordinate + Coordinate2D> GraphPath<Point, PathLabel> {
                         if let Some(first_edge) = edges_to_set.next() {
                             self.set_edge_kind_connected(first_edge, GraphPathEdgeKind::Exterior);
                         }
-                        edges_to_set.for_each(|edge| self.set_edge_kind_connected(edge, GraphPathEdgeKind::Interior));
+                        edges_to_set.for_each(|edge| {
+                            self.set_edge_kind_connected(edge, GraphPathEdgeKind::Interior)
+                        });
                     } else {
                         // If the ray is either still inside or outside the result, set all the edges to interior
                         edges_to_set.for_each(|edge| {
@@ -220,7 +248,9 @@ impl<Point: Coordinate + Coordinate2D> GraphPath<Point, PathLabel> {
                 }
 
                 // The ray should exit and enter the path an even number of times
-                test_assert!(path_crossings.into_iter().all(|crossing_count| crossing_count == 0));
+                test_assert!(path_crossings
+                    .into_iter()
+                    .all(|crossing_count| crossing_count == 0));
             }
         }
     }

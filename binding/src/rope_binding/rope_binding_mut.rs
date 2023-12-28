@@ -1,19 +1,26 @@
-use crate::traits::*;
-use crate::watcher::*;
-use crate::releasable::*;
-use crate::binding_context::*;
-use crate::rope_binding::core::*;
-use crate::rope_binding::stream::*;
-use crate::rope_binding::bound_rope::*;
-use crate::rope_binding::stream_state::*;
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
+use std::collections::VecDeque;
+use std::iter;
+use std::ops::{AddAssign, Range};
+use std::sync::*;
 
 use flo_rope::*;
+
 use ::desync::*;
 
-use std::sync::*;
-use std::ops::{AddAssign, Range};
-use std::collections::{VecDeque};
-use std::iter;
+use crate::binding_context::*;
+use crate::releasable::*;
+use crate::rope_binding::bound_rope::*;
+use crate::rope_binding::core::*;
+use crate::rope_binding::stream::*;
+use crate::rope_binding::stream_state::*;
+use crate::traits::*;
+use crate::watcher::*;
 
 ///
 /// A rope binding binds a vector of cells and attributes
@@ -22,18 +29,18 @@ use std::iter;
 /// editing functions for changing the underlying data.
 ///
 pub struct RopeBindingMut<Cell, Attribute>
-    where
-        Cell: 'static + Send + Unpin + Clone + PartialEq,
-        Attribute: 'static + Send + Sync + Unpin + Clone + PartialEq + Default,
+where
+    Cell: 'static + Send + Unpin + Clone + PartialEq,
+    Attribute: 'static + Send + Sync + Unpin + Clone + PartialEq + Default,
 {
     /// The core of this binding
     core: Arc<Desync<RopeBindingCore<Cell, Attribute>>>,
 }
 
 impl<Cell, Attribute> RopeBindingMut<Cell, Attribute>
-    where
-        Cell: 'static + Send + Unpin + Clone + PartialEq,
-        Attribute: 'static + Send + Sync + Clone + Unpin + PartialEq + Default,
+where
+    Cell: 'static + Send + Unpin + Clone + PartialEq,
+    Attribute: 'static + Send + Sync + Clone + Unpin + PartialEq + Default,
 {
     ///
     /// Creates a new rope binding from a stream of changes
@@ -53,19 +60,20 @@ impl<Cell, Attribute> RopeBindingMut<Cell, Attribute>
         // Recreate the rope in the core with a version that responds to pull events
         let weak_core = Arc::downgrade(&core);
         core.sync(move |core| {
-            core.rope = PullRope::from(AttributedRope::new(), Box::new(move || {
-                // Pass the event through to the core
-                let core = weak_core.upgrade();
-                if let Some(core) = core {
-                    core.desync(|core| core.on_pull());
-                }
-            }));
+            core.rope = PullRope::from(
+                AttributedRope::new(),
+                Box::new(move || {
+                    // Pass the event through to the core
+                    let core = weak_core.upgrade();
+                    if let Some(core) = core {
+                        core.desync(|core| core.on_pull());
+                    }
+                }),
+            );
         });
 
         // Create the binding
-        RopeBindingMut {
-            core
-        }
+        RopeBindingMut { core }
     }
 
     ///
@@ -83,7 +91,7 @@ impl<Cell, Attribute> RopeBindingMut<Cell, Attribute>
     ///
     /// Reads the cell values for a range in this rope
     ///
-    pub fn read_cells<'a>(&'a self, range: Range<usize>) -> impl 'a + Iterator<Item=Cell> {
+    pub fn read_cells<'a>(&'a self, range: Range<usize>) -> impl 'a + Iterator<Item = Cell> {
         BindingContext::add_dependency(self.clone());
 
         // Read this range of cells by cloning from the core
@@ -126,8 +134,8 @@ impl<Cell, Attribute> RopeBindingMut<Cell, Attribute>
     /// as the attributes that were applied to the first cell in the replacement range
     ///
     pub fn replace<NewCells>(&self, range: Range<usize>, new_cells: NewCells)
-        where
-            NewCells: 'static + Send + IntoIterator<Item=Cell>,
+    where
+        NewCells: 'static + Send + IntoIterator<Item = Cell>,
     {
         self.core.sync(move |core| {
             core.rope.replace(range, new_cells);
@@ -139,8 +147,8 @@ impl<Cell, Attribute> RopeBindingMut<Cell, Attribute>
     /// Adds new cells to the end of this rope
     ///
     pub fn extend<I>(&self, iter: I)
-        where
-            I: 'static + Send + IntoIterator<Item=Cell>
+    where
+        I: 'static + Send + IntoIterator<Item = Cell>,
     {
         let len = self.len();
         self.replace(len..len, iter);
@@ -150,8 +158,8 @@ impl<Cell, Attribute> RopeBindingMut<Cell, Attribute>
     /// Retains the cells that match the predicate
     ///
     pub fn retain_cells<TFn>(&self, retain_fn: TFn)
-        where
-            TFn: Send + FnMut(&Cell) -> bool,
+    where
+        TFn: Send + FnMut(&Cell) -> bool,
     {
         self.core.sync(move |core| {
             // Find ranges where the function is false
@@ -184,7 +192,8 @@ impl<Cell, Attribute> RopeBindingMut<Cell, Attribute>
             // Replace the ranges in the rope that are not retained with nothing
             if !replace_ranges.is_empty() {
                 // Remove the cells from the rope
-                replace_ranges.into_iter()
+                replace_ranges
+                    .into_iter()
                     .rev()
                     .for_each(|range| core.rope.replace(range, iter::empty()));
 
@@ -207,18 +216,24 @@ impl<Cell, Attribute> RopeBindingMut<Cell, Attribute>
     ///
     /// Replaces a range of cells and sets the attributes for them.
     ///
-    pub fn replace_attributes<NewCells: 'static + Send + IntoIterator<Item=Cell>>(&self, range: Range<usize>, new_cells: NewCells, new_attributes: Attribute) {
+    pub fn replace_attributes<NewCells: 'static + Send + IntoIterator<Item = Cell>>(
+        &self,
+        range: Range<usize>,
+        new_cells: NewCells,
+        new_attributes: Attribute,
+    ) {
         self.core.sync(move |core| {
-            core.rope.replace_attributes(range, new_cells, new_attributes);
+            core.rope
+                .replace_attributes(range, new_cells, new_attributes);
             core.wake();
         });
     }
 }
 
 impl<Cell, Attribute> BoundRope<Cell, Attribute> for RopeBindingMut<Cell, Attribute>
-    where
-        Cell: 'static + Send + Unpin + Clone + PartialEq,
-        Attribute: 'static + Send + Sync + Clone + Unpin + PartialEq + Default,
+where
+    Cell: 'static + Send + Unpin + Clone + PartialEq,
+    Attribute: 'static + Send + Sync + Clone + Unpin + PartialEq + Default,
 {
     ///
     /// Creates a stream that follows the changes to this rope
@@ -266,9 +281,9 @@ impl<Cell, Attribute> BoundRope<Cell, Attribute> for RopeBindingMut<Cell, Attrib
 }
 
 impl<Cell, Attribute> Clone for RopeBindingMut<Cell, Attribute>
-    where
-        Cell: 'static + Send + Unpin + Clone + PartialEq,
-        Attribute: 'static + Send + Sync + Clone + Unpin + PartialEq + Default,
+where
+    Cell: 'static + Send + Unpin + Clone + PartialEq,
+    Attribute: 'static + Send + Sync + Clone + Unpin + PartialEq + Default,
 {
     fn clone(&self) -> RopeBindingMut<Cell, Attribute> {
         // Increase the usage count
@@ -281,9 +296,9 @@ impl<Cell, Attribute> Clone for RopeBindingMut<Cell, Attribute>
 }
 
 impl<Cell, Attribute> Drop for RopeBindingMut<Cell, Attribute>
-    where
-        Cell: 'static + Send + Unpin + Clone + PartialEq,
-        Attribute: 'static + Send + Sync + Clone + Unpin + PartialEq + Default,
+where
+    Cell: 'static + Send + Unpin + Clone + PartialEq,
+    Attribute: 'static + Send + Sync + Clone + Unpin + PartialEq + Default,
 {
     fn drop(&mut self) {
         self.core.desync(|core| {
@@ -299,9 +314,9 @@ impl<Cell, Attribute> Drop for RopeBindingMut<Cell, Attribute>
 }
 
 impl<Cell, Attribute> Changeable for RopeBindingMut<Cell, Attribute>
-    where
-        Cell: 'static + Send + Unpin + Clone + PartialEq,
-        Attribute: 'static + Send + Sync + Clone + Unpin + PartialEq + Default,
+where
+    Cell: 'static + Send + Unpin + Clone + PartialEq,
+    Attribute: 'static + Send + Sync + Clone + Unpin + PartialEq + Default,
 {
     ///
     /// Supplies a function to be notified when this item is changed
@@ -328,14 +343,13 @@ impl<Cell, Attribute> Changeable for RopeBindingMut<Cell, Attribute>
     }
 }
 
-
 ///
 /// Trait implemented by something that is bound to a value
 ///
 impl<Cell, Attribute> Bound for RopeBindingMut<Cell, Attribute>
-    where
-        Cell: 'static + Send + Unpin + Clone + PartialEq,
-        Attribute: 'static + Send + Sync + Clone + Unpin + PartialEq + Default,
+where
+    Cell: 'static + Send + Unpin + Clone + PartialEq,
+    Attribute: 'static + Send + Sync + Clone + Unpin + PartialEq + Default,
 {
     type Value = AttributedRope<Cell, Attribute>;
 
@@ -376,7 +390,10 @@ impl<Cell, Attribute> Bound for RopeBindingMut<Cell, Attribute>
         })
     }
 
-    fn watch(&self, what: Arc<dyn Notifiable>) -> Arc<dyn Watcher<AttributedRope<Cell, Attribute>>> {
+    fn watch(
+        &self,
+        what: Arc<dyn Notifiable>,
+    ) -> Arc<dyn Watcher<AttributedRope<Cell, Attribute>>> {
         let watch_binding = self.clone();
         let (watcher, notifiable) = NotifyWatcher::new(move || watch_binding.get(), what);
 
@@ -390,9 +407,9 @@ impl<Cell, Attribute> Bound for RopeBindingMut<Cell, Attribute>
 }
 
 impl<Cell, Attribute> AddAssign<Cell> for RopeBindingMut<Cell, Attribute>
-    where
-        Cell: 'static + Send + Unpin + Clone + PartialEq,
-        Attribute: 'static + Send + Sync + Clone + Unpin + PartialEq + Default,
+where
+    Cell: 'static + Send + Unpin + Clone + PartialEq,
+    Attribute: 'static + Send + Sync + Clone + Unpin + PartialEq + Default,
 {
     fn add_assign(&mut self, other: Cell) {
         let len = self.len();
@@ -401,9 +418,9 @@ impl<Cell, Attribute> AddAssign<Cell> for RopeBindingMut<Cell, Attribute>
 }
 
 impl<Cell, Attribute> PartialEq for RopeBindingMut<Cell, Attribute>
-    where
-        Cell: 'static + Send + Unpin + Clone + PartialEq,
-        Attribute: 'static + Send + Sync + Clone + Unpin + PartialEq + Default,
+where
+    Cell: 'static + Send + Unpin + Clone + PartialEq,
+    Attribute: 'static + Send + Sync + Clone + Unpin + PartialEq + Default,
 {
     fn eq(&self, other: &RopeBindingMut<Cell, Attribute>) -> bool {
         // Compare lengths

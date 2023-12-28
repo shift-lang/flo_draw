@@ -1,5 +1,11 @@
-use super::line::*;
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
 use super::super::geo::*;
+use super::line::*;
 
 /// Smallest divisor magnitude to use in ray_intersects_ray (the closer the divisor is to 0, the more close to parallel the lines are), so this
 /// determines the shallowest angle allowed between two lines before we consider them to be parallel.
@@ -13,8 +19,8 @@ const RAY_DIVISOR_SMALLEST_VALUE: f64 = 2e-12;
 /// in higher dimensions)
 ///
 pub fn line_intersects_line<L: Line>(line1: &L, line2: &L) -> Option<L::Point>
-    where
-        L::Point: Coordinate2D,
+where
+    L::Point: Coordinate2D,
 {
     let line1_points = line1.points();
     let line2_points = line2.points();
@@ -22,13 +28,15 @@ pub fn line_intersects_line<L: Line>(line1: &L, line2: &L) -> Option<L::Point>
     let ((x1, y1), (x2, y2)) = (line1_points.0.coords(), line1_points.1.coords());
     let ((x3, y3), (x4, y4)) = (line2_points.0.coords(), line2_points.1.coords());
 
-    let ua = ((x4 - x3) * (y1 - y3) - (y4 - y3) * (x1 - x3)) / ((y4 - y3) * (x2 - x1) - (x4 - x3) * (y2 - y1));
-    let ub = ((x2 - x1) * (y1 - y3) - (y2 - y1) * (x1 - x3)) / ((y4 - y3) * (x2 - x1) - (x4 - x3) * (y2 - y1));
+    let ua = ((x4 - x3) * (y1 - y3) - (y4 - y3) * (x1 - x3))
+        / ((y4 - y3) * (x2 - x1) - (x4 - x3) * (y2 - y1));
+    let ub = ((x2 - x1) * (y1 - y3) - (y2 - y1) * (x1 - x3))
+        / ((y4 - y3) * (x2 - x1) - (x4 - x3) * (y2 - y1));
 
     if (0.0..=1.0).contains(&ua) && (0.0..=1.0).contains(&ub) {
         Some(L::Point::from_components(&[
             x1 + (ua * (x2 - x1)),
-            y1 + (ua * (y2 - y1))
+            y1 + (ua * (y2 - y1)),
         ]))
     } else {
         None
@@ -43,8 +51,8 @@ pub fn line_intersects_line<L: Line>(line1: &L, line2: &L) -> Option<L::Point>
 /// in higher dimensions)
 ///
 pub fn line_intersects_ray<L: Line>(line: &L, ray: &L) -> Option<L::Point>
-    where
-        L::Point: Coordinate2D,
+where
+    L::Point: Coordinate2D,
 {
     let line_points = line.points();
     let ray_points = ray.points();
@@ -52,12 +60,13 @@ pub fn line_intersects_ray<L: Line>(line: &L, ray: &L) -> Option<L::Point>
     let ((x1, y1), (x2, y2)) = (line_points.0.coords(), line_points.1.coords());
     let ((x3, y3), (x4, y4)) = (ray_points.0.coords(), ray_points.1.coords());
 
-    let ua = ((x4 - x3) * (y1 - y3) - (y4 - y3) * (x1 - x3)) / ((y4 - y3) * (x2 - x1) - (x4 - x3) * (y2 - y1));
+    let ua = ((x4 - x3) * (y1 - y3) - (y4 - y3) * (x1 - x3))
+        / ((y4 - y3) * (x2 - x1) - (x4 - x3) * (y2 - y1));
 
     if (0.0..=1.0).contains(&ua) {
         Some(L::Point::from_components(&[
             x1 + (ua * (x2 - x1)),
-            y1 + (ua * (y2 - y1))
+            y1 + (ua * (y2 - y1)),
         ]))
     } else {
         None
@@ -71,8 +80,8 @@ pub fn line_intersects_ray<L: Line>(line: &L, ray: &L) -> Option<L::Point>
 /// in higher dimensions)
 ///
 pub fn ray_intersects_ray<L: Line>(line: &L, ray: &L) -> Option<L::Point>
-    where
-        L::Point: Coordinate2D,
+where
+    L::Point: Coordinate2D,
 {
     let line_points = line.points();
     let ray_points = ray.points();
@@ -87,7 +96,7 @@ pub fn ray_intersects_ray<L: Line>(line: &L, ray: &L) -> Option<L::Point>
 
         Some(L::Point::from_components(&[
             x1 + (ua * (x2 - x1)),
-            y1 + (ua * (y2 - y1))
+            y1 + (ua * (y2 - y1)),
         ]))
     } else {
         None
@@ -98,8 +107,8 @@ pub fn ray_intersects_ray<L: Line>(line: &L, ray: &L) -> Option<L::Point>
 /// Determines if a 2D line has intersected a bounding box (and returns the intersection if it exists)
 ///
 pub fn line_clip_to_bounds<L: Line>(line: &L, bounds: &(L::Point, L::Point)) -> Option<L>
-    where
-        L::Point: Coordinate2D,
+where
+    L::Point: Coordinate2D,
 {
     // Fetch the points for the line
     let line_points = line.points();
@@ -107,8 +116,14 @@ pub fn line_clip_to_bounds<L: Line>(line: &L, bounds: &(L::Point, L::Point)) -> 
     let (dx, dy) = (x2 - x1, y2 - y1);
 
     // ... and the points for the bounding rectangle
-    let (xmin, ymin) = (bounds.0.x().min(bounds.1.x()), bounds.0.y().min(bounds.1.y()));
-    let (xmax, ymax) = (bounds.0.x().max(bounds.1.x()), bounds.0.y().max(bounds.1.y()));
+    let (xmin, ymin) = (
+        bounds.0.x().min(bounds.1.x()),
+        bounds.0.y().min(bounds.1.y()),
+    );
+    let (xmax, ymax) = (
+        bounds.0.x().max(bounds.1.x()),
+        bounds.0.y().max(bounds.1.y()),
+    );
 
     // Our line can be described as '(x1+t*dx, y1+t*dy)' where 0 <= t <= 1
     // We want to solve for the edges, eg (xmin=x1+tmin*dx => txmin=(xmin-x1)/dx)

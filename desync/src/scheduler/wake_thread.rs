@@ -1,9 +1,15 @@
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
 use super::job_queue::*;
 use super::queue_state::*;
 
+use futures::task::ArcWake;
 use std::sync::*;
-use std::thread::{Thread};
-use futures::task::{ArcWake};
+use std::thread::Thread;
 
 ///
 /// Waker that will wake the specified thread
@@ -24,7 +30,7 @@ impl ArcWake for WakeThread {
                 QueueState::WaitingForWake => queue_core.state = QueueState::Idle,
                 QueueState::WaitingForUnpark => queue_core.state = QueueState::Running,
                 QueueState::Running => queue_core.state = QueueState::AwokenWhileRunning,
-                other_state => queue_core.state = other_state
+                other_state => queue_core.state = other_state,
             }
         }
 

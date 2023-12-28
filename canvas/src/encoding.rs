@@ -1,3 +1,9 @@
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
 use crate::color::*;
 use crate::draw::*;
 use crate::font::*;
@@ -116,7 +122,7 @@ impl<A: CanvasEncoding<String>, B: CanvasEncoding<String>> CanvasEncoding<String
 }
 
 impl<A: CanvasEncoding<String>, B: CanvasEncoding<String>, C: CanvasEncoding<String>>
-CanvasEncoding<String> for (A, B, C)
+    CanvasEncoding<String> for (A, B, C)
 {
     fn encode_canvas(&self, append_to: &mut String) {
         self.0.encode_canvas(append_to);
@@ -126,11 +132,11 @@ CanvasEncoding<String> for (A, B, C)
 }
 
 impl<
-    A: CanvasEncoding<String>,
-    B: CanvasEncoding<String>,
-    C: CanvasEncoding<String>,
-    D: CanvasEncoding<String>,
-> CanvasEncoding<String> for (A, B, C, D)
+        A: CanvasEncoding<String>,
+        B: CanvasEncoding<String>,
+        C: CanvasEncoding<String>,
+        D: CanvasEncoding<String>,
+    > CanvasEncoding<String> for (A, B, C, D)
 {
     fn encode_canvas(&self, append_to: &mut String) {
         self.0.encode_canvas(append_to);
@@ -141,12 +147,12 @@ impl<
 }
 
 impl<
-    A: CanvasEncoding<String>,
-    B: CanvasEncoding<String>,
-    C: CanvasEncoding<String>,
-    D: CanvasEncoding<String>,
-    E: CanvasEncoding<String>,
-> CanvasEncoding<String> for (A, B, C, D, E)
+        A: CanvasEncoding<String>,
+        B: CanvasEncoding<String>,
+        C: CanvasEncoding<String>,
+        D: CanvasEncoding<String>,
+        E: CanvasEncoding<String>,
+    > CanvasEncoding<String> for (A, B, C, D, E)
 {
     fn encode_canvas(&self, append_to: &mut String) {
         self.0.encode_canvas(append_to);
@@ -158,13 +164,13 @@ impl<
 }
 
 impl<
-    A: CanvasEncoding<String>,
-    B: CanvasEncoding<String>,
-    C: CanvasEncoding<String>,
-    D: CanvasEncoding<String>,
-    E: CanvasEncoding<String>,
-    F: CanvasEncoding<String>,
-> CanvasEncoding<String> for (A, B, C, D, E, F)
+        A: CanvasEncoding<String>,
+        B: CanvasEncoding<String>,
+        C: CanvasEncoding<String>,
+        D: CanvasEncoding<String>,
+        E: CanvasEncoding<String>,
+        F: CanvasEncoding<String>,
+    > CanvasEncoding<String> for (A, B, C, D, E, F)
 {
     fn encode_canvas(&self, append_to: &mut String) {
         self.0.encode_canvas(append_to);
@@ -198,7 +204,7 @@ impl CanvasEncoding<String> for &Color {
                 ('R', r, g, b, a)
             }
         }
-            .encode_canvas(append_to)
+        .encode_canvas(append_to)
     }
 }
 
@@ -211,7 +217,7 @@ impl CanvasEncoding<String> for &LineJoin {
             &Round => 'R',
             &Bevel => 'B',
         }
-            .encode_canvas(append_to)
+        .encode_canvas(append_to)
     }
 }
 
@@ -224,7 +230,7 @@ impl CanvasEncoding<String> for &LineCap {
             &Round => 'R',
             &Square => 'S',
         }
-            .encode_canvas(append_to)
+        .encode_canvas(append_to)
     }
 }
 
@@ -236,7 +242,7 @@ impl CanvasEncoding<String> for &WindingRule {
             &NonZero => 'n',
             &EvenOdd => 'e',
         }
-            .encode_canvas(append_to)
+        .encode_canvas(append_to)
     }
 }
 
@@ -259,7 +265,7 @@ impl CanvasEncoding<String> for &BlendMode {
             &Darken => ('E', 'D'),
             &Lighten => ('E', 'L'),
         }
-            .encode_canvas(append_to)
+        .encode_canvas(append_to)
     }
 }
 

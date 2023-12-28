@@ -1,15 +1,21 @@
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
 use std::mem;
 use std::pin::*;
 use std::sync::*;
 use std::time::{Duration, Instant};
 
-use flo_binding::*;
-use flo_scene::*;
 use futures::prelude::*;
 use futures::task::{Context, Poll};
 
-use flo_canvas::*;
+use flo_binding::*;
 use flo_canvas::scenery::*;
+use flo_canvas::*;
+use flo_scene::*;
 
 use crate::draw_scene::*;
 use crate::events::*;
@@ -22,8 +28,8 @@ const MAX_BATCH_TIME: Duration = Duration::from_nanos(1_000_000_000 / 60);
 /// Creates a drawing target that will render to a window
 ///
 pub fn create_drawing_window<'a, TProperties>(window_properties: TProperties) -> DrawingTarget
-    where
-        TProperties: 'a + FloWindowProperties,
+where
+    TProperties: 'a + FloWindowProperties,
 {
     let (target, _events) = create_drawing_window_with_events(window_properties);
 
@@ -34,9 +40,11 @@ pub fn create_drawing_window<'a, TProperties>(window_properties: TProperties) ->
 ///
 /// Creates a drawing target that will render to a window, along with a stream of events from that window
 ///
-pub fn create_drawing_window_with_events<'a, TProperties>(window_properties: TProperties) -> (DrawingTarget, impl Send + Stream<Item=DrawEvent>)
-    where
-        TProperties: 'a + FloWindowProperties,
+pub fn create_drawing_window_with_events<'a, TProperties>(
+    window_properties: TProperties,
+) -> (DrawingTarget, impl Send + Stream<Item = DrawEvent>)
+where
+    TProperties: 'a + FloWindowProperties,
 {
     let (width, height) = window_properties.size().get();
 
@@ -54,7 +62,11 @@ pub fn create_drawing_window_with_events<'a, TProperties>(window_properties: TPr
     let target_stream = drawing_without_dashed_lines(target_stream);
     let target_stream = drawing_with_laid_out_text(target_stream);
     let target_stream = drawing_with_text_as_paths(target_stream);
-    let target_stream = BatchedStream { stream: Some(target_stream), frame_count: 0, waiting: vec![] };
+    let target_stream = BatchedStream {
+        stream: Some(target_stream),
+        frame_count: 0,
+        waiting: vec![],
+    };
 
     // Create the events stream
     let events = create_drawing_window_from_stream(target_stream, window_properties);
@@ -69,7 +81,9 @@ pub fn create_drawing_window_with_events<'a, TProperties>(window_properties: TPr
 /// Canvases differ from drawing targets in that they store the vector representation of what they're drawing, and
 /// can send their rendering to multiple targets if necessary
 ///
-pub fn create_canvas_window<'a, TProperties: 'a + FloWindowProperties>(window_properties: TProperties) -> Canvas {
+pub fn create_canvas_window<'a, TProperties: 'a + FloWindowProperties>(
+    window_properties: TProperties,
+) -> Canvas {
     let (canvas, _events) = create_canvas_window_with_events(window_properties);
 
     // Dropping the events will stop the window from blocking when they're not handled
@@ -79,9 +93,11 @@ pub fn create_canvas_window<'a, TProperties: 'a + FloWindowProperties>(window_pr
 ///
 /// Creates a drawing target that will render to a window, along with a stream of events from that window
 ///
-pub fn create_canvas_window_with_events<'a, TProperties>(window_properties: TProperties) -> (Canvas, impl Send + Stream<Item=DrawEvent>)
-    where
-        TProperties: 'a + FloWindowProperties,
+pub fn create_canvas_window_with_events<'a, TProperties>(
+    window_properties: TProperties,
+) -> (Canvas, impl Send + Stream<Item = DrawEvent>)
+where
+    TProperties: 'a + FloWindowProperties,
 {
     let (width, height) = window_properties.size().get();
 
@@ -99,7 +115,11 @@ pub fn create_canvas_window_with_events<'a, TProperties>(window_properties: TPro
     let canvas_stream = drawing_without_dashed_lines(canvas_stream);
     let canvas_stream = drawing_with_laid_out_text(canvas_stream);
     let canvas_stream = drawing_with_text_as_paths(canvas_stream);
-    let canvas_stream = BatchedStream { stream: Some(canvas_stream), frame_count: 0, waiting: vec![] };
+    let canvas_stream = BatchedStream {
+        stream: Some(canvas_stream),
+        frame_count: 0,
+        waiting: vec![],
+    };
 
     // Create the events stream
     let events = create_drawing_window_from_stream(canvas_stream, window_properties);
@@ -111,10 +131,13 @@ pub fn create_canvas_window_with_events<'a, TProperties>(window_properties: TPro
 ///
 /// Creates a drawing window that will render a stream of drawing instructions
 ///
-pub fn create_drawing_window_from_stream<'a, DrawStream, TProperties>(canvas_stream: DrawStream, window_properties: TProperties) -> impl Send + Stream<Item=DrawEvent>
-    where
-        DrawStream: 'static + Send + Unpin + Stream<Item=Vec<Draw>>,
-        TProperties: 'a + FloWindowProperties,
+pub fn create_drawing_window_from_stream<'a, DrawStream, TProperties>(
+    canvas_stream: DrawStream,
+    window_properties: TProperties,
+) -> impl Send + Stream<Item = DrawEvent>
+where
+    DrawStream: 'static + Send + Unpin + Stream<Item = Vec<Draw>>,
+    TProperties: 'a + FloWindowProperties,
 {
     let properties = WindowProperties::from(&window_properties);
 
@@ -123,36 +146,52 @@ pub fn create_drawing_window_from_stream<'a, DrawStream, TProperties>(canvas_str
     let drawing_window_entity = EntityId::new();
     let scene_context = flo_draw_scene_context();
 
-    let render_channel = create_render_window_entity(&scene_context, render_window_entity, window_properties.size().get()).unwrap();
-    let drawing_channel = create_drawing_window_entity(&scene_context, drawing_window_entity, render_channel).unwrap();
+    let render_channel = create_render_window_entity(
+        &scene_context,
+        render_window_entity,
+        window_properties.size().get(),
+    )
+    .unwrap();
+    let drawing_channel =
+        create_drawing_window_entity(&scene_context, drawing_window_entity, render_channel)
+            .unwrap();
 
     // The events send to a channel
     let (events_channel, events_stream) = SimpleEntityChannel::new(drawing_window_entity, 5);
 
     // Pass events from the render stream onto the window using another entity (potentially this could be a background task for the render window entity?)
     let process_entity = EntityId::new();
-    scene_context.create_entity::<(), _, _>(process_entity, move |context, _| {
-        async move {
-            let mut canvas_stream = canvas_stream;
-            let mut drawing_channel = drawing_channel;
+    scene_context
+        .create_entity::<(), _, _>(process_entity, move |context, _| {
+            async move {
+                let mut canvas_stream = canvas_stream;
+                let mut drawing_channel = drawing_channel;
 
-            // Send the window properties to the window
-            send_window_properties(&context, properties, drawing_channel.clone()).ok();
+                // Send the window properties to the window
+                send_window_properties(&context, properties, drawing_channel.clone()).ok();
 
-            // Request event actions from the renderer
-            drawing_channel.send(DrawingWindowRequest::SendEvents(events_channel.boxed())).await.ok();
+                // Request event actions from the renderer
+                drawing_channel
+                    .send(DrawingWindowRequest::SendEvents(events_channel.boxed()))
+                    .await
+                    .ok();
 
-            // Main loop passes on the render actions (we don't process messages directed at this entity)
-            while let Some(drawing_actions) = canvas_stream.next().await {
-                let maybe_err = drawing_channel.send(DrawingWindowRequest::Draw(DrawingRequest::Draw(Arc::new(drawing_actions)))).await;
+                // Main loop passes on the render actions (we don't process messages directed at this entity)
+                while let Some(drawing_actions) = canvas_stream.next().await {
+                    let maybe_err = drawing_channel
+                        .send(DrawingWindowRequest::Draw(DrawingRequest::Draw(Arc::new(
+                            drawing_actions,
+                        ))))
+                        .await;
 
-                if maybe_err.is_err() {
-                    // Stop if the request doesn't go through
-                    break;
+                    if maybe_err.is_err() {
+                        // Stop if the request doesn't go through
+                        break;
+                    }
                 }
             }
-        }
-    }).unwrap();
+        })
+        .unwrap();
 
     // We don't process messages in our background entity, so seal it off
     scene_context.seal_entity(process_entity).unwrap();
@@ -165,7 +204,9 @@ pub fn create_drawing_window_from_stream<'a, DrawStream, TProperties>(canvas_str
 /// Stream that takes a canvas stream and batches as many draw requests as possible
 ///
 struct BatchedStream<TStream>
-    where TStream: Stream<Item=Draw> {
+where
+    TStream: Stream<Item = Draw>,
+{
     /// Items that have been fetched and are waiting to be send
     waiting: Vec<TStream::Item>,
 
@@ -177,7 +218,9 @@ struct BatchedStream<TStream>
 }
 
 impl<TStream> Stream for BatchedStream<TStream>
-    where TStream: Unpin + Stream<Item=Draw> {
+where
+    TStream: Unpin + Stream<Item = Draw>,
+{
     type Item = Vec<TStream::Item>;
 
     fn poll_next(self: Pin<&mut Self>, context: &mut Context) -> Poll<Option<Vec<TStream::Item>>> {
@@ -228,9 +271,7 @@ impl<TStream> Stream for BatchedStream<TStream>
                             batch.push(Draw::ClearCanvas(colour));
                         }
 
-                        Poll::Ready(Some(draw)) => {
-                            batch.push(draw)
-                        }
+                        Poll::Ready(Some(draw)) => batch.push(draw),
 
                         Poll::Pending => {
                             break;
@@ -291,17 +332,21 @@ struct CanvasUpdateStream<TDrawStream, TEventStream> {
 }
 
 impl<TDrawStream, TEventStream> Stream for CanvasUpdateStream<TDrawStream, TEventStream>
-    where
-        TDrawStream: Unpin + Stream<Item=Vec<Draw>>,
-        TEventStream: Unpin + Stream<Item=Vec<DrawEvent>>,
+where
+    TDrawStream: Unpin + Stream<Item = Vec<Draw>>,
+    TEventStream: Unpin + Stream<Item = Vec<DrawEvent>>,
 {
     type Item = CanvasUpdate;
 
     fn poll_next(mut self: Pin<&mut Self>, context: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         // Events get priority
         match self.event_stream.poll_next_unpin(context) {
-            Poll::Ready(Some(events)) => { return Poll::Ready(Some(CanvasUpdate::DrawEvents(events))); }
-            Poll::Ready(None) => { return Poll::Ready(None); }
+            Poll::Ready(Some(events)) => {
+                return Poll::Ready(Some(CanvasUpdate::DrawEvents(events)));
+            }
+            Poll::Ready(None) => {
+                return Poll::Ready(None);
+            }
             Poll::Pending => {}
         }
 
@@ -310,8 +355,12 @@ impl<TDrawStream, TEventStream> Stream for CanvasUpdateStream<TDrawStream, TEven
             // The canvas stream can get closed, in which case it will be set to 'None'
             if let Some(draw_stream) = self.draw_stream.as_mut() {
                 match draw_stream.poll_next_unpin(context) {
-                    Poll::Ready(Some(drawing)) => { return Poll::Ready(Some(CanvasUpdate::Drawing(drawing))); }
-                    Poll::Ready(None) => { self.draw_stream = None; }
+                    Poll::Ready(Some(drawing)) => {
+                        return Poll::Ready(Some(CanvasUpdate::Drawing(drawing)));
+                    }
+                    Poll::Ready(None) => {
+                        self.draw_stream = None;
+                    }
                     Poll::Pending => {}
                 }
             }

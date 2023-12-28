@@ -1,5 +1,11 @@
-use flo_render_software::render::*;
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
 use flo_render_software::canvas::*;
+use flo_render_software::render::*;
 
 use std::io;
 
@@ -19,7 +25,9 @@ pub fn main() {
     canvas.center_region(0.0, 0.0, 1000.0, 1000.0);
 
     // Set up the texture
-    let (flo_w, flo_h) = canvas.load_texture(TextureId(0), io::Cursor::new(flo_bytes)).unwrap();
+    let (flo_w, flo_h) = canvas
+        .load_texture(TextureId(0), io::Cursor::new(flo_bytes))
+        .unwrap();
 
     let ratio = (flo_w as f32) / (flo_h as f32);
     let height = 1000.0 / ratio;
@@ -34,5 +42,8 @@ pub fn main() {
     canvas.fill();
 
     // Render to the terminal window
-    render_drawing(&mut TerminalRenderTarget::new(1920, 1080), canvas.iter().cloned());
+    render_drawing(
+        &mut TerminalRenderTarget::new(1920, 1080),
+        canvas.iter().cloned(),
+    );
 }

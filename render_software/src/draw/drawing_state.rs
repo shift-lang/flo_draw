@@ -1,31 +1,39 @@
-use super::canvas_drawing::*;
-use super::texture::*;
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
+use std::sync::*;
+
+use flo_canvas as canvas;
+use flo_canvas::curves::bezier::path as curves_path;
+use flo_canvas::curves::bezier::*;
+use flo_canvas::curves::line::*;
 
 use crate::edgeplan::*;
 use crate::edges::*;
 use crate::pixel::*;
 
-use flo_canvas as canvas;
-use flo_canvas::curves::line::*;
-use flo_canvas::curves::bezier::*;
-use flo_canvas::curves::bezier::path as curves_path;
-
-use std::sync::*;
+use super::canvas_drawing::*;
 
 ///
 /// The renderer representation of a sprite transform
 ///
 #[derive(Copy, Clone)]
 pub enum SpriteTransform {
-    /// Scale then transform 
-    ScaleTransform { scale: (f64, f64), translate: (f64, f64) },
+    /// Scale then transform
+    ScaleTransform {
+        scale: (f64, f64),
+        translate: (f64, f64),
+    },
 
     /// Arbitrary transform
     Matrix(canvas::Transform2D),
 }
 
 ///
-/// A brush represents what will be used to fill in the next region 
+/// A brush represents what will be used to fill in the next region
 ///
 #[derive(Clone)]
 pub enum Brush {
@@ -128,7 +136,10 @@ impl Default for DrawingState {
             stroke_end_cap: curves_path::LineCap::Butt,
             clip_path: DrawingClipRegion::None,
             blend_mode: AlphaOperation::SourceOver,
-            sprite_transform: SpriteTransform::ScaleTransform { scale: (1.0, 1.0), translate: (0.0, 0.0) },
+            sprite_transform: SpriteTransform::ScaleTransform {
+                scale: (1.0, 1.0),
+                translate: (0.0, 0.0),
+            },
         }
     }
 }
@@ -138,9 +149,11 @@ impl DrawingState {
     /// Ensures that a program location is retained
     ///
     #[inline]
-    pub(crate) fn retain_program<TPixel, const N: usize>(program: &Option<ShapeDescriptor>, data_cache: &mut PixelProgramDataCache<TPixel>)
-        where
-            TPixel: Send + Pixel<N>,
+    pub(crate) fn retain_program<TPixel, const N: usize>(
+        program: &Option<ShapeDescriptor>,
+        data_cache: &mut PixelProgramDataCache<TPixel>,
+    ) where
+        TPixel: Send + Pixel<N>,
     {
         if let Some(program) = &program {
             for program_data in program.programs.iter().copied() {
@@ -155,9 +168,11 @@ impl DrawingState {
     /// The state holds on to the programs it's going to use, so they have to be released before they can be changed
     ///
     #[inline]
-    pub(crate) fn release_program<TPixel, const N: usize>(program: &mut Option<ShapeDescriptor>, data_cache: &mut PixelProgramDataCache<TPixel>)
-        where
-            TPixel: Send + Pixel<N>,
+    pub(crate) fn release_program<TPixel, const N: usize>(
+        program: &mut Option<ShapeDescriptor>,
+        data_cache: &mut PixelProgramDataCache<TPixel>,
+    ) where
+        TPixel: Send + Pixel<N>,
     {
         if let Some(mut program) = program.take() {
             for program_data in program.programs.drain(..) {
@@ -169,20 +184,25 @@ impl DrawingState {
     ///
     /// Releases any pixel program data that is being retained by this state
     ///
-    pub(crate) fn release_all_programs<TPixel, const N: usize>(&mut self, data_cache: &mut PixelProgramDataCache<TPixel>)
-        where
-            TPixel: Send + Pixel<N>,
+    pub(crate) fn release_all_programs<TPixel, const N: usize>(
+        &mut self,
+        data_cache: &mut PixelProgramDataCache<TPixel>,
+    ) where
+        TPixel: Send + Pixel<N>,
     {
         Self::release_program(&mut self.fill_program, data_cache);
         Self::release_program(&mut self.stroke_program, data_cache);
     }
 
     ///
-    /// Updates the state so that the next shape added will use a solid fill colour 
+    /// Updates the state so that the next shape added will use a solid fill colour
     ///
-    pub(crate) fn fill_solid_color<TPixel, const N: usize>(&mut self, colour: canvas::Color, data_cache: &mut PixelProgramDataCache<TPixel>)
-        where
-            TPixel: Send + Pixel<N>,
+    pub(crate) fn fill_solid_color<TPixel, const N: usize>(
+        &mut self,
+        colour: canvas::Color,
+        data_cache: &mut PixelProgramDataCache<TPixel>,
+    ) where
+        TPixel: Send + Pixel<N>,
     {
         // This clears the fill program so we allocate data for it next time
         Self::release_program(&mut self.fill_program, data_cache);
@@ -196,11 +216,14 @@ impl DrawingState {
     }
 
     ///
-    /// Updates the state so that the next shape added will use a solid fill colour 
+    /// Updates the state so that the next shape added will use a solid fill colour
     ///
-    pub(crate) fn stroke_solid_color<TPixel, const N: usize>(&mut self, colour: canvas::Color, data_cache: &mut PixelProgramDataCache<TPixel>)
-        where
-            TPixel: Send + Pixel<N>,
+    pub(crate) fn stroke_solid_color<TPixel, const N: usize>(
+        &mut self,
+        colour: canvas::Color,
+        data_cache: &mut PixelProgramDataCache<TPixel>,
+    ) where
+        TPixel: Send + Pixel<N>,
     {
         // This clears the stroke program so we allocate data for it next time
         Self::release_program(&mut self.stroke_program, data_cache);
@@ -216,27 +239,38 @@ impl DrawingState {
     ///
     /// Sets the blending mode of the current brush
     ///
-    pub(crate) fn blend_mode<TPixel, const N: usize>(&mut self, blend_mode: canvas::BlendMode, data_cache: &mut PixelProgramDataCache<TPixel>)
-        where
-            TPixel: Send + Pixel<N>,
+    pub(crate) fn blend_mode<TPixel, const N: usize>(
+        &mut self,
+        blend_mode: canvas::BlendMode,
+        data_cache: &mut PixelProgramDataCache<TPixel>,
+    ) where
+        TPixel: Send + Pixel<N>,
     {
         use canvas::BlendMode::*;
 
         // Convert the blend mode to an alpha operation
         let operation = match blend_mode {
-            SourceOver => { AlphaOperation::SourceOver }
-            SourceIn => { AlphaOperation::SourceIn }
-            SourceOut => { AlphaOperation::SourceHeldOut }
-            DestinationOver => { AlphaOperation::DestOver }
-            DestinationIn => { AlphaOperation::DestIn }
-            DestinationOut => { AlphaOperation::DestHeldOut }
-            SourceAtop => { AlphaOperation::SourceAtop }
-            DestinationAtop => { AlphaOperation::DestAtop }
+            SourceOver => AlphaOperation::SourceOver,
+            SourceIn => AlphaOperation::SourceIn,
+            SourceOut => AlphaOperation::SourceHeldOut,
+            DestinationOver => AlphaOperation::DestOver,
+            DestinationIn => AlphaOperation::DestIn,
+            DestinationOut => AlphaOperation::DestHeldOut,
+            SourceAtop => AlphaOperation::SourceAtop,
+            DestinationAtop => AlphaOperation::DestAtop,
 
-            Multiply => { todo!() }
-            Screen => { todo!() }
-            Darken => { todo!() }
-            Lighten => { todo!() }
+            Multiply => {
+                todo!()
+            }
+            Screen => {
+                todo!()
+            }
+            Darken => {
+                todo!()
+            }
+            Lighten => {
+                todo!()
+            }
         };
 
         if operation != self.blend_mode {
@@ -278,23 +312,41 @@ impl DrawingState {
     /// Applies the clipping rules to a shape, returning an edge descriptor
     ///
     #[inline]
-    pub(crate) fn clip_shape(&self, shape_id: ShapeId, shape: Vec<impl 'static + Clone + EdgeDescriptor>) -> Vec<Arc<dyn EdgeDescriptor>> {
+    pub(crate) fn clip_shape(
+        &self,
+        shape_id: ShapeId,
+        shape: Vec<impl 'static + Clone + EdgeDescriptor>,
+    ) -> Vec<Arc<dyn EdgeDescriptor>> {
         match &self.clip_path {
-            DrawingClipRegion::None => shape.into_iter().map(|edge| {
-                let result: Arc<dyn EdgeDescriptor> = Arc::new(edge);
-                result
-            }).collect(),
-            DrawingClipRegion::EvenOdd(region) => vec![Arc::new(ClippedShapeEdge::new(shape_id, Arc::clone(region), shape))],
-            DrawingClipRegion::NonZero(region) => vec![Arc::new(ClippedShapeEdge::new(shape_id, Arc::clone(region), shape))],
-            DrawingClipRegion::Nested(region) => vec![Arc::new(ClippedShapeEdge::new(shape_id, Arc::clone(region), shape))],
+            DrawingClipRegion::None => shape
+                .into_iter()
+                .map(|edge| {
+                    let result: Arc<dyn EdgeDescriptor> = Arc::new(edge);
+                    result
+                })
+                .collect(),
+            DrawingClipRegion::EvenOdd(region) => vec![Arc::new(ClippedShapeEdge::new(
+                shape_id,
+                Arc::clone(region),
+                shape,
+            ))],
+            DrawingClipRegion::NonZero(region) => vec![Arc::new(ClippedShapeEdge::new(
+                shape_id,
+                Arc::clone(region),
+                shape,
+            ))],
+            DrawingClipRegion::Nested(region) => vec![Arc::new(ClippedShapeEdge::new(
+                shape_id,
+                Arc::clone(region),
+                shape,
+            ))],
         }
     }
 }
 
-
 impl<TPixel, const N: usize> CanvasDrawing<TPixel, N>
-    where
-        TPixel: 'static + Send + Sync + Pixel<N>,
+where
+    TPixel: 'static + Send + Sync + Pixel<N>,
 {
     ///
     /// Pushes a state onto the stack
@@ -317,8 +369,14 @@ impl<TPixel, const N: usize> CanvasDrawing<TPixel, N>
     pub(super) fn pop_state(&mut self) {
         if let Some(new_state) = self.state_stack.pop() {
             // Release the programs for the current state
-            DrawingState::release_program(&mut self.current_state.fill_program, &mut self.program_data_cache);
-            DrawingState::release_program(&mut self.current_state.stroke_program, &mut self.program_data_cache);
+            DrawingState::release_program(
+                &mut self.current_state.fill_program,
+                &mut self.program_data_cache,
+            );
+            DrawingState::release_program(
+                &mut self.current_state.stroke_program,
+                &mut self.program_data_cache,
+            );
 
             // Replace with the new state
             self.current_state = new_state;

@@ -1,8 +1,15 @@
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
 use std::sync::*;
 
-use flo_scene::*;
 use futures::prelude::*;
 use once_cell::sync::Lazy;
+
+use flo_scene::*;
 
 use crate::glutin::*;
 
@@ -26,7 +33,7 @@ pub fn flo_draw_glutin_scene_context() -> Arc<SceneContext> {
             async move {
                 scene.run().await;
             }
-                .boxed()
+            .boxed()
         })));
 
         // Store as the active context

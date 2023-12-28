@@ -1,3 +1,9 @@
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
 //!
 //! # EdgePlan
 //!
@@ -10,20 +16,20 @@
 //! edges are linked by 1-pixel high linear sections.
 //!
 
-mod edge_intercept_direction;
 mod edge_descriptor;
 mod edge_descriptor_intercept;
 mod edge_id;
-mod shape_descriptor;
-mod shape_id;
+mod edge_intercept_direction;
 mod edge_plan;
 mod edge_plan_intercept;
+mod shape_descriptor;
+mod shape_id;
 
-pub use edge_intercept_direction::*;
 pub use edge_descriptor::*;
 pub use edge_descriptor_intercept::*;
 pub use edge_id::*;
-pub use shape_descriptor::*;
-pub use shape_id::*;
+pub use edge_intercept_direction::*;
 pub use edge_plan::*;
 pub use edge_plan_intercept::*;
+pub use shape_descriptor::*;
+pub use shape_id::*;

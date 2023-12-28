@@ -1,15 +1,14 @@
-use crate::color::*;
-use crate::draw::*;
-use crate::font::*;
-use crate::font_face::*;
-use crate::gradient::*;
-use crate::namespace::*;
-use crate::path::*;
-use crate::sprite::*;
-use crate::texture::*;
-use crate::transform2d::*;
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
 
-use futures::stream;
+use crate::{
+    color::*, draw::*, font::*, font_face::*, gradient::*, namespace::*, path::*, sprite::*,
+    texture::*, transform2d::*,
+};
+
 use futures::task::Poll;
 use futures::*;
 
@@ -376,7 +375,7 @@ enum DecoderState {
     // 's'
     Transform,
     // 'T'
-    State,     // 'Z'
+    State, // 'Z'
 
     ClearCanvas(String), // 'NA' (r, g, b, a)
 
@@ -394,7 +393,7 @@ enum DecoderState {
     // 'Lj' (j)
     LineStyleCap(String),
     // 'Lc' (c)
-    WindingRule,                  // 'W' (r)
+    WindingRule, // 'W' (r)
 
     DashLength(String),
     // 'Dl' (len)
@@ -408,7 +407,7 @@ enum DecoderState {
     // 'Ct' (texture_id, x1, y1, x2, y2)
     ColorGradient(DecodeGradientId, String),
     // 'Cg' (gradient_id, x1, y1, x2, y2)
-    ColorTransform(String),                  // 'CT' (transform)
+    ColorTransform(String), // 'CT' (transform)
 
     BlendMode(String), // 'M' (mode)
 
@@ -428,7 +427,7 @@ enum DecoderState {
     // 'NB' (id, mode)
     NewLayerAlpha(DecodeLayerId, String),
     // 'Nt' (id, alpha)
-    SwapLayers(Option<LayerId>, String),  // 'NX' (layer1, layer2)
+    SwapLayers(Option<LayerId>, String), // 'NX' (layer1, layer2)
 
     NewSprite(String),
     // 'Ns' (id)
@@ -448,7 +447,7 @@ enum DecoderState {
     // 'sTs' (x, y)
     SpriteTransformRotate(String),
     // 'sTr' (degr ees)
-    SpriteTransformTransform(String),          // 'sTT' (transform)
+    SpriteTransformTransform(String), // 'sTT' (transform)
 
     NewNamespace(String), // 'NN' (GUID as two u64s)
 
@@ -456,7 +455,7 @@ enum DecoderState {
     // 't'
     FontDrawText(DecodeFontId, DecodeString, String),
     // 'tT' (font_id, string, x, y)
-    FontBeginLayout(String),                          // 'tl' (x, y, align)
+    FontBeginLayout(String), // 'tl' (x, y, align)
 
     FontOp(DecodeFontId),
     // 'f' (id, op)
@@ -484,7 +483,7 @@ enum DecoderState {
     // 'B<id>t' (alpha)
     TextureOpCopy(TextureId, DecodeTextureId),
     // 'B<id>C' (texture)
-    TextureOpFilter(TextureId, String),                              // 'B<id>F' (filter)
+    TextureOpFilter(TextureId, String), // 'B<id>F' (filter)
 
     GradientOp(DecodeGradientId),
     // 'G' (id, op)
@@ -2737,9 +2736,9 @@ impl CanvasDecoder {
 /// Decodes a canvas drawing represented as an iterator of characters. If there's an error in the stream, it will
 /// be the last item decoded.
 ///
-pub fn decode_drawing<In: IntoIterator<Item=char>>(
+pub fn decode_drawing<In: IntoIterator<Item = char>>(
     source: In,
-) -> impl Iterator<Item=Result<Draw, DecoderError>> {
+) -> impl Iterator<Item = Result<Draw, DecoderError>> {
     // The decoder represents the state machine used for decoding this item
     let mut decoder = CanvasDecoder::new();
     let mut seen_error = false;
@@ -2777,9 +2776,9 @@ pub enum StreamDecoderError<E> {
 ///
 /// Decodes a canvas drawing represented as a stream of characters.
 ///
-pub fn decode_drawing_stream<In: Unpin + Stream<Item=Result<char, E>>, E>(
+pub fn decode_drawing_stream<In: Unpin + Stream<Item = Result<char, E>>, E>(
     source: In,
-) -> impl Unpin + Stream<Item=Result<Draw, StreamDecoderError<E>>> {
+) -> impl Unpin + Stream<Item = Result<Draw, StreamDecoderError<E>>> {
     let mut source = source;
     let mut decoder = CanvasDecoder::new();
     let mut seen_error = false;
@@ -2857,9 +2856,9 @@ mod test {
         assert!(
             decoded
                 == instructions
-                .into_iter()
-                .map(|draw| Ok(draw))
-                .collect::<Vec<_>>()
+                    .into_iter()
+                    .map(|draw| Ok(draw))
+                    .collect::<Vec<_>>()
         );
     }
 

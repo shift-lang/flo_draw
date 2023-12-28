@@ -1,9 +1,15 @@
-use flo_curves::bezier::path::*;
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
 use futures::executor;
 use futures::prelude::*;
 
-use flo_draw::*;
+use flo_curves::bezier::path::*;
 use flo_draw::canvas::*;
+use flo_draw::*;
 
 ///
 /// Draws FlowBetween's mascot onto a dynamic texture, then draw the texture onto a window (so it's possible to see the pixellation, but it's always a fixed size)

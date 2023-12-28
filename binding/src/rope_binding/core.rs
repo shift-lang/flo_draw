@@ -1,16 +1,23 @@
-use crate::releasable::*;
-use crate::rope_binding::stream_state::*;
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
 
 use flo_rope::*;
 use futures::task::*;
+
+use crate::releasable::*;
+use crate::rope_binding::stream_state::*;
 
 ///
 /// The core of a rope binding represents the data that's shared amongst all ropes
 ///
 pub(super) struct RopeBindingCore<Cell, Attribute>
-    where
-        Cell: Clone + PartialEq,
-        Attribute: Clone + PartialEq + Default {
+where
+    Cell: Clone + PartialEq,
+    Attribute: Clone + PartialEq + Default,
+{
     /// The number of items that are using hte core
     pub(super) usage_count: usize,
 
@@ -28,14 +35,16 @@ pub(super) struct RopeBindingCore<Cell, Attribute>
 }
 
 impl<Cell, Attribute> RopeBindingCore<Cell, Attribute>
-    where
-        Cell: 'static + Send + Unpin + Clone + PartialEq,
-        Attribute: 'static + Send + Sync + Clone + Unpin + PartialEq + Default {
+where
+    Cell: 'static + Send + Unpin + Clone + PartialEq,
+    Attribute: 'static + Send + Sync + Clone + Unpin + PartialEq + Default,
+{
     ///
     /// If there are any notifiables in this object that aren't in use, remove them
     ///
     pub(super) fn filter_unused_notifications(&mut self) {
-        self.when_changed.retain(|releasable| releasable.is_in_use());
+        self.when_changed
+            .retain(|releasable| releasable.is_in_use());
     }
 
     ///

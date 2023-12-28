@@ -1,26 +1,32 @@
-use super::PathDirection;
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
 use super::path::*;
-use crate::geo::*;
+use super::PathDirection;
 use crate::consts::*;
+use crate::geo::*;
 
 use smallvec::*;
 
-use std::fmt;
 use std::cell::*;
-use std::collections::{VecDeque};
+use std::collections::VecDeque;
+use std::fmt;
 
 mod edge;
 mod edge_ref;
-mod ray_collision;
 mod path_collision;
+mod ray_collision;
 
 #[cfg(test)]
 pub(crate) mod test;
 
 pub use self::edge::*;
 pub use self::edge_ref::*;
-pub use self::ray_collision::*;
 pub use self::path_collision::*;
+pub use self::ray_collision::*;
 
 /// Maximum number of edges to traverse when 'healing' gaps found in an external path
 const MAX_HEAL_DEPTH: usize = 3;
@@ -108,8 +114,16 @@ impl<Point, Label> GraphPathPoint<Point, Label> {
     ///
     /// Creates a new graph path point
     ///
-    fn new(position: Point, forward_edges: SmallVec<[GraphPathEdge<Point, Label>; 2]>, connected_from: SmallVec<[usize; 2]>) -> GraphPathPoint<Point, Label> {
-        GraphPathPoint { position, forward_edges, connected_from }
+    fn new(
+        position: Point,
+        forward_edges: SmallVec<[GraphPathEdge<Point, Label>; 2]>,
+        connected_from: SmallVec<[usize; 2]>,
+    ) -> GraphPathPoint<Point, Label> {
+        GraphPathPoint {
+            position,
+            forward_edges,
+            connected_from,
+        }
     }
 }
 
@@ -157,7 +171,10 @@ impl<Point: Coordinate + Coordinate2D, Label: Copy> GraphPath<Point, Label> {
     ///
     /// Creates a graph path from a bezier path
     ///
-    pub fn from_path(path: &impl BezierPath<Point=Point>, label: Label) -> GraphPath<Point, Label> {
+    pub fn from_path(
+        path: &impl BezierPath<Point = Point>,
+        label: Label,
+    ) -> GraphPath<Point, Label> {
         // Use a reversed path if the direction is anti-clockwise
         let direction = PathDirection::from(path);
 
@@ -170,14 +187,23 @@ impl<Point: Coordinate + Coordinate2D, Label: Copy> GraphPath<Point, Label> {
     ///
     /// Creates a graph path from a bezier path moving in an anti-clockwise direction
     ///
-    fn from_anticlockwise_path(path: &impl BezierPath<Point=Point>, label: Label) -> GraphPath<Point, Label> {
-        Self::from_clockwise_path(&path.reversed::<(Point, Vec<(Point, Point, Point)>)>(), label)
+    fn from_anticlockwise_path(
+        path: &impl BezierPath<Point = Point>,
+        label: Label,
+    ) -> GraphPath<Point, Label> {
+        Self::from_clockwise_path(
+            &path.reversed::<(Point, Vec<(Point, Point, Point)>)>(),
+            label,
+        )
     }
 
     ///
     /// Creates a graph path from a bezier path moving in the clockwise direction
     ///
-    fn from_clockwise_path(path: &impl BezierPath<Point=Point>, label: Label) -> GraphPath<Point, Label> {
+    fn from_clockwise_path(
+        path: &impl BezierPath<Point = Point>,
+        label: Label,
+    ) -> GraphPath<Point, Label> {
         // All edges are exterior for a single path
         let mut points = vec![];
 
@@ -194,7 +220,9 @@ impl<Point: Coordinate + Coordinate2D, Label: Copy> GraphPath<Point, Label> {
         for (cp1, cp2, end_point) in path.points() {
             // Ignore points that are too close to the last point
             if end_point.is_near_to(&last_point_pos, CLOSE_DISTANCE) {
-                if cp1.is_near_to(&last_point_pos, CLOSE_DISTANCE) && cp2.is_near_to(&cp1, CLOSE_DISTANCE) {
+                if cp1.is_near_to(&last_point_pos, CLOSE_DISTANCE)
+                    && cp2.is_near_to(&cp1, CLOSE_DISTANCE)
+                {
                     continue;
                 }
             }
@@ -203,7 +231,15 @@ impl<Point: Coordinate + Coordinate2D, Label: Copy> GraphPath<Point, Label> {
             points.push(GraphPathPoint::new(end_point, smallvec![], smallvec![]));
 
             // Add an edge from the last point to the next point
-            points[last_point_idx].forward_edges.push(GraphPathEdge::new(GraphPathEdgeKind::Uncategorised, (cp1, cp2), next_point_idx, label, 0));
+            points[last_point_idx]
+                .forward_edges
+                .push(GraphPathEdge::new(
+                    GraphPathEdgeKind::Uncategorised,
+                    (cp1, cp2),
+                    next_point_idx,
+                    label,
+                    0,
+                ));
 
             // Update the last/next pooints
             last_point_idx += 1;
@@ -227,7 +263,15 @@ impl<Point: Coordinate + Coordinate2D, Label: Copy> GraphPath<Point, Label> {
                 let cp1 = close_vector * 0.33 + start_point;
                 let cp2 = close_vector * 0.66 + start_point;
 
-                points[last_point_idx].forward_edges.push(GraphPathEdge::new(GraphPathEdgeKind::Uncategorised, (cp1, cp2), 0, label, 0));
+                points[last_point_idx]
+                    .forward_edges
+                    .push(GraphPathEdge::new(
+                        GraphPathEdgeKind::Uncategorised,
+                        (cp1, cp2),
+                        0,
+                        label,
+                        0,
+                    ));
             }
         } else {
             // Just a start point and no edges: remove the start point as it doesn't really make sense
@@ -246,7 +290,13 @@ impl<Point: Coordinate + Coordinate2D, Label: Copy> GraphPath<Point, Label> {
     ///
     /// Creates a new graph path by merging (not colliding) a set of paths with their labels
     ///
-    pub fn from_merged_paths<'a, P: 'a + BezierPath<Point=Point>, PathIter: IntoIterator<Item=(&'a P, Label)>>(paths: PathIter) -> GraphPath<Point, Label> {
+    pub fn from_merged_paths<
+        'a,
+        P: 'a + BezierPath<Point = Point>,
+        PathIter: IntoIterator<Item = (&'a P, Label)>,
+    >(
+        paths: PathIter,
+    ) -> GraphPath<Point, Label> {
         // Create an empty path
         let mut merged_path = GraphPath::new();
 
@@ -295,7 +345,7 @@ impl<Point: Coordinate + Coordinate2D, Label: Copy> GraphPath<Point, Label> {
     /// Returns an iterator of all edges in this graph
     ///
     #[inline]
-    pub fn all_edges(&self) -> impl '_ + Iterator<Item=GraphEdge<'_, Point, Label>> {
+    pub fn all_edges(&self) -> impl '_ + Iterator<Item = GraphEdge<'_, Point, Label>> {
         (0..(self.points.len()))
             .into_iter()
             .flat_map(move |point_num| self.edges_for_point(point_num))
@@ -305,16 +355,18 @@ impl<Point: Coordinate + Coordinate2D, Label: Copy> GraphPath<Point, Label> {
     /// Returns an iterator of all the edges in this graph, as references
     ///
     #[inline]
-    pub fn all_edge_refs(&self) -> impl '_ + Iterator<Item=GraphEdgeRef> {
+    pub fn all_edge_refs(&self) -> impl '_ + Iterator<Item = GraphEdgeRef> {
         (0..(self.points.len()))
             .into_iter()
-            .flat_map(move |point_idx| (0..(self.points[point_idx].forward_edges.len()))
-                .into_iter()
-                .map(move |edge_idx| GraphEdgeRef {
-                    start_idx: point_idx,
-                    edge_idx: edge_idx,
-                    reverse: false,
-                }))
+            .flat_map(move |point_idx| {
+                (0..(self.points[point_idx].forward_edges.len()))
+                    .into_iter()
+                    .map(move |edge_idx| GraphEdgeRef {
+                        start_idx: point_idx,
+                        edge_idx: edge_idx,
+                        reverse: false,
+                    })
+            })
     }
 
     ///
@@ -323,19 +375,35 @@ impl<Point: Coordinate + Coordinate2D, Label: Copy> GraphPath<Point, Label> {
     /// Edges are directional: this will provide the edges that leave the supplied point
     ///
     #[inline]
-    pub fn edges_for_point(&self, point_num: usize) -> impl '_ + Iterator<Item=GraphEdge<'_, Point, Label>> {
+    pub fn edges_for_point(
+        &self,
+        point_num: usize,
+    ) -> impl '_ + Iterator<Item = GraphEdge<'_, Point, Label>> {
         (0..(self.points[point_num].forward_edges.len()))
             .into_iter()
-            .map(move |edge_idx| GraphEdge::new(self, GraphEdgeRef { start_idx: point_num, edge_idx: edge_idx, reverse: false }))
+            .map(move |edge_idx| {
+                GraphEdge::new(
+                    self,
+                    GraphEdgeRef {
+                        start_idx: point_num,
+                        edge_idx: edge_idx,
+                        reverse: false,
+                    },
+                )
+            })
     }
 
     ///
     /// Returns the edge refs for a particular point
     ///
-    pub fn edge_refs_for_point(&self, point_num: usize) -> impl Iterator<Item=GraphEdgeRef> {
+    pub fn edge_refs_for_point(&self, point_num: usize) -> impl Iterator<Item = GraphEdgeRef> {
         (0..(self.points[point_num].forward_edges.len()))
             .into_iter()
-            .map(move |edge_idx| GraphEdgeRef { start_idx: point_num, edge_idx: edge_idx, reverse: false })
+            .map(move |edge_idx| GraphEdgeRef {
+                start_idx: point_num,
+                edge_idx: edge_idx,
+                reverse: false,
+            })
     }
 
     ///
@@ -351,9 +419,13 @@ impl<Point: Coordinate + Coordinate2D, Label: Copy> GraphPath<Point, Label> {
     ///
     /// Edges are directional: this will provide the edges that connect to the supplied point
     ///
-    pub fn reverse_edges_for_point(&self, point_num: usize) -> impl '_ + Iterator<Item=GraphEdge<'_, Point, Label>> {
+    pub fn reverse_edges_for_point(
+        &self,
+        point_num: usize,
+    ) -> impl '_ + Iterator<Item = GraphEdge<'_, Point, Label>> {
         // Fetch the points that connect to this point
-        self.points[point_num].connected_from
+        self.points[point_num]
+            .connected_from
             .iter()
             .flat_map(move |connected_from| {
                 let connected_from = *connected_from;
@@ -362,8 +434,13 @@ impl<Point: Coordinate + Coordinate2D, Label: Copy> GraphPath<Point, Label> {
                 (0..(self.points[connected_from].forward_edges.len()))
                     .into_iter()
                     .filter_map(move |edge_idx| {
-                        if self.points[connected_from].forward_edges[edge_idx].end_idx == point_num {
-                            Some(GraphEdgeRef { start_idx: connected_from, edge_idx: edge_idx, reverse: true })
+                        if self.points[connected_from].forward_edges[edge_idx].end_idx == point_num
+                        {
+                            Some(GraphEdgeRef {
+                                start_idx: connected_from,
+                                edge_idx: edge_idx,
+                                reverse: true,
+                            })
                         } else {
                             None
                         }
@@ -375,7 +452,7 @@ impl<Point: Coordinate + Coordinate2D, Label: Copy> GraphPath<Point, Label> {
     ///
     /// Merges in another path
     ///
-    /// This adds the edges in the new path to this path without considering if they are internal or external 
+    /// This adds the edges in the new path to this path without considering if they are internal or external
     ///
     pub fn merge(self, merge_path: GraphPath<Point, Label>) -> GraphPath<Point, Label> {
         // Copy the points from this graph
@@ -384,20 +461,19 @@ impl<Point: Coordinate + Coordinate2D, Label: Copy> GraphPath<Point, Label> {
 
         // Add in points from the merge path
         let offset = new_points.len();
-        new_points.extend(merge_path.points.into_iter()
-            .map(|mut point| {
-                // Update the offsets in the edges
-                for mut edge in &mut point.forward_edges {
-                    edge.end_idx += offset;
-                }
+        new_points.extend(merge_path.points.into_iter().map(|mut point| {
+            // Update the offsets in the edges
+            for edge in &mut point.forward_edges {
+                edge.end_idx += offset;
+            }
 
-                for previous_point in &mut point.connected_from {
-                    *previous_point += offset;
-                }
+            for previous_point in &mut point.connected_from {
+                *previous_point += offset;
+            }
 
-                // Generate the new edge
-                point
-            }));
+            // Generate the new edge
+            point
+        }));
 
         // Combined path
         GraphPath {
@@ -439,22 +515,35 @@ impl<Point: Coordinate + Coordinate2D, Label: Copy> GraphPath<Point, Label> {
         self.check_following_edge_consistency();
 
         // Find the next edge
-        let next_point_idx = self.points[edge_ref.start_idx].forward_edges[edge_ref.edge_idx].end_idx;
-        let next_edge_idx = self.points[edge_ref.start_idx].forward_edges[edge_ref.edge_idx].following_edge_idx;
+        let next_point_idx =
+            self.points[edge_ref.start_idx].forward_edges[edge_ref.edge_idx].end_idx;
+        let next_edge_idx =
+            self.points[edge_ref.start_idx].forward_edges[edge_ref.edge_idx].following_edge_idx;
 
         // Edge shouldn't just loop around to itself
         test_assert!(next_point_idx != edge_ref.start_idx || next_edge_idx != edge_ref.edge_idx);
 
         // ... and the preceding edge (by searching all of the connected points)
-        let previous_edge_ref = self.points[edge_ref.start_idx].connected_from
+        let previous_edge_ref = self.points[edge_ref.start_idx]
+            .connected_from
             .iter()
             .flat_map(|point_idx| {
                 let point_idx = *point_idx;
-                self.points[point_idx].forward_edges.iter().enumerate().map(move |(edge_idx, edge)| (point_idx, edge_idx, edge))
+                self.points[point_idx]
+                    .forward_edges
+                    .iter()
+                    .enumerate()
+                    .map(move |(edge_idx, edge)| (point_idx, edge_idx, edge))
             })
             .find_map(|(point_idx, edge_idx, edge)| {
-                if edge.end_idx == edge_ref.start_idx && edge.following_edge_idx == edge_ref.edge_idx {
-                    Some(GraphEdgeRef { start_idx: point_idx, edge_idx: edge_idx, reverse: false })
+                if edge.end_idx == edge_ref.start_idx
+                    && edge.following_edge_idx == edge_ref.edge_idx
+                {
+                    Some(GraphEdgeRef {
+                        start_idx: point_idx,
+                        edge_idx: edge_idx,
+                        reverse: false,
+                    })
                 } else {
                     None
                 }
@@ -463,24 +552,39 @@ impl<Point: Coordinate + Coordinate2D, Label: Copy> GraphPath<Point, Label> {
         test_assert!(previous_edge_ref.is_some());
 
         if let Some(previous_edge_ref) = previous_edge_ref {
-            test_assert!(self.points[previous_edge_ref.start_idx].forward_edges[previous_edge_ref.edge_idx].end_idx == edge_ref.start_idx);
-            test_assert!(self.points[previous_edge_ref.start_idx].forward_edges[previous_edge_ref.edge_idx].following_edge_idx == edge_ref.edge_idx);
+            test_assert!(
+                self.points[previous_edge_ref.start_idx].forward_edges[previous_edge_ref.edge_idx]
+                    .end_idx
+                    == edge_ref.start_idx
+            );
+            test_assert!(
+                self.points[previous_edge_ref.start_idx].forward_edges[previous_edge_ref.edge_idx]
+                    .following_edge_idx
+                    == edge_ref.edge_idx
+            );
 
             // Reconnect the previous edge to the next edge
-            self.points[previous_edge_ref.start_idx].forward_edges[previous_edge_ref.edge_idx].end_idx = next_point_idx;
-            self.points[previous_edge_ref.start_idx].forward_edges[previous_edge_ref.edge_idx].following_edge_idx = next_edge_idx;
+            self.points[previous_edge_ref.start_idx].forward_edges[previous_edge_ref.edge_idx]
+                .end_idx = next_point_idx;
+            self.points[previous_edge_ref.start_idx].forward_edges[previous_edge_ref.edge_idx]
+                .following_edge_idx = next_edge_idx;
 
             // Remove the old edge from the list
-            self.points[edge_ref.start_idx].forward_edges.remove(edge_ref.edge_idx);
+            self.points[edge_ref.start_idx]
+                .forward_edges
+                .remove(edge_ref.edge_idx);
 
             // For all the connected points, update the following edge refs
             let mut still_connected = false;
 
-            self.points[edge_ref.start_idx].connected_from.sort_unstable();
+            self.points[edge_ref.start_idx]
+                .connected_from
+                .sort_unstable();
             self.points[edge_ref.start_idx].connected_from.dedup();
             for connected_point_idx in self.points[edge_ref.start_idx].connected_from.clone() {
                 for edge_idx in 0..(self.points[connected_point_idx].forward_edges.len()) {
-                    let connected_edge = &mut self.points[connected_point_idx].forward_edges[edge_idx];
+                    let connected_edge =
+                        &mut self.points[connected_point_idx].forward_edges[edge_idx];
 
                     // Only interested in edges on the point we just changed
                     if connected_edge.end_idx != edge_ref.start_idx {
@@ -504,7 +608,9 @@ impl<Point: Coordinate + Coordinate2D, Label: Copy> GraphPath<Point, Label> {
 
             // If the two points are not still connected, remove the previous point from the connected list
             if !still_connected {
-                self.points[edge_ref.start_idx].connected_from.retain(|point_idx| *point_idx != edge_ref.start_idx);
+                self.points[edge_ref.start_idx]
+                    .connected_from
+                    .retain(|point_idx| *point_idx != edge_ref.start_idx);
             }
 
             // Edges should be consistent again
@@ -522,7 +628,11 @@ impl<Point: Coordinate + Coordinate2D, Label: Copy> GraphPath<Point, Label> {
             let mut edge_idx = 0;
             while edge_idx < self.points[point_idx].forward_edges.len() {
                 // Remove this edge if it's very short
-                let edge_ref = GraphEdgeRef { start_idx: point_idx, edge_idx: edge_idx, reverse: false };
+                let edge_ref = GraphEdgeRef {
+                    start_idx: point_idx,
+                    edge_idx: edge_idx,
+                    reverse: false,
+                };
                 if self.edge_is_very_short(edge_ref) {
                     self.remove_edge(edge_ref);
                 } else {
@@ -545,14 +655,22 @@ impl<Point: Coordinate + Coordinate2D, Label: Copy> GraphPath<Point, Label> {
     ///
     /// Unlike collide(), this will indicate if any collisions were detected or if the two paths merged without collisions
     ///
-    pub fn collide_or_merge(mut self, collide_path: GraphPath<Point, Label>, accuracy: f64) -> CollidedGraphPath<Point, Label> {
+    pub fn collide_or_merge(
+        mut self,
+        collide_path: GraphPath<Point, Label>,
+        accuracy: f64,
+    ) -> CollidedGraphPath<Point, Label> {
         // Generate a merged path with all of the edges
         let collision_offset = self.points.len();
         self = self.merge(collide_path);
 
         // Search for collisions between our original path and the new one
         let total_points = self.points.len();
-        if self.detect_collisions(0..collision_offset, collision_offset..total_points, accuracy) {
+        if self.detect_collisions(
+            0..collision_offset,
+            collision_offset..total_points,
+            accuracy,
+        ) {
             CollidedGraphPath::Collided(self)
         } else {
             CollidedGraphPath::Merged(self)
@@ -569,14 +687,22 @@ impl<Point: Coordinate + Coordinate2D, Label: Copy> GraphPath<Point, Label> {
     /// to specify edge types - knowing if an edge is an interior or exterior edge makes it possible to tell the difference
     /// between a hole cut into a shape and an intersection.
     ///
-    pub fn collide(mut self, collide_path: GraphPath<Point, Label>, accuracy: f64) -> GraphPath<Point, Label> {
+    pub fn collide(
+        mut self,
+        collide_path: GraphPath<Point, Label>,
+        accuracy: f64,
+    ) -> GraphPath<Point, Label> {
         // Generate a merged path with all of the edges
         let collision_offset = self.points.len();
         self = self.merge(collide_path);
 
         // Search for collisions between our original path and the new one
         let total_points = self.points.len();
-        self.detect_collisions(0..collision_offset, collision_offset..total_points, accuracy);
+        self.detect_collisions(
+            0..collision_offset,
+            collision_offset..total_points,
+            accuracy,
+        );
 
         // Return the result
         self
@@ -590,8 +716,12 @@ impl<Point: Coordinate + Coordinate2D, Label: Copy> GraphPath<Point, Label> {
             self.points[point_idx].position.round(accuracy);
 
             for edge_idx in 0..(self.points[point_idx].forward_edges.len()) {
-                self.points[point_idx].forward_edges[edge_idx].cp1.round(accuracy);
-                self.points[point_idx].forward_edges[edge_idx].cp2.round(accuracy);
+                self.points[point_idx].forward_edges[edge_idx]
+                    .cp1
+                    .round(accuracy);
+                self.points[point_idx].forward_edges[edge_idx]
+                    .cp2
+                    .round(accuracy);
             }
         }
     }
@@ -669,7 +799,8 @@ impl<Point: Coordinate + Coordinate2D, Label: Copy> GraphPath<Point, Label> {
             visited[current_edge.start_idx] = true;
 
             // Pick the next edge
-            let end_idx = self.points[current_edge.start_idx].forward_edges[current_edge.edge_idx].end_idx;
+            let end_idx =
+                self.points[current_edge.start_idx].forward_edges[current_edge.edge_idx].end_idx;
             let edges = &self.points[end_idx].forward_edges;
 
             if edges.len() != 1 {
@@ -707,7 +838,10 @@ impl<Point: Coordinate + Coordinate2D, Label: Copy> GraphPath<Point, Label> {
                 // Find the index of the preceding edge
                 let mut previous_edges = (0..(self.points[previous_point_idx].forward_edges.len()))
                     .into_iter()
-                    .filter(|edge_idx| self.points[previous_point_idx].forward_edges[*edge_idx].end_idx == current_point_idx);
+                    .filter(|edge_idx| {
+                        self.points[previous_point_idx].forward_edges[*edge_idx].end_idx
+                            == current_point_idx
+                    });
 
                 let previous_edge_idx = previous_edges.next().expect("Previous edge");
                 if previous_edges.next().is_some() {
@@ -738,18 +872,27 @@ impl<Point: Coordinate + Coordinate2D, Label: Copy> GraphPath<Point, Label> {
     ///
     fn edge_has_gap(&self, edge: GraphEdgeRef) -> bool {
         // Interior edges have no gaps
-        if self.points[edge.start_idx].forward_edges[edge.edge_idx].kind != GraphPathEdgeKind::Exterior {
+        if self.points[edge.start_idx].forward_edges[edge.edge_idx].kind
+            != GraphPathEdgeKind::Exterior
+        {
             false
         } else {
             // Get the end point index for this edge
             let (start_idx, end_idx) = if edge.reverse {
-                (self.points[edge.start_idx].forward_edges[edge.edge_idx].end_idx, edge.start_idx)
+                (
+                    self.points[edge.start_idx].forward_edges[edge.edge_idx].end_idx,
+                    edge.start_idx,
+                )
             } else {
-                (edge.start_idx, self.points[edge.start_idx].forward_edges[edge.edge_idx].end_idx)
+                (
+                    edge.start_idx,
+                    self.points[edge.start_idx].forward_edges[edge.edge_idx].end_idx,
+                )
             };
 
             // Result is true if there is no edge attached to the end point that is marked exterior (other than the edge leading back to the initial point)
-            !self.edges_for_point(end_idx)
+            !self
+                .edges_for_point(end_idx)
                 .chain(self.reverse_edges_for_point(end_idx))
                 .filter(|following_edge| following_edge.end_point_index() != start_idx)
                 .any(|following_edge| following_edge.kind() == GraphPathEdgeKind::Exterior)
@@ -778,24 +921,36 @@ impl<Point: Coordinate + Coordinate2D, Label: Copy> GraphPath<Point, Label> {
             // Process all the points found in the previous pass
             for (from_point_idx, next_point_idx) in points_to_process {
                 // Stop once we find a point
-                if target_point_idx.is_some() { break; }
+                if target_point_idx.is_some() {
+                    break;
+                }
 
                 // Process all edges connected to this point
-                for next_edge in self.edges_for_point(next_point_idx) /*.chain(self.reverse_edges_for_point(next_point_idx)) */ {
+                for next_edge in self.edges_for_point(next_point_idx)
+                /*.chain(self.reverse_edges_for_point(next_point_idx)) */
+                {
                     let edge_end_point_idx = next_edge.end_point_index();
                     let next_edge_ref = GraphEdgeRef::from(&next_edge);
                     let edge_start_idx = next_edge.start_point_index();
 
                     // Don't go back the way we came
-                    if edge_end_point_idx == from_point_idx { continue; }
+                    if edge_end_point_idx == from_point_idx {
+                        continue;
+                    }
 
                     // Don't revisit points we already have a trail for
-                    if preceding_edge[edge_end_point_idx].is_some() { continue; }
+                    if preceding_edge[edge_end_point_idx].is_some() {
+                        continue;
+                    }
 
                     // Ignore exterior edges (except exterior edges where edge_has_gap is true, which indicate we've crossed our gap)
                     let mut reversed_edge_ref = next_edge_ref;
                     reversed_edge_ref.reverse = !reversed_edge_ref.reverse;
-                    if next_edge.kind() == GraphPathEdgeKind::Exterior && !self.edge_has_gap(reversed_edge_ref) { continue; }
+                    if next_edge.kind() == GraphPathEdgeKind::Exterior
+                        && !self.edge_has_gap(reversed_edge_ref)
+                    {
+                        continue;
+                    }
 
                     // Add this as a preceding edge
                     preceding_edge[edge_end_point_idx] = Some(next_edge_ref);
@@ -820,14 +975,17 @@ impl<Point: Coordinate + Coordinate2D, Label: Copy> GraphPath<Point, Label> {
         }
 
         if let Some(target_point_idx) = target_point_idx {
-            // Target_point represents the final point in the 
+            // Target_point represents the final point in the
             let mut current_point_idx = target_point_idx;
 
             while current_point_idx != end_point_idx {
-                let previous_edge_ref = preceding_edge[current_point_idx].expect("Previous point during gap healing");
+                let previous_edge_ref =
+                    preceding_edge[current_point_idx].expect("Previous point during gap healing");
 
                 // Mark this edge as exterior
-                self.points[previous_edge_ref.start_idx].forward_edges[previous_edge_ref.edge_idx].kind = GraphPathEdgeKind::Exterior;
+                self.points[previous_edge_ref.start_idx].forward_edges
+                    [previous_edge_ref.edge_idx]
+                    .kind = GraphPathEdgeKind::Exterior;
 
                 // Move to the previous point
                 let previous_edge = self.get_edge(previous_edge_ref);
@@ -854,7 +1012,11 @@ impl<Point: Coordinate + Coordinate2D, Label: Copy> GraphPath<Point, Label> {
         for point_idx in 0..(self.points.len()) {
             for edge_idx in 0..(self.points[point_idx].forward_edges.len()) {
                 // If this edge has a gap...
-                if self.edge_has_gap(GraphEdgeRef { start_idx: point_idx, edge_idx: edge_idx, reverse: false }) {
+                if self.edge_has_gap(GraphEdgeRef {
+                    start_idx: point_idx,
+                    edge_idx: edge_idx,
+                    reverse: false,
+                }) {
                     // ... try to heal it
                     if !self.heal_edge_with_gap(point_idx, edge_idx, MAX_HEAL_DEPTH) {
                         all_healed = false;
@@ -880,7 +1042,11 @@ impl<Point: Coordinate + Coordinate2D, Label: Copy> GraphPath<Point, Label> {
                 // Only add exterior edges
                 if edge.kind == GraphPathEdgeKind::Exterior {
                     // Add both the forward and backwards indexes, if two edges reach the same point we add both edges (including the case where an edge reconnects to the same point)
-                    let edge_ref = GraphEdgeRef { start_idx: point_idx, edge_idx: edge_idx, reverse: false };
+                    let edge_ref = GraphEdgeRef {
+                        start_idx: point_idx,
+                        edge_idx: edge_idx,
+                        reverse: false,
+                    };
 
                     connections[point_idx].push((edge.end_idx, edge_ref));
                     connections[edge.end_idx].push((point_idx, edge_ref));
@@ -897,7 +1063,13 @@ impl<Point: Coordinate + Coordinate2D, Label: Copy> GraphPath<Point, Label> {
     ///
     /// If there's a choice, this will not follow any previously used edge (but will follow them if that's the way to make progress with a loop of edges)
     ///
-    fn find_loop(&self, connections: &Vec<SmallVec<[(usize, GraphEdgeRef); 4]>>, start_point_idx: usize, edge: usize, used_edges: &Vec<u64>) -> Option<Vec<(usize, GraphEdgeRef)>> {
+    fn find_loop(
+        &self,
+        connections: &Vec<SmallVec<[(usize, GraphEdgeRef); 4]>>,
+        start_point_idx: usize,
+        edge: usize,
+        used_edges: &Vec<u64>,
+    ) -> Option<Vec<(usize, GraphEdgeRef)>> {
         // The algorithm here is a slight modification of Dijkstra's algorithm, we start knowing the path has to contain a particular edge
         let mut previous_point = vec![None; connections.len()];
 
@@ -947,7 +1119,9 @@ impl<Point: Coordinate + Coordinate2D, Label: Copy> GraphPath<Point, Label> {
                 }
 
                 // Also avoid edges used for previous shapes unless they are the only way to make progress
-                if avoid_already_used && used_edges[following_edge.start_idx] & (1 << following_edge.edge_idx) != 0 {
+                if avoid_already_used
+                    && used_edges[following_edge.start_idx] & (1 << following_edge.edge_idx) != 0
+                {
                     continue;
                 }
 
@@ -989,8 +1163,8 @@ impl<Point: Coordinate + Coordinate2D, Label: Copy> GraphPath<Point, Label> {
     ///
     #[inline]
     fn generate_path<POut>(&self, edges: Vec<(usize, GraphEdgeRef)>) -> POut
-        where
-            POut: BezierPathFactory<Point=Point>,
+    where
+        POut: BezierPathFactory<Point = Point>,
     {
         // Build up a list of path points
         let mut path_points = vec![];
@@ -1037,8 +1211,8 @@ impl<Point: Coordinate + Coordinate2D, Label: Copy> GraphPath<Point, Label> {
     /// Finds the connected loops of exterior edges and turns them into a series of paths
     ///
     pub fn exterior_paths<POut>(&self) -> Vec<POut>
-        where
-            POut: BezierPathFactory<Point=Point>,
+    where
+        POut: BezierPathFactory<Point = Point>,
     {
         let mut paths = vec![];
 
@@ -1056,7 +1230,7 @@ impl<Point: Coordinate + Coordinate2D, Label: Copy> GraphPath<Point, Label> {
         // come before inner paths is a side-benefit)
         let mut points = (0..self.points.len()).into_iter().collect::<Vec<_>>();
         points.sort_by(|point_a, point_b| {
-            use std::cmp::{Ordering};
+            use std::cmp::Ordering;
 
             let x_a = self.points[*point_a].position.x();
             let x_b = self.points[*point_b].position.x();
@@ -1078,7 +1252,10 @@ impl<Point: Coordinate + Coordinate2D, Label: Copy> GraphPath<Point, Label> {
         let mut included_edges = vec![0u64; self.num_points()];
 
         // Each connection describes the exterior edges for a point
-        for (point_idx, edge_list) in points.into_iter().map(|point_idx| (point_idx, &connections[point_idx])) {
+        for (point_idx, edge_list) in points
+            .into_iter()
+            .map(|point_idx| (point_idx, &connections[point_idx]))
+        {
             for (edge_idx, (_end_point_idx, edge_ref)) in edge_list.iter().enumerate() {
                 // Ignore visited/included edges
                 if included_edges[edge_ref.start_idx] & (1 << edge_ref.edge_idx) != 0 {
@@ -1090,13 +1267,20 @@ impl<Point: Coordinate + Coordinate2D, Label: Copy> GraphPath<Point, Label> {
                 included_edges[edge_ref.start_idx] |= 1 << edge_ref.edge_idx;
 
                 // Try to find a loop from this edge
-                let loop_edges = if let Some(loop_edges) = self.find_loop(&connections, point_idx, edge_idx, &included_edges) {
+                let loop_edges = if let Some(loop_edges) =
+                    self.find_loop(&connections, point_idx, edge_idx, &included_edges)
+                {
                     // Loop was found without any re-used edges
                     Some(loop_edges)
                 } else {
                     // Loop was found with some re-used edges
                     // TODO: this can produce bad path results when it occurs: see comment above
-                    self.find_loop(&connections, point_idx, edge_idx, &vec![0u64; self.num_points()])
+                    self.find_loop(
+                        &connections,
+                        point_idx,
+                        edge_idx,
+                        &vec![0u64; self.num_points()],
+                    )
                 };
 
                 if let Some(loop_edges) = loop_edges {
@@ -1127,7 +1311,9 @@ pub struct GraphEdge<'a, Point: 'a, Label: 'a> {
     edge: GraphEdgeRef,
 }
 
-impl<Point: Coordinate2D + Coordinate + fmt::Debug, Label: Copy> fmt::Debug for GraphPath<Point, Label> {
+impl<Point: Coordinate2D + Coordinate + fmt::Debug, Label: Copy> fmt::Debug
+    for GraphPath<Point, Label>
+{
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         for point_idx in 0..(self.points.len()) {
             write!(f, "\nPoint {:?}:", point_idx)?;

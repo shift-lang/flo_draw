@@ -25,6 +25,7 @@ flo_curves = { path = "./curves" }
 flo_binding = { path = "./binding" }
 flo_scene = { path = "./scene" }
 desync = { path = "./desync" }
+winit = { version = "0.28" }
 
 # allsorts is very slow when built for debug, so packages using flo_draw should consider optimising it even in debug builds
 [profile.dev.package.allsorts]

@@ -1,3 +1,9 @@
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
 // * TODO: entity to stop the scene
 // * TODO: logging entity
 
@@ -22,17 +28,16 @@ pub use self::properties::*;
 pub use self::scene_control::*;
 pub use self::timer::*;
 
+mod empty;
 mod entity_ids;
-mod example;
 mod entity_registry;
+mod example;
 mod heartbeat;
+mod logging;
 mod scene_control;
 mod timer;
-mod empty;
-mod logging;
 
-#[cfg(feature = "properties")]
-mod properties;
 #[cfg(feature = "properties")]
 mod floating_binding;
-
+#[cfg(feature = "properties")]
+mod properties;

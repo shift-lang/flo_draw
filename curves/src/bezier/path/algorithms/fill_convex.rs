@@ -1,18 +1,24 @@
-use super::fill_settings::*;
-use super::super::*;
-use super::super::super::*;
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
 use super::super::super::super::geo::*;
+use super::super::super::*;
+use super::super::*;
+use super::fill_settings::*;
 
 use std::f64;
-use std::ops::{Range};
+use std::ops::Range;
 
 ///
 /// Represents a collision between a ray and an object
 ///
 #[derive(Clone)]
 pub struct RayCollision<Coord, Item>
-    where
-        Coord: Coordinate + Coordinate2D,
+where
+    Coord: Coordinate + Coordinate2D,
 {
     /// Where this collision occurred
     pub position: Coord,
@@ -22,8 +28,8 @@ pub struct RayCollision<Coord, Item>
 }
 
 impl<Coord, Item> RayCollision<Coord, Item>
-    where
-        Coord: Coordinate + Coordinate2D,
+where
+    Coord: Coordinate + Coordinate2D,
 {
     ///
     /// Creates a new collision at a specific point
@@ -34,20 +40,24 @@ impl<Coord, Item> RayCollision<Coord, Item>
 }
 
 ///
-/// Given a ray-casting function, traces the outline of a shape containing the specified center point 
+/// Given a ray-casting function, traces the outline of a shape containing the specified center point
 ///
-/// `center` is a point known to be contained in the shape (it's the origin of the region to be filled) 
+/// `center` is a point known to be contained in the shape (it's the origin of the region to be filled)
 ///
 /// The ray-casting function has the type `Fn(Coord, Coord) -> RayList`, where the two coordinates
 /// that are passed in represents the direction of the ray. It should return at least one intersection
 /// along this ray. If there is an intersection, the returned list should always include the closest
 /// intersection in the direction of the ray defined by the two coordinates.
 ///
-pub fn trace_outline_convex<Coord, Item, RayList, RayFn>(center: Coord, options: &FillSettings, cast_ray: RayFn) -> Vec<RayCollision<Coord, Item>>
-    where
-        Coord: Coordinate + Coordinate2D,
-        RayList: IntoIterator<Item=RayCollision<Coord, Item>>,
-        RayFn: Fn(Coord, Coord) -> RayList,
+pub fn trace_outline_convex<Coord, Item, RayList, RayFn>(
+    center: Coord,
+    options: &FillSettings,
+    cast_ray: RayFn,
+) -> Vec<RayCollision<Coord, Item>>
+where
+    Coord: Coordinate + Coordinate2D,
+    RayList: IntoIterator<Item = RayCollision<Coord, Item>>,
+    RayFn: Fn(Coord, Coord) -> RayList,
 {
     trace_outline_convex_partial(center, options, (0.0)..(2.0 * f64::consts::PI), cast_ray)
 }
@@ -55,10 +65,14 @@ pub fn trace_outline_convex<Coord, Item, RayList, RayFn>(center: Coord, options:
 ///
 /// Finds the nearest collision and the square of its distance from the center from the results of a ray-casting operation
 ///
-fn find_nearest_collision<Coord, Item, RayList>(candidates: RayList, center: Coord, ray_vector: Coord) -> Option<(RayCollision<Coord, Item>, f64)>
-    where
-        Coord: Coordinate + Coordinate2D,
-        RayList: IntoIterator<Item=RayCollision<Coord, Item>>,
+fn find_nearest_collision<Coord, Item, RayList>(
+    candidates: RayList,
+    center: Coord,
+    ray_vector: Coord,
+) -> Option<(RayCollision<Coord, Item>, f64)>
+where
+    Coord: Coordinate + Coordinate2D,
+    RayList: IntoIterator<Item = RayCollision<Coord, Item>>,
 {
     // Pick the first positive collision in the direction of the ray
     let mut nearest_collision = None;
@@ -69,7 +83,9 @@ fn find_nearest_collision<Coord, Item, RayList>(candidates: RayList, center: Coo
 
         // Ignore collisions in the opposite direction of our ray
         let direction = collision_vector.dot(&ray_vector);
-        if direction < 0.0 { continue; }
+        if direction < 0.0 {
+            continue;
+        }
 
         // If this collision is closer to the center than before, then it becomes the nearest collision
         let distance = collision_vector.dot(&collision_vector);
@@ -85,11 +101,15 @@ fn find_nearest_collision<Coord, Item, RayList>(candidates: RayList, center: Coo
 ///
 /// Performs a raycast from a center point at a particular angle
 ///
-fn perform_ray_cast<Coord, Item, RayList, RayFn>(center: Coord, theta: f64, cast_ray: RayFn) -> Option<(RayCollision<Coord, Item>, f64)>
-    where
-        Coord: Coordinate + Coordinate2D,
-        RayList: IntoIterator<Item=RayCollision<Coord, Item>>,
-        RayFn: Fn(Coord, Coord) -> RayList,
+fn perform_ray_cast<Coord, Item, RayList, RayFn>(
+    center: Coord,
+    theta: f64,
+    cast_ray: RayFn,
+) -> Option<(RayCollision<Coord, Item>, f64)>
+where
+    Coord: Coordinate + Coordinate2D,
+    RayList: IntoIterator<Item = RayCollision<Coord, Item>>,
+    RayFn: Fn(Coord, Coord) -> RayList,
 {
     // Work out the direction of the ray
     let ray_vector = [1.0 * theta.sin(), 1.0 * theta.cos()];
@@ -106,11 +126,16 @@ fn perform_ray_cast<Coord, Item, RayList, RayFn>(center: Coord, theta: f64, cast
 ///
 /// Ray traces around a specified range of angles to find the shape of the outline. Angles are in radians
 ///
-pub(super) fn trace_outline_convex_partial<Coord, Item, RayList, RayFn>(center: Coord, options: &FillSettings, angles: Range<f64>, cast_ray: RayFn) -> Vec<RayCollision<Coord, Item>>
-    where
-        Coord: Coordinate + Coordinate2D,
-        RayList: IntoIterator<Item=RayCollision<Coord, Item>>,
-        RayFn: Fn(Coord, Coord) -> RayList,
+pub(super) fn trace_outline_convex_partial<Coord, Item, RayList, RayFn>(
+    center: Coord,
+    options: &FillSettings,
+    angles: Range<f64>,
+    cast_ray: RayFn,
+) -> Vec<RayCollision<Coord, Item>>
+where
+    Coord: Coordinate + Coordinate2D,
+    RayList: IntoIterator<Item = RayCollision<Coord, Item>>,
+    RayFn: Fn(Coord, Coord) -> RayList,
 {
     // The minimum number of radians to move forward when a ray does not find a collision
     let min_step = 0.02;
@@ -149,7 +174,9 @@ pub(super) fn trace_outline_convex_partial<Coord, Item, RayList, RayFn>(center: 
 
     // Divide up the check points until the gap between them becomes small enough that it's less than the maximum gap size
     while let Some(entry) = stack.pop() {
-        if let (Some((start_pos, _start_distance_squared)), Some(end_pos)) = (entry.start_pos.as_ref(), entry.end_pos) {
+        if let (Some((start_pos, _start_distance_squared)), Some(end_pos)) =
+            (entry.start_pos.as_ref(), entry.end_pos)
+        {
             // Check the distance between the start and the end
             let offset = end_pos - start_pos.position;
             let distance_squared = offset.dot(&offset);
@@ -197,7 +224,6 @@ pub(super) fn trace_outline_convex_partial<Coord, Item, RayList, RayFn>(center: 
                 })
             }
         } else {
-
             // One or both of the rays did not find a collision
             if entry.angle.end - entry.angle.start > min_step {
                 // Cast a ray between the two points
@@ -230,28 +256,41 @@ pub(super) fn trace_outline_convex_partial<Coord, Item, RayList, RayFn>(center: 
 /// area is not entirely closed (from the point of view of the ray-casting function), then a line will be
 /// generated between the gaps.
 ///
-pub fn flood_fill_convex<Path, Coord, Item, RayList, RayFn>(center: Coord, options: &FillSettings, cast_ray: RayFn) -> Option<Path>
-    where
-        Path: BezierPathFactory<Point=Coord>,
-        Coord: Coordinate + Coordinate2D,
-        RayList: IntoIterator<Item=RayCollision<Coord, Item>>,
-        RayFn: Fn(Coord, Coord) -> RayList,
+pub fn flood_fill_convex<Path, Coord, Item, RayList, RayFn>(
+    center: Coord,
+    options: &FillSettings,
+    cast_ray: RayFn,
+) -> Option<Path>
+where
+    Path: BezierPathFactory<Point = Coord>,
+    Coord: Coordinate + Coordinate2D,
+    RayList: IntoIterator<Item = RayCollision<Coord, Item>>,
+    RayFn: Fn(Coord, Coord) -> RayList,
 {
     // Trace where the ray casting algorithm indicates collisions with the specified center
     let collisions = trace_outline_convex(center, options, cast_ray);
 
     // Build a path using the LMS algorithm
-    let curves = fit_curve_loop::<Curve<Coord>>(&collisions.iter().map(|collision| collision.position).collect::<Vec<_>>(), options.fit_error);
+    let curves = fit_curve_loop::<Curve<Coord>>(
+        &collisions
+            .iter()
+            .map(|collision| collision.position)
+            .collect::<Vec<_>>(),
+        options.fit_error,
+    );
 
     if let Some(curves) = curves {
         if !curves.is_empty() {
             // Convert the curves into a path
             let initial_point = curves[0].start_point();
-            Some(Path::from_points(initial_point, curves.into_iter().map(|curve| {
-                let (cp1, cp2) = curve.control_points();
-                let end_point = curve.end_point();
-                (cp1, cp2, end_point)
-            })))
+            Some(Path::from_points(
+                initial_point,
+                curves.into_iter().map(|curve| {
+                    let (cp1, cp2) = curve.control_points();
+                    let end_point = curve.end_point();
+                    (cp1, cp2, end_point)
+                }),
+            ))
         } else {
             // No curves in the path
             None

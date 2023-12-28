@@ -1,3 +1,9 @@
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
 use super::coordinate::*;
 
 use std::ops::*;
@@ -97,23 +103,31 @@ impl Coordinate for Coord2 {
     }
 
     #[inline]
-    fn len() -> usize { 2 }
+    fn len() -> usize {
+        2
+    }
 
     #[inline]
     fn get(&self, index: usize) -> f64 {
         match index {
             0 => self.0,
             1 => self.1,
-            _ => panic!("Coord2 only has two components")
+            _ => panic!("Coord2 only has two components"),
         }
     }
 
     fn from_biggest_components(p1: Coord2, p2: Coord2) -> Coord2 {
-        Coord2(f64::from_biggest_components(p1.0, p2.0), f64::from_biggest_components(p1.1, p2.1))
+        Coord2(
+            f64::from_biggest_components(p1.0, p2.0),
+            f64::from_biggest_components(p1.1, p2.1),
+        )
     }
 
     fn from_smallest_components(p1: Coord2, p2: Coord2) -> Coord2 {
-        Coord2(f64::from_smallest_components(p1.0, p2.0), f64::from_smallest_components(p1.1, p2.1))
+        Coord2(
+            f64::from_smallest_components(p1.0, p2.0),
+            f64::from_smallest_components(p1.1, p2.1),
+        )
     }
 
     #[inline]

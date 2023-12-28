@@ -1,12 +1,19 @@
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
 use std::any::TypeId;
 use std::collections::HashMap;
-use std::sync::*;
 use std::sync::atomic::*;
+use std::sync::*;
 
-use ::desync::scheduler::*;
 use futures::channel::oneshot;
 use futures::prelude::*;
 use futures::stream::BoxStream;
+
+use ::desync::scheduler::*;
 
 use crate::context::*;
 use crate::entity_channel::*;
@@ -78,30 +85,41 @@ impl SceneCore {
     ///
     /// Sends a message using the background message processing queue
     ///
-    pub(crate) fn send_background_message<TChannel>(&self, mut sender: TChannel, message: TChannel::Message)
-        where
-            TChannel: 'static + Send + EntityChannel,
-            TChannel::Message: 'static + Send,
+    pub(crate) fn send_background_message<TChannel>(
+        &self,
+        mut sender: TChannel,
+        message: TChannel::Message,
+    ) where
+        TChannel: 'static + Send + EntityChannel,
+        TChannel::Message: 'static + Send,
     {
-        scheduler().future_desync(&self.message_queue, move || async move {
-            sender.send(message).await.ok()
-        }).detach();
+        scheduler()
+            .future_desync(&self.message_queue, move || async move {
+                sender.send(message).await.ok()
+            })
+            .detach();
     }
 
     ///
     /// Creates an entity that processes a particular kind of message
     ///
-    pub(crate) fn create_entity<TMessage, TFn, TFnFuture>(&mut self, scene_context: Arc<SceneContext>, runtime: TFn) -> Result<SimpleEntityChannel<TMessage>, CreateEntityError>
-        where
-            TMessage: 'static + Send,
-            TFn: 'static + Send + FnOnce(Arc<SceneContext>, BoxStream<'static, TMessage>) -> TFnFuture,
-            TFnFuture: 'static + Send + Future<Output=()>,
+    pub(crate) fn create_entity<TMessage, TFn, TFnFuture>(
+        &mut self,
+        scene_context: Arc<SceneContext>,
+        runtime: TFn,
+    ) -> Result<SimpleEntityChannel<TMessage>, CreateEntityError>
+    where
+        TMessage: 'static + Send,
+        TFn: 'static + Send + FnOnce(Arc<SceneContext>, BoxStream<'static, TMessage>) -> TFnFuture,
+        TFnFuture: 'static + Send + Future<Output = ()>,
     {
         // The entity ID is specified in the supplied scene context
         let entity_id = scene_context.entity().unwrap();
 
         // The entity must not already exist
-        if self.entities.contains_key(&entity_id) { return Err(CreateEntityError::AlreadyExists); }
+        if self.entities.contains_key(&entity_id) {
+            return Err(CreateEntityError::AlreadyExists);
+        }
 
         // Create a future that informs the scene context when the entity is ready
         let (ready, waiting) = oneshot::channel();
@@ -122,7 +140,8 @@ impl SceneCore {
         let queue = entity.queue();
 
         self.entities.insert(entity_id, entity);
-        self.entity_background_futures.insert(entity_id, Arc::downgrade(&entity_future.core()));
+        self.entity_background_futures
+            .insert(entity_id, Arc::downgrade(&entity_future.core()));
 
         // Start the future running
         let future = async move {
@@ -132,13 +151,24 @@ impl SceneCore {
             // Tell the entity registry about the entity that was just created
             if entity_id != ENTITY_REGISTRY {
                 // We usually don't let the entity start until it's definitely associated with the registry
-                scene_context.send::<_>(ENTITY_REGISTRY, InternalRegistryRequest::CreatedEntity(entity_id, TypeId::of::<TMessage>())).await.ok();
+                scene_context
+                    .send::<_>(
+                        ENTITY_REGISTRY,
+                        InternalRegistryRequest::CreatedEntity(entity_id, TypeId::of::<TMessage>()),
+                    )
+                    .await
+                    .ok();
             } else {
                 // The entity registry itself might have a full queue by the time it gets around to registering itself: avoid blocking here by sending the request in the background
-                let send = scene_context.send(ENTITY_REGISTRY, InternalRegistryRequest::CreatedEntity(entity_id, TypeId::of::<TMessage>()));
-                scene_context.run_in_background(async move {
-                    send.await.ok();
-                }).ok();
+                let send = scene_context.send(
+                    ENTITY_REGISTRY,
+                    InternalRegistryRequest::CreatedEntity(entity_id, TypeId::of::<TMessage>()),
+                );
+                scene_context
+                    .run_in_background(async move {
+                        send.await.ok();
+                    })
+                    .ok();
             }
 
             // Create and run the actual runtime future
@@ -146,7 +176,13 @@ impl SceneCore {
             runtime_future.await;
 
             // Notify the registry that the entity no longer exists
-            scene_context.send(ENTITY_REGISTRY, InternalRegistryRequest::DestroyedEntity(entity_id)).await.ok();
+            scene_context
+                .send(
+                    ENTITY_REGISTRY,
+                    InternalRegistryRequest::DestroyedEntity(entity_id),
+                )
+                .await
+                .ok();
 
             // Finish_entity calls back into the core to remove the entity from the list (note this calls stop() so this must be done last in the entity future)
             scene_context.finish_entity::<TMessage>(entity_id);
@@ -169,9 +205,9 @@ impl SceneCore {
     /// Specifies that if an entity accepts messages in the format `TOriginalMessage` that these can be converted to `TNewMessage`
     ///
     pub(crate) fn convert_message<TOriginalMessage, TNewMessage>(&mut self)
-        where
-            TOriginalMessage: 'static + Send + Into<TNewMessage>,
-            TNewMessage: 'static + Send,
+    where
+        TOriginalMessage: 'static + Send + Into<TNewMessage>,
+        TNewMessage: 'static + Send,
     {
         // Create a converter from TOriginalMessage to TNewMessage
         let converter = MapFromEntityType::new::<TOriginalMessage, TNewMessage>();
@@ -179,20 +215,29 @@ impl SceneCore {
         let new_type = TypeId::of::<TNewMessage>();
 
         // Any entity that accepts TNewMessage can also accept TOriginalMessage
-        self.map_for_message.entry(new_type).or_insert_with(|| HashMap::new())
+        self.map_for_message
+            .entry(new_type)
+            .or_insert_with(|| HashMap::new())
             .insert(original_type, converter);
     }
 
     ///
     /// Requests that we send messages to a channel for a particular entity
     ///
-    pub(crate) fn send_to<TMessage>(&mut self, entity_id: EntityId) -> Result<BoxedEntityChannel<'static, TMessage>, EntityChannelError>
-        where
-            TMessage: 'static + Send,
+    pub(crate) fn send_to<TMessage>(
+        &mut self,
+        entity_id: EntityId,
+    ) -> Result<BoxedEntityChannel<'static, TMessage>, EntityChannelError>
+    where
+        TMessage: 'static + Send,
     {
         // Try to retrieve the entity
         let entity = self.entities.get(&entity_id);
-        let entity = if let Some(entity) = entity { entity } else { return Err(EntityChannelError::NoSuchEntity); };
+        let entity = if let Some(entity) = entity {
+            entity
+        } else {
+            return Err(EntityChannelError::NoSuchEntity);
+        };
 
         // Attach to the channel in the entity that belongs to this stream type
         let channel = entity.attach_channel();
@@ -204,7 +249,10 @@ impl SceneCore {
             // Attempt to convert the message if possible
             let target_message = entity.message_type_id();
             let source_message = TypeId::of::<TMessage>();
-            let message_converter = self.map_for_message.get(&target_message).and_then(|target_hash| target_hash.get(&source_message));
+            let message_converter = self
+                .map_for_message
+                .get(&target_message)
+                .and_then(|target_hash| target_hash.get(&source_message));
 
             match message_converter {
                 Some(message_converter) => {
@@ -212,15 +260,16 @@ impl SceneCore {
                     let any_channel = entity.attach_channel_any();
 
                     // Convert the message
-                    let message_conversion = message_converter.conversion_function::<TMessage>().unwrap();
+                    let message_conversion =
+                        message_converter.conversion_function::<TMessage>().unwrap();
                     let channel = any_channel.map(move |message| message_conversion(message));
 
                     Ok(channel.boxed())
                 }
 
-                None => {
-                    Err(EntityChannelError::WrongChannelType(entity.message_type_name()))
-                }
+                None => Err(EntityChannelError::WrongChannelType(
+                    entity.message_type_name(),
+                )),
             }
         }
     }
@@ -228,8 +277,16 @@ impl SceneCore {
     ///
     /// Adds a future to run in the background of this entity
     ///
-    pub fn run_in_background(&self, entity_id: EntityId, future: impl 'static + Send + Future<Output=()>) -> Result<(), EntityFutureError> {
-        if let Some(background_future) = self.entity_background_futures.get(&entity_id).and_then(|weak| weak.upgrade()) {
+    pub fn run_in_background(
+        &self,
+        entity_id: EntityId,
+        future: impl 'static + Send + Future<Output = ()>,
+    ) -> Result<(), EntityFutureError> {
+        if let Some(background_future) = self
+            .entity_background_futures
+            .get(&entity_id)
+            .and_then(|weak| weak.upgrade())
+        {
             background_future.add_future(future);
             Ok(())
         } else {
@@ -250,7 +307,10 @@ impl SceneCore {
     ///
     /// Returns a future that will complete once the specified entity is ready
     ///
-    pub(crate) fn wait_for_entity_to_start(&mut self, entity_id: EntityId) -> impl Send + Future<Output=()> {
+    pub(crate) fn wait_for_entity_to_start(
+        &mut self,
+        entity_id: EntityId,
+    ) -> impl Send + Future<Output = ()> {
         // Attach to the list of futures waiting for a particular entity to start (provided that the entity actually exists at the time of this call)
         let when_ready = if let Some(entity) = self.entities.get_mut(&entity_id) {
             Some(entity.wait_for_start())
@@ -287,7 +347,11 @@ impl SceneCore {
     ///
     pub(crate) fn stop_entity(&mut self, entity_id: EntityId) -> Result<(), EntityChannelError> {
         // Stop the background future if there is one
-        if let Some(background_future) = self.entity_background_futures.remove(&entity_id).and_then(|weak| weak.upgrade()) {
+        if let Some(background_future) = self
+            .entity_background_futures
+            .remove(&entity_id)
+            .and_then(|weak| weak.upgrade())
+        {
             background_future.stop();
         }
 
@@ -322,7 +386,11 @@ impl SceneCore {
     /// Called when an entity in this context has finished
     ///
     pub(crate) fn finish_entity(&mut self, entity_id: EntityId) {
-        if let Some(background_future) = self.entity_background_futures.remove(&entity_id).and_then(|weak| weak.upgrade()) {
+        if let Some(background_future) = self
+            .entity_background_futures
+            .remove(&entity_id)
+            .and_then(|weak| weak.upgrade())
+        {
             background_future.stop();
         }
 
@@ -351,12 +419,18 @@ impl SceneCore {
         match &self.heartbeat_state {
             HeartbeatState::Tick => {
                 // Request the heartbeat channel
-                if let Ok(mut heartbeat_channel) = self.send_to::<InternalHeartbeatRequest>(HEARTBEAT) {
+                if let Ok(mut heartbeat_channel) =
+                    self.send_to::<InternalHeartbeatRequest>(HEARTBEAT)
+                {
                     // The messages resulting from a heartbeat shouldn't generate a heartbeat themselves
                     self.heartbeat_state = HeartbeatState::Tock;
 
                     // Send a heartbeat request
-                    if heartbeat_channel.send(InternalHeartbeatRequest::GenerateHeartbeat).await.is_err() {
+                    if heartbeat_channel
+                        .send(InternalHeartbeatRequest::GenerateHeartbeat)
+                        .await
+                        .is_err()
+                    {
                         // Failed to actually generate the heartbeat
                         self.heartbeat_state = HeartbeatState::Tick;
                     }

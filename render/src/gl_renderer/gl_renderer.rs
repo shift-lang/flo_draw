@@ -1,11 +1,17 @@
-use super::error::*;
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
 use super::buffer::*;
+use super::error::*;
+use super::render_target::*;
+use super::shader_collection::*;
+use super::shader_uniforms::*;
+use super::standard_shader_programs::*;
 use super::texture::*;
 use super::vertex_array::*;
-use super::render_target::*;
-use super::shader_uniforms::*;
-use super::shader_collection::*;
-use super::standard_shader_programs::*;
 
 use crate::action::*;
 use crate::buffer::*;
@@ -14,8 +20,8 @@ use crate::buffer::*;
 use crate::profiler::*;
 
 use std::mem;
+use std::ops::Range;
 use std::ptr;
-use std::ops::{Range};
 
 ///
 /// OpenGL action renderer
@@ -91,10 +97,16 @@ impl GlRenderer {
             panic_on_gl_error("Preparing to render");
 
             // Set the default render target to be a reference to the current render target
-            self.default_render_target = Some(RenderTarget::reference_to_current(width as _, height as _));
+            self.default_render_target =
+                Some(RenderTarget::reference_to_current(width as _, height as _));
 
             // Set the viewport to the specified width and height
-            gl::Viewport(0, 0, width as gl::types::GLsizei, height as gl::types::GLsizei);
+            gl::Viewport(
+                0,
+                0,
+                width as gl::types::GLsizei,
+                height as gl::types::GLsizei,
+            );
 
             self.active_shader = None;
             self.transform_matrix = Some(Matrix::identity().to_opengl_matrix());
@@ -106,7 +118,7 @@ impl GlRenderer {
     ///
     /// Performs rendering of the specified actions to this device target
     ///
-    pub fn render<Actions: IntoIterator<Item=RenderAction>>(&mut self, actions: Actions) {
+    pub fn render<Actions: IntoIterator<Item = RenderAction>>(&mut self, actions: Actions) {
         #[cfg(feature = "profile")]
         self.profiler.start_frame();
 
@@ -124,38 +136,88 @@ impl GlRenderer {
             use self::RenderAction::*;
 
             #[cfg(feature = "profile")]
-                let action_type = RenderActionType::from(&action);
+            let action_type = RenderActionType::from(&action);
 
             #[cfg(feature = "profile")]
             self.profiler.start_action(action_type);
 
             match action {
-                SetTransform(matrix) => { self.set_transform(matrix); }
-                CreateVertex2DBuffer(id, vertices) => { self.create_vertex_buffer_2d(id, vertices); }
-                CreateIndexBuffer(id, indices) => { self.create_index_buffer(id, indices); }
-                FreeVertexBuffer(id) => { self.free_vertex_buffer(id); }
-                FreeIndexBuffer(id) => { self.free_index_buffer(id); }
-                BlendMode(blend_mode) => { self.blend_mode(blend_mode, self.source_is_premultiplied); }
-                CreateRenderTarget(render_id, texture_id, Size2D(width, height), render_type) => { self.create_render_target(render_id, texture_id, width, height, render_type); }
-                FreeRenderTarget(render_id) => { self.free_render_target(render_id); }
-                SelectRenderTarget(render_id) => { self.select_render_target(render_id); }
-                RenderToFrameBuffer => { self.select_main_frame_buffer(); }
-                DrawFrameBuffer(render_id, region, Alpha(alpha)) => { self.draw_frame_buffer(render_id, region, alpha); }
+                SetTransform(matrix) => {
+                    self.set_transform(matrix);
+                }
+                CreateVertex2DBuffer(id, vertices) => {
+                    self.create_vertex_buffer_2d(id, vertices);
+                }
+                CreateIndexBuffer(id, indices) => {
+                    self.create_index_buffer(id, indices);
+                }
+                FreeVertexBuffer(id) => {
+                    self.free_vertex_buffer(id);
+                }
+                FreeIndexBuffer(id) => {
+                    self.free_index_buffer(id);
+                }
+                BlendMode(blend_mode) => {
+                    self.blend_mode(blend_mode, self.source_is_premultiplied);
+                }
+                CreateRenderTarget(render_id, texture_id, Size2D(width, height), render_type) => {
+                    self.create_render_target(render_id, texture_id, width, height, render_type);
+                }
+                FreeRenderTarget(render_id) => {
+                    self.free_render_target(render_id);
+                }
+                SelectRenderTarget(render_id) => {
+                    self.select_render_target(render_id);
+                }
+                RenderToFrameBuffer => {
+                    self.select_main_frame_buffer();
+                }
+                DrawFrameBuffer(render_id, region, Alpha(alpha)) => {
+                    self.draw_frame_buffer(render_id, region, alpha);
+                }
                 ShowFrameBuffer => { /* This doesn't double-buffer so nothing to do */ }
-                CreateTextureBgra(texture_id, Size2D(width, height)) => { self.create_bgra_texture(texture_id, width, height); }
-                CreateTextureMono(texture_id, Size2D(width, height)) => { self.create_mono_texture(texture_id, width, height); }
-                Create1DTextureBgra(texture_id, Size1D(width)) => { self.create_1d_bgra_texture(texture_id, width); }
-                Create1DTextureMono(texture_id, Size1D(width)) => { self.create_1d_mono_texture(texture_id, width); }
-                WriteTextureData(texture_id, Position2D(x1, y1), Position2D(x2, y2), data) => { self.write_texture_data_2d(texture_id, (x1, y1), (x2, y2), &*data); }
-                WriteTexture1D(texture_id, Position1D(x1), Position1D(x2), data) => { self.write_texture_data_1d(texture_id, x1, x2, &*data); }
-                CreateMipMaps(texture_id) => { self.create_mipmaps(texture_id); }
-                CopyTexture(source, target) => { self.copy_texture(source, target); }
-                FilterTexture(texture, filter) => { self.filter_texture(texture, filter); }
-                FreeTexture(texture_id) => { self.free_texture(texture_id); }
-                Clear(color) => { self.clear(color); }
-                UseShader(shader_type) => { self.use_shader(shader_type); }
-                DrawTriangles(buffer_id, buffer_range) => { self.draw_triangles(buffer_id, buffer_range); }
-                DrawIndexedTriangles(vertex_buffer, index_buffer, num_vertices) => { self.draw_indexed_triangles(vertex_buffer, index_buffer, num_vertices); }
+                CreateTextureBgra(texture_id, Size2D(width, height)) => {
+                    self.create_bgra_texture(texture_id, width, height);
+                }
+                CreateTextureMono(texture_id, Size2D(width, height)) => {
+                    self.create_mono_texture(texture_id, width, height);
+                }
+                Create1DTextureBgra(texture_id, Size1D(width)) => {
+                    self.create_1d_bgra_texture(texture_id, width);
+                }
+                Create1DTextureMono(texture_id, Size1D(width)) => {
+                    self.create_1d_mono_texture(texture_id, width);
+                }
+                WriteTextureData(texture_id, Position2D(x1, y1), Position2D(x2, y2), data) => {
+                    self.write_texture_data_2d(texture_id, (x1, y1), (x2, y2), &*data);
+                }
+                WriteTexture1D(texture_id, Position1D(x1), Position1D(x2), data) => {
+                    self.write_texture_data_1d(texture_id, x1, x2, &*data);
+                }
+                CreateMipMaps(texture_id) => {
+                    self.create_mipmaps(texture_id);
+                }
+                CopyTexture(source, target) => {
+                    self.copy_texture(source, target);
+                }
+                FilterTexture(texture, filter) => {
+                    self.filter_texture(texture, filter);
+                }
+                FreeTexture(texture_id) => {
+                    self.free_texture(texture_id);
+                }
+                Clear(color) => {
+                    self.clear(color);
+                }
+                UseShader(shader_type) => {
+                    self.use_shader(shader_type);
+                }
+                DrawTriangles(buffer_id, buffer_range) => {
+                    self.draw_triangles(buffer_id, buffer_range);
+                }
+                DrawIndexedTriangles(vertex_buffer, index_buffer, num_vertices) => {
+                    self.draw_indexed_triangles(vertex_buffer, index_buffer, num_vertices);
+                }
             }
 
             panic_on_gl_error("Post-action");
@@ -167,7 +229,7 @@ impl GlRenderer {
         // Reset options
         self.disable_options();
 
-        // Always leave on the main frame buffer after rendering 
+        // Always leave on the main frame buffer after rendering
         // This is so that a future `prepare_to_render_to_active_framebuffer` doesn't pick up the frame buffer we might have set here
         self.select_main_frame_buffer();
 
@@ -190,7 +252,8 @@ impl GlRenderer {
             gl::BlendEquationSeparate(gl::FUNC_ADD, gl::FUNC_ADD);
 
             // Use the basic shader program by default
-            self.shader_programs.use_program(StandardShaderProgram::default());
+            self.shader_programs
+                .use_program(StandardShaderProgram::default());
 
             self.blend_mode(BlendMode::SourceOver, false);
         }
@@ -223,12 +286,18 @@ impl GlRenderer {
     ///
     /// Creates a 2D vertex buffer
     ///
-    fn create_vertex_buffer_2d(&mut self, VertexBufferId(buffer_id): VertexBufferId, vertices: Vec<Vertex2D>) {
+    fn create_vertex_buffer_2d(
+        &mut self,
+        VertexBufferId(buffer_id): VertexBufferId,
+        vertices: Vec<Vertex2D>,
+    ) {
         // Extend the buffers array as needed
         if buffer_id >= self.buffers.len() {
-            self.buffers.extend((self.buffers.len()..(buffer_id + 1))
-                .into_iter()
-                .map(|_| None));
+            self.buffers.extend(
+                (self.buffers.len()..(buffer_id + 1))
+                    .into_iter()
+                    .map(|_| None),
+            );
         }
 
         // Release the previous buffer
@@ -261,9 +330,11 @@ impl GlRenderer {
     fn create_index_buffer(&mut self, IndexBufferId(buffer_id): IndexBufferId, indices: Vec<u16>) {
         // Extend the buffers array as needed
         if buffer_id >= self.index_buffers.len() {
-            self.index_buffers.extend((self.index_buffers.len()..(buffer_id + 1))
-                .into_iter()
-                .map(|_| None));
+            self.index_buffers.extend(
+                (self.index_buffers.len()..(buffer_id + 1))
+                    .into_iter()
+                    .map(|_| None),
+            );
         }
 
         // Release the previous buffer
@@ -306,14 +377,48 @@ impl GlRenderer {
             if !source_is_premultiplied {
                 // Target will be pre-multiplied after blending
                 match blend_mode {
-                    SourceOver => gl::BlendFuncSeparate(gl::SRC_ALPHA, gl::ONE_MINUS_SRC_ALPHA, gl::ONE, gl::ONE_MINUS_SRC_ALPHA),
-                    DestinationOver => gl::BlendFuncSeparate(gl::ONE_MINUS_DST_ALPHA, gl::DST_ALPHA, gl::ONE_MINUS_DST_ALPHA, gl::ONE),
-                    SourceIn => gl::BlendFuncSeparate(gl::DST_ALPHA, gl::ZERO, gl::DST_ALPHA, gl::ZERO),
-                    DestinationIn => gl::BlendFuncSeparate(gl::ZERO, gl::SRC_ALPHA, gl::ZERO, gl::SRC_ALPHA),
-                    SourceOut => gl::BlendFuncSeparate(gl::ZERO, gl::ONE_MINUS_DST_ALPHA, gl::ZERO, gl::ONE_MINUS_DST_ALPHA),
-                    DestinationOut => gl::BlendFuncSeparate(gl::ZERO, gl::ONE_MINUS_SRC_ALPHA, gl::ZERO, gl::ONE_MINUS_SRC_ALPHA),
-                    SourceATop => gl::BlendFuncSeparate(gl::ONE_MINUS_DST_ALPHA, gl::SRC_ALPHA, gl::ONE_MINUS_DST_ALPHA, gl::SRC_ALPHA),
-                    DestinationATop => gl::BlendFuncSeparate(gl::ONE_MINUS_DST_ALPHA, gl::ONE_MINUS_SRC_ALPHA, gl::ONE_MINUS_DST_ALPHA, gl::ONE_MINUS_SRC_ALPHA),
+                    SourceOver => gl::BlendFuncSeparate(
+                        gl::SRC_ALPHA,
+                        gl::ONE_MINUS_SRC_ALPHA,
+                        gl::ONE,
+                        gl::ONE_MINUS_SRC_ALPHA,
+                    ),
+                    DestinationOver => gl::BlendFuncSeparate(
+                        gl::ONE_MINUS_DST_ALPHA,
+                        gl::DST_ALPHA,
+                        gl::ONE_MINUS_DST_ALPHA,
+                        gl::ONE,
+                    ),
+                    SourceIn => {
+                        gl::BlendFuncSeparate(gl::DST_ALPHA, gl::ZERO, gl::DST_ALPHA, gl::ZERO)
+                    }
+                    DestinationIn => {
+                        gl::BlendFuncSeparate(gl::ZERO, gl::SRC_ALPHA, gl::ZERO, gl::SRC_ALPHA)
+                    }
+                    SourceOut => gl::BlendFuncSeparate(
+                        gl::ZERO,
+                        gl::ONE_MINUS_DST_ALPHA,
+                        gl::ZERO,
+                        gl::ONE_MINUS_DST_ALPHA,
+                    ),
+                    DestinationOut => gl::BlendFuncSeparate(
+                        gl::ZERO,
+                        gl::ONE_MINUS_SRC_ALPHA,
+                        gl::ZERO,
+                        gl::ONE_MINUS_SRC_ALPHA,
+                    ),
+                    SourceATop => gl::BlendFuncSeparate(
+                        gl::ONE_MINUS_DST_ALPHA,
+                        gl::SRC_ALPHA,
+                        gl::ONE_MINUS_DST_ALPHA,
+                        gl::SRC_ALPHA,
+                    ),
+                    DestinationATop => gl::BlendFuncSeparate(
+                        gl::ONE_MINUS_DST_ALPHA,
+                        gl::ONE_MINUS_SRC_ALPHA,
+                        gl::ONE_MINUS_DST_ALPHA,
+                        gl::ONE_MINUS_SRC_ALPHA,
+                    ),
 
                     // Multiply is a*b. Here we multiply the source colour by the destination colour, then blend the destination back in again to take account of
                     // alpha in the source layer (this version of multiply has no effect on the target alpha value: a more strict version might multiply those too)
@@ -322,7 +427,7 @@ impl GlRenderer {
                     Multiply => gl::BlendFuncSeparate(gl::DST_COLOR, gl::ZERO, gl::ZERO, gl::ONE),
 
                     // TODO: screen is 1-(1-a)*(1-b) which I think is harder to fake. If we precalculate (1-a) as the src in the shader
-                    // then can multiply by ONE_MINUS_DST_COLOR to get (1-a)*(1-b). Can use gl::ONE as our target colour, and then a 
+                    // then can multiply by ONE_MINUS_DST_COLOR to get (1-a)*(1-b). Can use gl::ONE as our target colour, and then a
                     // reverse subtraction to get 1-(1-a)*(1-b)
                     // (This implementation doesn't work: the gl::ONE is 1*DST_COLOR and not 1 so this is currently 1*b-(1-a)*(1-b)
                     // with shader support)
@@ -331,20 +436,64 @@ impl GlRenderer {
                         gl::BlendFuncSeparate(gl::ONE_MINUS_DST_COLOR, gl::ONE, gl::ZERO, gl::ONE);
                     }
 
-                    AllChannelAlphaSourceOver => gl::BlendFuncSeparate(gl::ONE, gl::ONE_MINUS_SRC_COLOR, gl::ONE, gl::ONE_MINUS_SRC_ALPHA),
-                    AllChannelAlphaDestinationOver => gl::BlendFuncSeparate(gl::ONE_MINUS_DST_COLOR, gl::ONE, gl::ONE_MINUS_DST_ALPHA, gl::ONE),
+                    AllChannelAlphaSourceOver => gl::BlendFuncSeparate(
+                        gl::ONE,
+                        gl::ONE_MINUS_SRC_COLOR,
+                        gl::ONE,
+                        gl::ONE_MINUS_SRC_ALPHA,
+                    ),
+                    AllChannelAlphaDestinationOver => gl::BlendFuncSeparate(
+                        gl::ONE_MINUS_DST_COLOR,
+                        gl::ONE,
+                        gl::ONE_MINUS_DST_ALPHA,
+                        gl::ONE,
+                    ),
                 }
             } else {
                 // Source is already pre-multiplied
                 match blend_mode {
-                    SourceOver => gl::BlendFuncSeparate(gl::ONE, gl::ONE_MINUS_SRC_ALPHA, gl::ONE, gl::ONE_MINUS_SRC_ALPHA),
-                    DestinationOver => gl::BlendFuncSeparate(gl::ONE_MINUS_DST_ALPHA, gl::DST_ALPHA, gl::ONE_MINUS_DST_ALPHA, gl::ONE),
-                    SourceIn => gl::BlendFuncSeparate(gl::DST_ALPHA, gl::ZERO, gl::DST_ALPHA, gl::ZERO),
-                    DestinationIn => gl::BlendFuncSeparate(gl::ZERO, gl::ONE, gl::ZERO, gl::SRC_ALPHA),
-                    SourceOut => gl::BlendFuncSeparate(gl::ZERO, gl::ONE_MINUS_DST_ALPHA, gl::ZERO, gl::ONE_MINUS_DST_ALPHA),
-                    DestinationOut => gl::BlendFuncSeparate(gl::ZERO, gl::ONE_MINUS_SRC_ALPHA, gl::ZERO, gl::ONE_MINUS_SRC_ALPHA),
-                    SourceATop => gl::BlendFuncSeparate(gl::ONE_MINUS_DST_ALPHA, gl::SRC_ALPHA, gl::ONE_MINUS_DST_ALPHA, gl::SRC_ALPHA),
-                    DestinationATop => gl::BlendFuncSeparate(gl::ONE_MINUS_DST_ALPHA, gl::ONE_MINUS_SRC_ALPHA, gl::ONE_MINUS_DST_ALPHA, gl::ONE_MINUS_SRC_ALPHA),
+                    SourceOver => gl::BlendFuncSeparate(
+                        gl::ONE,
+                        gl::ONE_MINUS_SRC_ALPHA,
+                        gl::ONE,
+                        gl::ONE_MINUS_SRC_ALPHA,
+                    ),
+                    DestinationOver => gl::BlendFuncSeparate(
+                        gl::ONE_MINUS_DST_ALPHA,
+                        gl::DST_ALPHA,
+                        gl::ONE_MINUS_DST_ALPHA,
+                        gl::ONE,
+                    ),
+                    SourceIn => {
+                        gl::BlendFuncSeparate(gl::DST_ALPHA, gl::ZERO, gl::DST_ALPHA, gl::ZERO)
+                    }
+                    DestinationIn => {
+                        gl::BlendFuncSeparate(gl::ZERO, gl::ONE, gl::ZERO, gl::SRC_ALPHA)
+                    }
+                    SourceOut => gl::BlendFuncSeparate(
+                        gl::ZERO,
+                        gl::ONE_MINUS_DST_ALPHA,
+                        gl::ZERO,
+                        gl::ONE_MINUS_DST_ALPHA,
+                    ),
+                    DestinationOut => gl::BlendFuncSeparate(
+                        gl::ZERO,
+                        gl::ONE_MINUS_SRC_ALPHA,
+                        gl::ZERO,
+                        gl::ONE_MINUS_SRC_ALPHA,
+                    ),
+                    SourceATop => gl::BlendFuncSeparate(
+                        gl::ONE_MINUS_DST_ALPHA,
+                        gl::SRC_ALPHA,
+                        gl::ONE_MINUS_DST_ALPHA,
+                        gl::SRC_ALPHA,
+                    ),
+                    DestinationATop => gl::BlendFuncSeparate(
+                        gl::ONE_MINUS_DST_ALPHA,
+                        gl::ONE_MINUS_SRC_ALPHA,
+                        gl::ONE_MINUS_DST_ALPHA,
+                        gl::ONE_MINUS_SRC_ALPHA,
+                    ),
 
                     Multiply => gl::BlendFuncSeparate(gl::DST_COLOR, gl::ZERO, gl::ZERO, gl::ONE),
 
@@ -354,14 +503,26 @@ impl GlRenderer {
                         gl::BlendFuncSeparate(gl::ONE_MINUS_DST_COLOR, gl::ONE, gl::ZERO, gl::ONE);
                     }
 
-                    AllChannelAlphaSourceOver => gl::BlendFuncSeparate(gl::ONE, gl::ONE_MINUS_SRC_COLOR, gl::ONE, gl::ONE_MINUS_SRC_ALPHA),
-                    AllChannelAlphaDestinationOver => gl::BlendFuncSeparate(gl::ONE_MINUS_DST_COLOR, gl::ONE, gl::ONE_MINUS_DST_ALPHA, gl::ONE),
+                    AllChannelAlphaSourceOver => gl::BlendFuncSeparate(
+                        gl::ONE,
+                        gl::ONE_MINUS_SRC_COLOR,
+                        gl::ONE,
+                        gl::ONE_MINUS_SRC_ALPHA,
+                    ),
+                    AllChannelAlphaDestinationOver => gl::BlendFuncSeparate(
+                        gl::ONE_MINUS_DST_COLOR,
+                        gl::ONE,
+                        gl::ONE_MINUS_DST_ALPHA,
+                        gl::ONE,
+                    ),
                 }
             }
 
             // Store the new blend mode
-            let old_processing_step = self.post_processing_for_blend_mode(self.blend_mode, self.source_is_premultiplied);
-            let new_processing_step = self.post_processing_for_blend_mode(blend_mode, source_is_premultiplied);
+            let old_processing_step =
+                self.post_processing_for_blend_mode(self.blend_mode, self.source_is_premultiplied);
+            let new_processing_step =
+                self.post_processing_for_blend_mode(blend_mode, source_is_premultiplied);
             self.blend_mode = blend_mode;
             self.source_is_premultiplied = source_is_premultiplied;
 
@@ -378,12 +539,19 @@ impl GlRenderer {
     ///
     /// Creates a new BGRA texture
     ///
-    fn create_bgra_texture(&mut self, TextureId(texture_id): TextureId, width: usize, height: usize) {
+    fn create_bgra_texture(
+        &mut self,
+        TextureId(texture_id): TextureId,
+        width: usize,
+        height: usize,
+    ) {
         // Extend the textures array as needed
         if texture_id >= self.textures.len() {
-            self.textures.extend((self.textures.len()..(texture_id + 1))
-                .into_iter()
-                .map(|_| None));
+            self.textures.extend(
+                (self.textures.len()..(texture_id + 1))
+                    .into_iter()
+                    .map(|_| None),
+            );
         }
 
         // Free any existing texture
@@ -400,12 +568,19 @@ impl GlRenderer {
     ///
     /// Creates a new monochrome texture
     ///
-    fn create_mono_texture(&mut self, TextureId(texture_id): TextureId, width: usize, height: usize) {
+    fn create_mono_texture(
+        &mut self,
+        TextureId(texture_id): TextureId,
+        width: usize,
+        height: usize,
+    ) {
         // Extend the textures array as needed
         if texture_id >= self.textures.len() {
-            self.textures.extend((self.textures.len()..(texture_id + 1))
-                .into_iter()
-                .map(|_| None));
+            self.textures.extend(
+                (self.textures.len()..(texture_id + 1))
+                    .into_iter()
+                    .map(|_| None),
+            );
         }
 
         // Free any existing texture
@@ -427,9 +602,11 @@ impl GlRenderer {
     fn create_1d_bgra_texture(&mut self, TextureId(texture_id): TextureId, width: usize) {
         // Extend the textures array as needed
         if texture_id >= self.textures.len() {
-            self.textures.extend((self.textures.len()..(texture_id + 1))
-                .into_iter()
-                .map(|_| None));
+            self.textures.extend(
+                (self.textures.len()..(texture_id + 1))
+                    .into_iter()
+                    .map(|_| None),
+            );
         }
 
         // Free any existing texture
@@ -451,9 +628,11 @@ impl GlRenderer {
     fn create_1d_mono_texture(&mut self, TextureId(texture_id): TextureId, width: usize) {
         // Extend the textures array as needed
         if texture_id >= self.textures.len() {
-            self.textures.extend((self.textures.len()..(texture_id + 1))
-                .into_iter()
-                .map(|_| None));
+            self.textures.extend(
+                (self.textures.len()..(texture_id + 1))
+                    .into_iter()
+                    .map(|_| None),
+            );
         }
 
         // Free any existing texture
@@ -470,7 +649,13 @@ impl GlRenderer {
     ///
     /// Writes out byte data to a region in a 2D texture
     ///
-    fn write_texture_data_2d(&mut self, TextureId(texture_id): TextureId, (x1, y1): (usize, usize), (x2, y2): (usize, usize), data: &[u8]) {
+    fn write_texture_data_2d(
+        &mut self,
+        TextureId(texture_id): TextureId,
+        (x1, y1): (usize, usize),
+        (x2, y2): (usize, usize),
+        data: &[u8],
+    ) {
         if let Some(Some(texture)) = self.textures.get_mut(texture_id) {
             if texture.is_mono() {
                 texture.set_data_mono(x1, y1, x2 - x1, y2 - y1, data);
@@ -483,7 +668,13 @@ impl GlRenderer {
     ///
     /// Writes out byte data to a region in a 1D texture
     ///
-    fn write_texture_data_1d(&mut self, TextureId(texture_id): TextureId, x1: usize, x2: usize, data: &[u8]) {
+    fn write_texture_data_1d(
+        &mut self,
+        TextureId(texture_id): TextureId,
+        x1: usize,
+        x2: usize,
+        data: &[u8],
+    ) {
         if let Some(Some(texture)) = self.textures.get_mut(texture_id) {
             if texture.is_mono() {
                 texture.set_data_mono_1d(x1, x2 - x1, data);
@@ -499,7 +690,9 @@ impl GlRenderer {
     fn create_mipmaps(&mut self, TextureId(texture_id): TextureId) {
         if texture_id < self.textures.len() {
             // Mip-map the texture if it exists in this renderer
-            self.textures[texture_id].as_mut().map(|texture| texture.generate_mipmaps());
+            self.textures[texture_id]
+                .as_mut()
+                .map(|texture| texture.generate_mipmaps());
         }
     }
 
@@ -509,15 +702,19 @@ impl GlRenderer {
     fn copy_texture(&mut self, TextureId(source_id): TextureId, TextureId(target_id): TextureId) {
         // Extend the textures array as needed
         if source_id >= self.textures.len() {
-            self.textures.extend((self.textures.len()..(source_id + 1))
-                .into_iter()
-                .map(|_| None));
+            self.textures.extend(
+                (self.textures.len()..(source_id + 1))
+                    .into_iter()
+                    .map(|_| None),
+            );
         }
 
         if target_id >= self.textures.len() {
-            self.textures.extend((self.textures.len()..(target_id + 1))
-                .into_iter()
-                .map(|_| None));
+            self.textures.extend(
+                (self.textures.len()..(target_id + 1))
+                    .into_iter()
+                    .map(|_| None),
+            );
         }
 
         // Free the target texture first
@@ -525,7 +722,9 @@ impl GlRenderer {
 
         if source_id < self.textures.len() {
             // Ask the source to copy itself
-            self.textures[target_id] = self.textures[source_id].as_ref().and_then(|texture| texture.make_copy());
+            self.textures[target_id] = self.textures[source_id]
+                .as_ref()
+                .and_then(|texture| texture.make_copy());
         }
     }
 
@@ -546,11 +745,17 @@ impl GlRenderer {
     ///
     /// Modifies a texture by applying a filter to it
     ///
-    fn filter_texture(&mut self, TextureId(texture_id): TextureId, texture_filter: Vec<TextureFilter>) {
+    fn filter_texture(
+        &mut self,
+        TextureId(texture_id): TextureId,
+        texture_filter: Vec<TextureFilter>,
+    ) {
         // All the filters need textures with pre-multiplied alpha, so apply that beforehand
         if !self.is_premultiplied(TextureId(texture_id)) {
             if let Some(Some(texture)) = self.textures.get_mut(texture_id) {
-                let premultiply_shader = self.shader_programs.program(StandardShaderProgram::PremultiplyAlpha);
+                let premultiply_shader = self
+                    .shader_programs
+                    .program(StandardShaderProgram::PremultiplyAlpha);
                 let premultiplied = texture.filter(premultiply_shader);
 
                 if let Some(mut premultiplied) = premultiplied {
@@ -569,56 +774,98 @@ impl GlRenderer {
 
             // Choose a shader for the filter
             let shader = match filter {
-                GaussianBlurHorizontal9(_sigma, _step) => self.shader_programs.program(StandardShaderProgram::Blur9Horizontal),
-                GaussianBlurHorizontal29(_sigma, _step) => self.shader_programs.program(StandardShaderProgram::Blur29Horizontal),
-                GaussianBlurHorizontal61(_sigma, _step) => self.shader_programs.program(StandardShaderProgram::Blur61Horizontal),
-                GaussianBlurHorizontal(_sigma, _step, _size) => self.shader_programs.program(StandardShaderProgram::BlurTextureHorizontal),
-                GaussianBlurVertical9(_sigma, _step) => self.shader_programs.program(StandardShaderProgram::Blur9Vertical),
-                GaussianBlurVertical29(_sigma, _step) => self.shader_programs.program(StandardShaderProgram::Blur29Vertical),
-                GaussianBlurVertical61(_sigma, _step) => self.shader_programs.program(StandardShaderProgram::Blur61Vertical),
-                GaussianBlurVertical(_sigma, _step, _size) => self.shader_programs.program(StandardShaderProgram::BlurTextureVertical),
-                AlphaBlend(_alpha) => self.shader_programs.program(StandardShaderProgram::FilterAlphaBlend),
-                Mask(_mask) => self.shader_programs.program(StandardShaderProgram::FilterMask),
+                GaussianBlurHorizontal9(_sigma, _step) => self
+                    .shader_programs
+                    .program(StandardShaderProgram::Blur9Horizontal),
+                GaussianBlurHorizontal29(_sigma, _step) => self
+                    .shader_programs
+                    .program(StandardShaderProgram::Blur29Horizontal),
+                GaussianBlurHorizontal61(_sigma, _step) => self
+                    .shader_programs
+                    .program(StandardShaderProgram::Blur61Horizontal),
+                GaussianBlurHorizontal(_sigma, _step, _size) => self
+                    .shader_programs
+                    .program(StandardShaderProgram::BlurTextureHorizontal),
+                GaussianBlurVertical9(_sigma, _step) => self
+                    .shader_programs
+                    .program(StandardShaderProgram::Blur9Vertical),
+                GaussianBlurVertical29(_sigma, _step) => self
+                    .shader_programs
+                    .program(StandardShaderProgram::Blur29Vertical),
+                GaussianBlurVertical61(_sigma, _step) => self
+                    .shader_programs
+                    .program(StandardShaderProgram::Blur61Vertical),
+                GaussianBlurVertical(_sigma, _step, _size) => self
+                    .shader_programs
+                    .program(StandardShaderProgram::BlurTextureVertical),
+                AlphaBlend(_alpha) => self
+                    .shader_programs
+                    .program(StandardShaderProgram::FilterAlphaBlend),
+                Mask(_mask) => self
+                    .shader_programs
+                    .program(StandardShaderProgram::FilterMask),
 
-                DisplacementMap(texture_id, _xr, _yr) => if self.is_premultiplied(texture_id) {
-                    self.shader_programs.program(StandardShaderProgram::FilterDisplacementMap(FilterSourceFormat::PremultipliedAlpha))
-                } else {
-                    self.shader_programs.program(StandardShaderProgram::FilterDisplacementMap(FilterSourceFormat::NotPremultiplied))
+                DisplacementMap(texture_id, _xr, _yr) => {
+                    if self.is_premultiplied(texture_id) {
+                        self.shader_programs
+                            .program(StandardShaderProgram::FilterDisplacementMap(
+                                FilterSourceFormat::PremultipliedAlpha,
+                            ))
+                    } else {
+                        self.shader_programs
+                            .program(StandardShaderProgram::FilterDisplacementMap(
+                                FilterSourceFormat::NotPremultiplied,
+                            ))
+                    }
                 }
             };
 
             // Set up the uniforms for the filter
             match filter {
-                GaussianBlurHorizontal9(sigma, step) |
-                GaussianBlurHorizontal29(sigma, step) |
-                GaussianBlurHorizontal61(sigma, step) |
-                GaussianBlurVertical9(sigma, step) |
-                GaussianBlurVertical29(sigma, step) |
-                GaussianBlurVertical61(sigma, step) => {
+                GaussianBlurHorizontal9(sigma, step)
+                | GaussianBlurHorizontal29(sigma, step)
+                | GaussianBlurHorizontal61(sigma, step)
+                | GaussianBlurVertical9(sigma, step)
+                | GaussianBlurVertical29(sigma, step)
+                | GaussianBlurVertical61(sigma, step) => {
                     let kernel_size = filter.kernel_size();
-                    let weights = TextureFilter::weights_for_gaussian_blur(sigma, step, kernel_size);
-                    let (weights, offsets) = TextureFilter::weights_and_offsets_for_gaussian_blur(weights);
+                    let weights =
+                        TextureFilter::weights_for_gaussian_blur(sigma, step, kernel_size);
+                    let (weights, offsets) =
+                        TextureFilter::weights_and_offsets_for_gaussian_blur(weights);
 
                     unsafe {
                         gl::UseProgram(**shader);
 
-                        shader.uniform_location(ShaderUniform::BlurWeights, "t_Weight")
+                        shader
+                            .uniform_location(ShaderUniform::BlurWeights, "t_Weight")
                             .map(|weights_uniform| {
-                                gl::Uniform1fv(weights_uniform, (kernel_size / 2 + 1) as _, weights.as_ptr());
+                                gl::Uniform1fv(
+                                    weights_uniform,
+                                    (kernel_size / 2 + 1) as _,
+                                    weights.as_ptr(),
+                                );
                             });
-                        shader.uniform_location(ShaderUniform::BlurOffsets, "t_Offset")
+                        shader
+                            .uniform_location(ShaderUniform::BlurOffsets, "t_Offset")
                             .map(|offset_uniform| {
-                                gl::Uniform1fv(offset_uniform, (kernel_size / 2 + 1) as _, offsets.as_ptr());
+                                gl::Uniform1fv(
+                                    offset_uniform,
+                                    (kernel_size / 2 + 1) as _,
+                                    offsets.as_ptr(),
+                                );
                             });
                     }
                 }
 
-                GaussianBlurHorizontal(sigma, step, size) |
-                GaussianBlurVertical(sigma, step, size) => {
+                GaussianBlurHorizontal(sigma, step, size)
+                | GaussianBlurVertical(sigma, step, size) => {
                     // Calculate the kernel
                     let kernel_size = (size - 1) / 2 + 1;
-                    let weights = TextureFilter::weights_for_gaussian_blur(sigma, step, kernel_size);
-                    let (weights, offsets) = TextureFilter::weights_and_offsets_for_gaussian_blur(weights);
+                    let weights =
+                        TextureFilter::weights_for_gaussian_blur(sigma, step, kernel_size);
+                    let (weights, offsets) =
+                        TextureFilter::weights_and_offsets_for_gaussian_blur(weights);
 
                     // Create textures for the weights and offsets
                     weight_texture = Some(Texture::new());
@@ -654,11 +901,13 @@ impl GlRenderer {
 
                         gl::UseProgram(**shader);
 
-                        shader.uniform_location(ShaderUniform::TextureBlurWeights, "t_WeightTexture")
+                        shader
+                            .uniform_location(ShaderUniform::TextureBlurWeights, "t_WeightTexture")
                             .map(|weights_uniform| {
                                 gl::Uniform1i(weights_uniform, 1);
                             });
-                        shader.uniform_location(ShaderUniform::TextureBlurOffsets, "t_OffsetTexture")
+                        shader
+                            .uniform_location(ShaderUniform::TextureBlurOffsets, "t_OffsetTexture")
                             .map(|offset_uniform| {
                                 gl::Uniform1i(offset_uniform, 2);
                             });
@@ -667,20 +916,23 @@ impl GlRenderer {
                     }
                 }
 
-                AlphaBlend(alpha) => {
-                    unsafe {
-                        gl::UseProgram(**shader);
+                AlphaBlend(alpha) => unsafe {
+                    gl::UseProgram(**shader);
 
-                        shader.uniform_location(ShaderUniform::TextureAlpha, "texture_alpha")
-                            .map(|alpha_uniform| {
-                                gl::Uniform1f(alpha_uniform, alpha);
-                            });
-                    }
-                }
+                    shader
+                        .uniform_location(ShaderUniform::TextureAlpha, "texture_alpha")
+                        .map(|alpha_uniform| {
+                            gl::Uniform1f(alpha_uniform, alpha);
+                        });
+                },
 
                 Mask(mask_texture) => {
                     let TextureId(mask_texture) = mask_texture;
-                    let mask_texture = self.textures.get(mask_texture).map(|t| t.as_ref()).unwrap_or(None);
+                    let mask_texture = self
+                        .textures
+                        .get(mask_texture)
+                        .map(|t| t.as_ref())
+                        .unwrap_or(None);
 
                     if let Some(mask_texture) = mask_texture {
                         unsafe {
@@ -690,12 +942,29 @@ impl GlRenderer {
                             gl::ActiveTexture(gl::TEXTURE1);
                             gl::BindTexture(gl::TEXTURE_2D, **mask_texture);
 
-                            gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MIN_FILTER, gl::LINEAR_MIPMAP_LINEAR as _);
-                            gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MAG_FILTER, gl::LINEAR as _);
-                            gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_WRAP_S, gl::CLAMP_TO_EDGE as _);
-                            gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_WRAP_T, gl::CLAMP_TO_EDGE as _);
+                            gl::TexParameteri(
+                                gl::TEXTURE_2D,
+                                gl::TEXTURE_MIN_FILTER,
+                                gl::LINEAR_MIPMAP_LINEAR as _,
+                            );
+                            gl::TexParameteri(
+                                gl::TEXTURE_2D,
+                                gl::TEXTURE_MAG_FILTER,
+                                gl::LINEAR as _,
+                            );
+                            gl::TexParameteri(
+                                gl::TEXTURE_2D,
+                                gl::TEXTURE_WRAP_S,
+                                gl::CLAMP_TO_EDGE as _,
+                            );
+                            gl::TexParameteri(
+                                gl::TEXTURE_2D,
+                                gl::TEXTURE_WRAP_T,
+                                gl::CLAMP_TO_EDGE as _,
+                            );
 
-                            shader.uniform_location(ShaderUniform::FilterTexture, "t_FilterTexture")
+                            shader
+                                .uniform_location(ShaderUniform::FilterTexture, "t_FilterTexture")
                                 .map(|filter_texture_uniform| {
                                     gl::Uniform1i(filter_texture_uniform, 1);
                                 });
@@ -717,17 +986,35 @@ impl GlRenderer {
                             gl::ActiveTexture(gl::TEXTURE1);
                             gl::BindTexture(gl::TEXTURE_2D, **displacement_texture);
 
-                            gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MIN_FILTER, gl::LINEAR_MIPMAP_LINEAR as _);
-                            gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MAG_FILTER, gl::LINEAR as _);
-                            gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_WRAP_S, gl::CLAMP_TO_EDGE as _);
-                            gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_WRAP_T, gl::CLAMP_TO_EDGE as _);
+                            gl::TexParameteri(
+                                gl::TEXTURE_2D,
+                                gl::TEXTURE_MIN_FILTER,
+                                gl::LINEAR_MIPMAP_LINEAR as _,
+                            );
+                            gl::TexParameteri(
+                                gl::TEXTURE_2D,
+                                gl::TEXTURE_MAG_FILTER,
+                                gl::LINEAR as _,
+                            );
+                            gl::TexParameteri(
+                                gl::TEXTURE_2D,
+                                gl::TEXTURE_WRAP_S,
+                                gl::CLAMP_TO_EDGE as _,
+                            );
+                            gl::TexParameteri(
+                                gl::TEXTURE_2D,
+                                gl::TEXTURE_WRAP_T,
+                                gl::CLAMP_TO_EDGE as _,
+                            );
 
-                            shader.uniform_location(ShaderUniform::FilterTexture, "t_FilterTexture")
+                            shader
+                                .uniform_location(ShaderUniform::FilterTexture, "t_FilterTexture")
                                 .map(|filter_texture_uniform| {
                                     gl::Uniform1i(filter_texture_uniform, 1);
                                 });
 
-                            shader.uniform_location(ShaderUniform::FilterScale, "t_Scale")
+                            shader
+                                .uniform_location(ShaderUniform::FilterScale, "t_Scale")
                                 .map(|scale_uniform| {
                                     gl::Uniform2f(scale_uniform, x_radius, y_radius);
                                 });
@@ -741,7 +1028,11 @@ impl GlRenderer {
             // Apply the filter to the texture
             panic_on_gl_error("Filter setup");
             let texture = self.textures.get_mut(texture_id);
-            let texture = if let Some(Some(texture)) = texture { texture } else { return; };
+            let texture = if let Some(Some(texture)) = texture {
+                texture
+            } else {
+                return;
+            };
 
             let new_texture = texture.filter(shader);
             if let Some(new_texture) = new_texture {
@@ -766,7 +1057,8 @@ impl GlRenderer {
             let active_shader = *active_shader;
             self.use_shader(active_shader);
         } else {
-            self.shader_programs.use_program(StandardShaderProgram::default());
+            self.shader_programs
+                .use_program(StandardShaderProgram::default());
         }
         self.blend_mode(self.blend_mode, self.source_is_premultiplied);
     }
@@ -783,19 +1075,30 @@ impl GlRenderer {
     ///
     /// Creates a new render target
     ///
-    fn create_render_target(&mut self, RenderTargetId(render_id): RenderTargetId, TextureId(texture_id): TextureId, width: usize, height: usize, render_type: RenderTargetType) {
+    fn create_render_target(
+        &mut self,
+        RenderTargetId(render_id): RenderTargetId,
+        TextureId(texture_id): TextureId,
+        width: usize,
+        height: usize,
+        render_type: RenderTargetType,
+    ) {
         // Extend the textures array as needed
         if texture_id >= self.textures.len() {
-            self.textures.extend((self.textures.len()..(texture_id + 1))
-                .into_iter()
-                .map(|_| None));
+            self.textures.extend(
+                (self.textures.len()..(texture_id + 1))
+                    .into_iter()
+                    .map(|_| None),
+            );
         }
 
         // Extend the render targets array as needed
         if render_id >= self.render_targets.len() {
-            self.render_targets.extend((self.render_targets.len()..(render_id + 1))
-                .into_iter()
-                .map(|_| None));
+            self.render_targets.extend(
+                (self.render_targets.len()..(render_id + 1))
+                    .into_iter()
+                    .map(|_| None),
+            );
         }
 
         // Free any existing texture and render target
@@ -821,7 +1124,12 @@ impl GlRenderer {
                 let (width, height) = render_target.get_size();
 
                 gl::BindFramebuffer(gl::FRAMEBUFFER, **render_target);
-                gl::Viewport(0, 0, width as gl::types::GLsizei, height as gl::types::GLsizei);
+                gl::Viewport(
+                    0,
+                    0,
+                    width as gl::types::GLsizei,
+                    height as gl::types::GLsizei,
+                );
             }
         }
     }
@@ -837,7 +1145,12 @@ impl GlRenderer {
                 let (width, height) = default_render_target.get_size();
 
                 gl::BindFramebuffer(gl::FRAMEBUFFER, **default_render_target);
-                gl::Viewport(0, 0, width as gl::types::GLsizei, height as gl::types::GLsizei);
+                gl::Viewport(
+                    0,
+                    0,
+                    width as gl::types::GLsizei,
+                    height as gl::types::GLsizei,
+                );
             }
         }
     }
@@ -845,7 +1158,12 @@ impl GlRenderer {
     ///
     /// Draws a frame buffer at a location
     ///
-    fn draw_frame_buffer(&mut self, RenderTargetId(source_buffer): RenderTargetId, region: FrameBufferRegion, alpha: f64) {
+    fn draw_frame_buffer(
+        &mut self,
+        RenderTargetId(source_buffer): RenderTargetId,
+        region: FrameBufferRegion,
+        alpha: f64,
+    ) {
         let post_process = self.post_processing_for_blend_mode(self.blend_mode, true);
         let was_premultiplied = self.source_is_premultiplied;
 
@@ -853,67 +1171,87 @@ impl GlRenderer {
         self.blend_mode(self.blend_mode, true);
 
         let shaders = &mut self.shader_programs;
-        self.render_targets[source_buffer].as_ref().map(|source_buffer| {
-            unsafe {
-                if let Some(texture) = source_buffer.texture() {
-                    // Activate the resolving program
-                    let shader = shaders.use_program(StandardShaderProgram::MsaaResolve(4, post_process));
+        self.render_targets[source_buffer]
+            .as_ref()
+            .map(|source_buffer| {
+                unsafe {
+                    if let Some(texture) = source_buffer.texture() {
+                        // Activate the resolving program
+                        let shader = shaders
+                            .use_program(StandardShaderProgram::MsaaResolve(4, post_process));
 
-                    // Set the texture for the render buffer
-                    gl::ActiveTexture(gl::TEXTURE0);
-                    gl::BindTexture(gl::TEXTURE_2D_MULTISAMPLE, *texture);
+                        // Set the texture for the render buffer
+                        gl::ActiveTexture(gl::TEXTURE0);
+                        gl::BindTexture(gl::TEXTURE_2D_MULTISAMPLE, *texture);
 
-                    shader.uniform_location(ShaderUniform::MsaaAlpha, "t_Alpha")
-                        .map(|t_alpha| {
-                            gl::Uniform1f(t_alpha, alpha as _);
-                        });
+                        shader
+                            .uniform_location(ShaderUniform::MsaaAlpha, "t_Alpha")
+                            .map(|t_alpha| {
+                                gl::Uniform1f(t_alpha, alpha as _);
+                            });
 
-                    shader.uniform_location(ShaderUniform::MsaaTexture, "t_SourceTexture")
-                        .map(|source_texture| {
-                            gl::Uniform1i(source_texture, 0);
-                        });
+                        shader
+                            .uniform_location(ShaderUniform::MsaaTexture, "t_SourceTexture")
+                            .map(|source_texture| {
+                                gl::Uniform1i(source_texture, 0);
+                            });
 
-                    // Create the vertices for the two triangles making up the screen
-                    let min_x = region.min_x();
-                    let min_y = region.min_y();
-                    let max_x = region.max_x();
-                    let max_y = region.max_y();
+                        // Create the vertices for the two triangles making up the screen
+                        let min_x = region.min_x();
+                        let min_y = region.min_y();
+                        let max_x = region.max_x();
+                        let max_y = region.max_y();
 
-                    let vertices = vec![
-                        Vertex2D::with_pos(min_x, min_y), Vertex2D::with_pos(max_x, min_y), Vertex2D::with_pos(min_x, max_y),
-                        Vertex2D::with_pos(max_x, min_y), Vertex2D::with_pos(min_x, max_y), Vertex2D::with_pos(max_x, max_y),
-                    ];
-                    let mut buffer = Buffer::new();
-                    let vertex_array = VertexArray::new();
-                    buffer.static_draw(&vertices);
+                        let vertices = vec![
+                            Vertex2D::with_pos(min_x, min_y),
+                            Vertex2D::with_pos(max_x, min_y),
+                            Vertex2D::with_pos(min_x, max_y),
+                            Vertex2D::with_pos(max_x, min_y),
+                            Vertex2D::with_pos(min_x, max_y),
+                            Vertex2D::with_pos(max_x, max_y),
+                        ];
+                        let mut buffer = Buffer::new();
+                        let vertex_array = VertexArray::new();
+                        buffer.static_draw(&vertices);
 
-                    // Bind a vertex array object to it
-                    gl::BindVertexArray(*vertex_array);
-                    gl::BindBuffer(gl::ARRAY_BUFFER, *buffer);
+                        // Bind a vertex array object to it
+                        gl::BindVertexArray(*vertex_array);
+                        gl::BindBuffer(gl::ARRAY_BUFFER, *buffer);
 
-                    Vertex2D::define_attributes();
+                        Vertex2D::define_attributes();
 
-                    // Clear the bindings
-                    gl::BindBuffer(gl::ARRAY_BUFFER, 0);
-                    gl::BindVertexArray(0);
+                        // Clear the bindings
+                        gl::BindBuffer(gl::ARRAY_BUFFER, 0);
+                        gl::BindVertexArray(0);
 
-                    // Render a quad filling the screen
-                    gl::BindVertexArray(*vertex_array);
-                    gl::DrawArrays(gl::TRIANGLES, 0, 6);
+                        // Render a quad filling the screen
+                        gl::BindVertexArray(*vertex_array);
+                        gl::DrawArrays(gl::TRIANGLES, 0, 6);
 
-                    gl::BindVertexArray(0);
-                } else {
-                    // Blit the framebuffer if we're using a renderbuffer directly instead of a backing texture (won't blend or obey the alpha value)
-                    let (x, y) = (0, 0);
-                    let (width, height) = source_buffer.get_size();
-                    let width = width as i32;
-                    let height = height as i32;
+                        gl::BindVertexArray(0);
+                    } else {
+                        // Blit the framebuffer if we're using a renderbuffer directly instead of a backing texture (won't blend or obey the alpha value)
+                        let (x, y) = (0, 0);
+                        let (width, height) = source_buffer.get_size();
+                        let width = width as i32;
+                        let height = height as i32;
 
-                    gl::BindFramebuffer(gl::READ_FRAMEBUFFER, **source_buffer);
-                    gl::BlitFramebuffer(0, 0, width, height, x, y, x + width, y + height, gl::COLOR_BUFFER_BIT, gl::NEAREST);
+                        gl::BindFramebuffer(gl::READ_FRAMEBUFFER, **source_buffer);
+                        gl::BlitFramebuffer(
+                            0,
+                            0,
+                            width,
+                            height,
+                            x,
+                            y,
+                            x + width,
+                            y + height,
+                            gl::COLOR_BUFFER_BIT,
+                            gl::NEAREST,
+                        );
+                    }
                 }
-            }
-        });
+            });
 
         // We always revert to the simple shader after this operation
         shaders.use_program(StandardShaderProgram::default());
@@ -933,12 +1271,16 @@ impl GlRenderer {
     ///
     /// Returns the post-processing step to use for the specified blend mode
     ///
-    fn post_processing_for_blend_mode(&self, blend_mode: BlendMode, _source_is_premultiplied: bool) -> ColorPostProcessingStep {
+    fn post_processing_for_blend_mode(
+        &self,
+        blend_mode: BlendMode,
+        _source_is_premultiplied: bool,
+    ) -> ColorPostProcessingStep {
         match blend_mode {
             BlendMode::Multiply => ColorPostProcessingStep::InvertColorAlpha,
             BlendMode::Screen => ColorPostProcessingStep::MultiplyAlpha,
 
-            _ => ColorPostProcessingStep::NoPostProcessing
+            _ => ColorPostProcessingStep::NoPostProcessing,
         }
     }
 
@@ -948,7 +1290,11 @@ impl GlRenderer {
     #[inline]
     fn alpha_blend_step_for_texture(&self, texture: &TextureId) -> AlphaBlendStep {
         let TextureId(texture) = *texture;
-        let texture = if texture < self.textures.len() { self.textures[texture].as_ref() } else { None };
+        let texture = if texture < self.textures.len() {
+            self.textures[texture].as_ref()
+        } else {
+            None
+        };
 
         if let Some(texture) = texture {
             if texture.premultiplied {
@@ -967,22 +1313,70 @@ impl GlRenderer {
     fn active_shader_program(&self) -> Option<StandardShaderProgram> {
         use self::ShaderType::*;
 
-        let post_processing = self.post_processing_for_blend_mode(self.blend_mode, self.source_is_premultiplied);
+        let post_processing =
+            self.post_processing_for_blend_mode(self.blend_mode, self.source_is_premultiplied);
 
         match &self.active_shader {
-            Some(Simple { clip_texture: None }) => Some(StandardShaderProgram::Simple(StandardShaderVariant::NoClipping, post_processing)),
-            Some(Simple { clip_texture: Some(_) }) => Some(StandardShaderProgram::Simple(StandardShaderVariant::ClippingMask, post_processing)),
+            Some(Simple { clip_texture: None }) => Some(StandardShaderProgram::Simple(
+                StandardShaderVariant::NoClipping,
+                post_processing,
+            )),
+            Some(Simple {
+                clip_texture: Some(_),
+            }) => Some(StandardShaderProgram::Simple(
+                StandardShaderVariant::ClippingMask,
+                post_processing,
+            )),
 
-            Some(DashedLine { dash_texture: _, clip_texture: None }) => Some(StandardShaderProgram::DashedLine(StandardShaderVariant::NoClipping, post_processing)),
-            Some(DashedLine { dash_texture: _, clip_texture: Some(_) }) => Some(StandardShaderProgram::DashedLine(StandardShaderVariant::ClippingMask, post_processing)),
+            Some(DashedLine {
+                dash_texture: _,
+                clip_texture: None,
+            }) => Some(StandardShaderProgram::DashedLine(
+                StandardShaderVariant::NoClipping,
+                post_processing,
+            )),
+            Some(DashedLine {
+                dash_texture: _,
+                clip_texture: Some(_),
+            }) => Some(StandardShaderProgram::DashedLine(
+                StandardShaderVariant::ClippingMask,
+                post_processing,
+            )),
 
-            Some(Texture { texture, clip_texture: None, .. }) => Some(StandardShaderProgram::Texture(StandardShaderVariant::NoClipping, self.alpha_blend_step_for_texture(texture), post_processing)),
-            Some(Texture { texture, clip_texture: Some(_), .. }) => Some(StandardShaderProgram::Texture(StandardShaderVariant::ClippingMask, self.alpha_blend_step_for_texture(texture), post_processing)),
+            Some(Texture {
+                texture,
+                clip_texture: None,
+                ..
+            }) => Some(StandardShaderProgram::Texture(
+                StandardShaderVariant::NoClipping,
+                self.alpha_blend_step_for_texture(texture),
+                post_processing,
+            )),
+            Some(Texture {
+                texture,
+                clip_texture: Some(_),
+                ..
+            }) => Some(StandardShaderProgram::Texture(
+                StandardShaderVariant::ClippingMask,
+                self.alpha_blend_step_for_texture(texture),
+                post_processing,
+            )),
 
-            Some(LinearGradient { clip_texture: None, .. }) => Some(StandardShaderProgram::LinearGradient(StandardShaderVariant::NoClipping, post_processing)),
-            Some(LinearGradient { clip_texture: Some(_), .. }) => Some(StandardShaderProgram::LinearGradient(StandardShaderVariant::ClippingMask, post_processing)),
+            Some(LinearGradient {
+                clip_texture: None, ..
+            }) => Some(StandardShaderProgram::LinearGradient(
+                StandardShaderVariant::NoClipping,
+                post_processing,
+            )),
+            Some(LinearGradient {
+                clip_texture: Some(_),
+                ..
+            }) => Some(StandardShaderProgram::LinearGradient(
+                StandardShaderVariant::ClippingMask,
+                post_processing,
+            )),
 
-            None => None
+            None => None,
         }
     }
 
@@ -999,25 +1393,46 @@ impl GlRenderer {
         match shader_type {
             Simple { clip_texture } => {
                 let textures = &self.textures;
-                let clip_texture = clip_texture.and_then(|TextureId(texture_id)| textures[texture_id].as_ref());
-                let variant = if clip_texture.is_some() { StandardShaderVariant::ClippingMask } else { StandardShaderVariant::NoClipping };
+                let clip_texture =
+                    clip_texture.and_then(|TextureId(texture_id)| textures[texture_id].as_ref());
+                let variant = if clip_texture.is_some() {
+                    StandardShaderVariant::ClippingMask
+                } else {
+                    StandardShaderVariant::NoClipping
+                };
 
-                let program = self.shader_programs.use_program(StandardShaderProgram::Simple(variant, premultiply));
-                if let Some(clip_texture) = clip_texture { program.use_texture(ShaderUniform::ClipTexture, "t_ClipMask", clip_texture, 2); }
+                let program = self
+                    .shader_programs
+                    .use_program(StandardShaderProgram::Simple(variant, premultiply));
+                if let Some(clip_texture) = clip_texture {
+                    program.use_texture(ShaderUniform::ClipTexture, "t_ClipMask", clip_texture, 2);
+                }
 
                 panic_on_gl_error("Set simple shader");
             }
 
-            DashedLine { dash_texture, clip_texture } => {
+            DashedLine {
+                dash_texture,
+                clip_texture,
+            } => {
                 // Set the basic clip/erase textures
                 let textures = &self.textures;
                 let TextureId(dash_texture) = dash_texture;
                 let dash_texture = self.textures[dash_texture].as_ref();
-                let clip_texture = clip_texture.and_then(|TextureId(texture_id)| textures[texture_id].as_ref());
-                let variant = if clip_texture.is_some() { StandardShaderVariant::ClippingMask } else { StandardShaderVariant::NoClipping };
+                let clip_texture =
+                    clip_texture.and_then(|TextureId(texture_id)| textures[texture_id].as_ref());
+                let variant = if clip_texture.is_some() {
+                    StandardShaderVariant::ClippingMask
+                } else {
+                    StandardShaderVariant::NoClipping
+                };
 
-                let program = self.shader_programs.use_program(StandardShaderProgram::DashedLine(variant, premultiply));
-                if let Some(clip_texture) = clip_texture { program.use_texture(ShaderUniform::ClipTexture, "t_ClipMask", clip_texture, 2); }
+                let program = self
+                    .shader_programs
+                    .use_program(StandardShaderProgram::DashedLine(variant, premultiply));
+                if let Some(clip_texture) = clip_texture {
+                    program.use_texture(ShaderUniform::ClipTexture, "t_ClipMask", clip_texture, 2);
+                }
 
                 // Set the dash texture
                 if let Some(dash_texture) = dash_texture {
@@ -1025,31 +1440,58 @@ impl GlRenderer {
                         gl::ActiveTexture(gl::TEXTURE0);
                         gl::BindTexture(gl::TEXTURE_1D, **dash_texture);
 
-                        program.uniform_location(ShaderUniform::DashTexture, "t_DashPattern")
+                        program
+                            .uniform_location(ShaderUniform::DashTexture, "t_DashPattern")
                             .map(|dash_pattern| {
                                 gl::Uniform1i(dash_pattern, 0);
                             });
                     }
                 } else {
                     // Texture not found: revert to the simple shader
-                    self.shader_programs.use_program(StandardShaderProgram::default());
+                    self.shader_programs
+                        .use_program(StandardShaderProgram::default());
                 }
 
                 panic_on_gl_error("Set dash shader");
             }
 
-            Texture { texture, texture_transform, repeat, alpha, clip_texture } => {
+            Texture {
+                texture,
+                texture_transform,
+                repeat,
+                alpha,
+                clip_texture,
+            } => {
                 let textures = &self.textures;
                 let alpha_blend_step = self.alpha_blend_step_for_texture(&texture);
                 let TextureId(texture) = texture;
-                let texture = if texture < self.textures.len() { self.textures[texture].as_ref() } else { None };
-                let clip_texture = clip_texture.and_then(|TextureId(texture_id)| textures[texture_id].as_ref());
-                let variant = if clip_texture.is_some() { StandardShaderVariant::ClippingMask } else { StandardShaderVariant::NoClipping };
+                let texture = if texture < self.textures.len() {
+                    self.textures[texture].as_ref()
+                } else {
+                    None
+                };
+                let clip_texture =
+                    clip_texture.and_then(|TextureId(texture_id)| textures[texture_id].as_ref());
+                let variant = if clip_texture.is_some() {
+                    StandardShaderVariant::ClippingMask
+                } else {
+                    StandardShaderVariant::NoClipping
+                };
                 let texture_transform = texture_transform.to_opengl_matrix();
-                is_premultiplied = texture.map(|texture| texture.premultiplied).unwrap_or(false);
+                is_premultiplied = texture
+                    .map(|texture| texture.premultiplied)
+                    .unwrap_or(false);
 
-                let program = self.shader_programs.use_program(StandardShaderProgram::Texture(variant, alpha_blend_step, premultiply));
-                if let Some(clip_texture) = clip_texture { program.use_texture(ShaderUniform::ClipTexture, "t_ClipMask", clip_texture, 2); }
+                let program = self
+                    .shader_programs
+                    .use_program(StandardShaderProgram::Texture(
+                        variant,
+                        alpha_blend_step,
+                        premultiply,
+                    ));
+                if let Some(clip_texture) = clip_texture {
+                    program.use_texture(ShaderUniform::ClipTexture, "t_ClipMask", clip_texture, 2);
+                }
 
                 // Set up the texture program
                 if let Some(texture) = texture {
@@ -1058,49 +1500,89 @@ impl GlRenderer {
                         gl::ActiveTexture(gl::TEXTURE0);
                         gl::BindTexture(gl::TEXTURE_2D, **texture);
 
-                        gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MIN_FILTER, gl::LINEAR_MIPMAP_LINEAR as _);
+                        gl::TexParameteri(
+                            gl::TEXTURE_2D,
+                            gl::TEXTURE_MIN_FILTER,
+                            gl::LINEAR_MIPMAP_LINEAR as _,
+                        );
                         gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MAG_FILTER, gl::LINEAR as _);
 
                         if repeat {
                             gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_WRAP_S, gl::REPEAT as _);
                             gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_WRAP_T, gl::REPEAT as _);
                         } else {
-                            gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_WRAP_S, gl::CLAMP_TO_EDGE as _);
-                            gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_WRAP_T, gl::CLAMP_TO_EDGE as _);
+                            gl::TexParameteri(
+                                gl::TEXTURE_2D,
+                                gl::TEXTURE_WRAP_S,
+                                gl::CLAMP_TO_EDGE as _,
+                            );
+                            gl::TexParameteri(
+                                gl::TEXTURE_2D,
+                                gl::TEXTURE_WRAP_T,
+                                gl::CLAMP_TO_EDGE as _,
+                            );
                         }
 
                         // Set in the program uniform
-                        program.uniform_location(ShaderUniform::Texture, "t_Texture")
+                        program
+                            .uniform_location(ShaderUniform::Texture, "t_Texture")
                             .map(|texture_uniform| {
                                 gl::Uniform1i(texture_uniform, 0);
                             });
-                        program.uniform_location(ShaderUniform::TextureTransform, "texture_transform")
+                        program
+                            .uniform_location(ShaderUniform::TextureTransform, "texture_transform")
                             .map(|transform_uniform| {
-                                gl::UniformMatrix4fv(transform_uniform, 1, gl::FALSE, texture_transform.as_ptr());
+                                gl::UniformMatrix4fv(
+                                    transform_uniform,
+                                    1,
+                                    gl::FALSE,
+                                    texture_transform.as_ptr(),
+                                );
                             });
-                        program.uniform_location(ShaderUniform::TextureAlpha, "texture_alpha")
+                        program
+                            .uniform_location(ShaderUniform::TextureAlpha, "texture_alpha")
                             .map(|alpha_uniform| {
                                 gl::Uniform1f(alpha_uniform, alpha);
                             });
                     }
                 } else {
                     // Texture not found: revert to the simple shader
-                    self.shader_programs.use_program(StandardShaderProgram::default());
+                    self.shader_programs
+                        .use_program(StandardShaderProgram::default());
                 }
 
                 panic_on_gl_error("Set texture shader");
             }
 
-            LinearGradient { texture, texture_transform, repeat, alpha, clip_texture } => {
+            LinearGradient {
+                texture,
+                texture_transform,
+                repeat,
+                alpha,
+                clip_texture,
+            } => {
                 let textures = &self.textures;
                 let TextureId(texture) = texture;
-                let texture = if texture < self.textures.len() { self.textures[texture].as_ref() } else { None };
-                let clip_texture = clip_texture.and_then(|TextureId(texture_id)| textures[texture_id].as_ref());
-                let variant = if clip_texture.is_some() { StandardShaderVariant::ClippingMask } else { StandardShaderVariant::NoClipping };
+                let texture = if texture < self.textures.len() {
+                    self.textures[texture].as_ref()
+                } else {
+                    None
+                };
+                let clip_texture =
+                    clip_texture.and_then(|TextureId(texture_id)| textures[texture_id].as_ref());
+                let variant = if clip_texture.is_some() {
+                    StandardShaderVariant::ClippingMask
+                } else {
+                    StandardShaderVariant::NoClipping
+                };
                 let texture_transform = texture_transform.to_opengl_matrix();
 
-                let program = self.shader_programs.use_program(StandardShaderProgram::LinearGradient(variant, premultiply));
-                if let Some(clip_texture) = clip_texture { program.use_texture(ShaderUniform::ClipTexture, "t_ClipMask", clip_texture, 2); }
+                let program = self
+                    .shader_programs
+                    .use_program(StandardShaderProgram::LinearGradient(variant, premultiply));
+                if let Some(clip_texture) = clip_texture {
+                    program.use_texture(ShaderUniform::ClipTexture, "t_ClipMask", clip_texture, 2);
+                }
 
                 // Set up the texture program
                 if let Some(texture) = texture {
@@ -1109,34 +1591,55 @@ impl GlRenderer {
                         gl::ActiveTexture(gl::TEXTURE0);
                         gl::BindTexture(gl::TEXTURE_1D, **texture);
 
-                        gl::TexParameteri(gl::TEXTURE_1D, gl::TEXTURE_MIN_FILTER, gl::LINEAR_MIPMAP_LINEAR as _);
+                        gl::TexParameteri(
+                            gl::TEXTURE_1D,
+                            gl::TEXTURE_MIN_FILTER,
+                            gl::LINEAR_MIPMAP_LINEAR as _,
+                        );
                         gl::TexParameteri(gl::TEXTURE_1D, gl::TEXTURE_MAG_FILTER, gl::LINEAR as _);
 
                         if repeat {
                             gl::TexParameteri(gl::TEXTURE_1D, gl::TEXTURE_WRAP_S, gl::REPEAT as _);
                             gl::TexParameteri(gl::TEXTURE_1D, gl::TEXTURE_WRAP_T, gl::REPEAT as _);
                         } else {
-                            gl::TexParameteri(gl::TEXTURE_1D, gl::TEXTURE_WRAP_S, gl::CLAMP_TO_EDGE as _);
-                            gl::TexParameteri(gl::TEXTURE_1D, gl::TEXTURE_WRAP_T, gl::CLAMP_TO_EDGE as _);
+                            gl::TexParameteri(
+                                gl::TEXTURE_1D,
+                                gl::TEXTURE_WRAP_S,
+                                gl::CLAMP_TO_EDGE as _,
+                            );
+                            gl::TexParameteri(
+                                gl::TEXTURE_1D,
+                                gl::TEXTURE_WRAP_T,
+                                gl::CLAMP_TO_EDGE as _,
+                            );
                         }
 
                         // Set in the program uniform
-                        program.uniform_location(ShaderUniform::Texture, "t_Texture")
+                        program
+                            .uniform_location(ShaderUniform::Texture, "t_Texture")
                             .map(|texture_uniform| {
                                 gl::Uniform1i(texture_uniform, 0);
                             });
-                        program.uniform_location(ShaderUniform::TextureTransform, "texture_transform")
+                        program
+                            .uniform_location(ShaderUniform::TextureTransform, "texture_transform")
                             .map(|transform_uniform| {
-                                gl::UniformMatrix4fv(transform_uniform, 1, gl::FALSE, texture_transform.as_ptr());
+                                gl::UniformMatrix4fv(
+                                    transform_uniform,
+                                    1,
+                                    gl::FALSE,
+                                    texture_transform.as_ptr(),
+                                );
                             });
-                        program.uniform_location(ShaderUniform::TextureAlpha, "texture_alpha")
+                        program
+                            .uniform_location(ShaderUniform::TextureAlpha, "texture_alpha")
                             .map(|alpha_uniform| {
                                 gl::Uniform1f(alpha_uniform, alpha);
                             });
                     }
                 } else {
                     // Texture not found: revert to the simple shader
-                    self.shader_programs.use_program(StandardShaderProgram::default());
+                    self.shader_programs
+                        .use_program(StandardShaderProgram::default());
                 }
 
                 panic_on_gl_error("Set linear gradient shader");
@@ -1156,7 +1659,11 @@ impl GlRenderer {
     ///
     /// Draw triangles from a buffer
     ///
-    fn draw_triangles(&mut self, VertexBufferId(buffer_id): VertexBufferId, buffer_range: Range<usize>) {
+    fn draw_triangles(
+        &mut self,
+        VertexBufferId(buffer_id): VertexBufferId,
+        buffer_range: Range<usize>,
+    ) {
         unsafe {
             if let Some((vertex_array, _buffer)) = &self.buffers[buffer_id] {
                 #[cfg(feature = "profile")]
@@ -1164,7 +1671,11 @@ impl GlRenderer {
 
                 // Draw the triangles
                 gl::BindVertexArray(**vertex_array);
-                gl::DrawArrays(gl::TRIANGLES, buffer_range.start as gl::types::GLint, buffer_range.len() as gl::types::GLsizei);
+                gl::DrawArrays(
+                    gl::TRIANGLES,
+                    buffer_range.start as gl::types::GLint,
+                    buffer_range.len() as gl::types::GLsizei,
+                );
 
                 gl::BindVertexArray(0);
             }
@@ -1174,7 +1685,12 @@ impl GlRenderer {
     ///
     /// Draw triangles from a buffer
     ///
-    fn draw_indexed_triangles(&mut self, VertexBufferId(vertex_buffer): VertexBufferId, IndexBufferId(index_buffer): IndexBufferId, num_vertices: usize) {
+    fn draw_indexed_triangles(
+        &mut self,
+        VertexBufferId(vertex_buffer): VertexBufferId,
+        IndexBufferId(index_buffer): IndexBufferId,
+        num_vertices: usize,
+    ) {
         unsafe {
             if vertex_buffer >= self.buffers.len() || index_buffer >= self.index_buffers.len() {
                 // Treat the same as the buffer being none
@@ -1183,7 +1699,10 @@ impl GlRenderer {
                 return;
             }
 
-            if let (Some((vertex_array, _buffer)), Some(index_buffer)) = (&self.buffers[vertex_buffer], &self.index_buffers[index_buffer]) {
+            if let (Some((vertex_array, _buffer)), Some(index_buffer)) = (
+                &self.buffers[vertex_buffer],
+                &self.index_buffers[index_buffer],
+            ) {
                 #[cfg(feature = "profile")]
                 self.profiler.count_primitives(num_vertices);
 
@@ -1221,13 +1740,16 @@ impl GlRenderer {
             let transform_matrix = &self.transform_matrix;
             let shader = shader.map(|shader| shader_programs.program(shader));
 
-            transform_matrix.as_ref().and_then(|transform_matrix|
-                shader.map(|shader| (shader, transform_matrix))
-            ).map(|(shader, matrix)| {
-                shader.uniform_location(ShaderUniform::Transform, "transform").map(|transform_uniform| {
-                    gl::UniformMatrix4fv(transform_uniform, 1, gl::FALSE, matrix.as_ptr());
+            transform_matrix
+                .as_ref()
+                .and_then(|transform_matrix| shader.map(|shader| (shader, transform_matrix)))
+                .map(|(shader, matrix)| {
+                    shader
+                        .uniform_location(ShaderUniform::Transform, "transform")
+                        .map(|transform_uniform| {
+                            gl::UniformMatrix4fv(transform_uniform, 1, gl::FALSE, matrix.as_ptr());
+                        });
                 });
-            });
         }
     }
 

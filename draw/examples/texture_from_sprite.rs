@@ -1,8 +1,14 @@
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
 use std::thread;
 use std::time::Duration;
 
-use flo_draw::*;
 use flo_draw::canvas::*;
+use flo_draw::*;
 
 ///
 /// Renders a sprite to a texture, then draws the texture spinning

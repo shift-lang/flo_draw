@@ -1,195 +1,226 @@
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
 use desync::scheduler::*;
 
 use super::timeout::*;
 
+use std::sync::mpsc::*;
+use std::sync::*;
 use std::thread;
 use std::time::*;
-use std::sync::*;
-use std::sync::mpsc::*;
 
+use futures::channel::oneshot;
 use futures::prelude::*;
 use futures::task;
 use futures::task::{ArcWake, Poll};
-use futures::channel::oneshot;
 
 #[test]
 fn schedule_future() {
-    timeout(|| {
-        use futures::executor;
+    timeout(
+        || {
+            use futures::executor;
 
-        let queue = queue();
-        let future = future_desync(&queue, move || async {
-            thread::sleep(Duration::from_millis(100));
-            42
-        });
+            let queue = queue();
+            let future = future_desync(&queue, move || async {
+                thread::sleep(Duration::from_millis(100));
+                42
+            });
 
-        executor::block_on(async {
-            assert!(future.await.unwrap() == 42);
-        });
-    }, 500);
+            executor::block_on(async {
+                assert!(future.await.unwrap() == 42);
+            });
+        },
+        500,
+    );
 }
 
 #[test]
 fn read_sync_result() {
-    timeout(|| {
-        let queue = queue();
-        let future = future_desync(&queue, move || async {
-            thread::sleep(Duration::from_millis(100));
-            42
-        });
+    timeout(
+        || {
+            let queue = queue();
+            let future = future_desync(&queue, move || async {
+                thread::sleep(Duration::from_millis(100));
+                42
+            });
 
-        assert!(future.sync().unwrap() == 42);
-    }, 500);
+            assert!(future.sync().unwrap() == 42);
+        },
+        500,
+    );
 }
 
 #[test]
 fn schedule_future_with_no_scheduler_threads() {
-    timeout(|| {
-        use futures::executor;
+    timeout(
+        || {
+            use futures::executor;
 
-        let scheduler = Scheduler::new();
+            let scheduler = Scheduler::new();
 
-        // Even with 0 threads, futures should still run (by draining on the current thread as for sync actions)
-        scheduler.set_max_threads(0);
-        scheduler.despawn_threads_if_overloaded();
+            // Even with 0 threads, futures should still run (by draining on the current thread as for sync actions)
+            scheduler.set_max_threads(0);
+            scheduler.despawn_threads_if_overloaded();
 
-        let queue = queue();
-        let future = scheduler.future_desync(&queue, move || async {
-            thread::sleep(Duration::from_millis(100));
-            42
-        });
+            let queue = queue();
+            let future = scheduler.future_desync(&queue, move || async {
+                thread::sleep(Duration::from_millis(100));
+                42
+            });
 
-        executor::block_on(async {
-            assert!(future.await.unwrap() == 42);
-        });
-    }, 500);
+            executor::block_on(async {
+                assert!(future.await.unwrap() == 42);
+            });
+        },
+        500,
+    );
 }
 
 #[test]
 fn wake_future_with_no_scheduler_threads() {
-    timeout(|| {
-        use futures::executor;
+    timeout(
+        || {
+            use futures::executor;
 
-        let (tx, rx) = oneshot::channel::<i32>();
-        let scheduler = Scheduler::new();
+            let (tx, rx) = oneshot::channel::<i32>();
+            let scheduler = Scheduler::new();
 
-        // Even with 0 threads, futures should still run (by draining on the current thread as for sync actions)
-        scheduler.set_max_threads(0);
-        scheduler.despawn_threads_if_overloaded();
+            // Even with 0 threads, futures should still run (by draining on the current thread as for sync actions)
+            scheduler.set_max_threads(0);
+            scheduler.despawn_threads_if_overloaded();
 
-        // Schedule a future that will block until we send a value
-        let queue = queue();
-        let future = scheduler.future_desync(&queue, move || async {
-            rx.await.expect("Receive result")
-        });
+            // Schedule a future that will block until we send a value
+            let queue = queue();
+            let future = scheduler
+                .future_desync(&queue, move || async { rx.await.expect("Receive result") });
 
-        // Schedule a thread that will send a value
-        thread::spawn(move || {
-            // Wait for a bit before sending the result so the future should block
-            thread::sleep(Duration::from_millis(100));
+            // Schedule a thread that will send a value
+            thread::spawn(move || {
+                // Wait for a bit before sending the result so the future should block
+                thread::sleep(Duration::from_millis(100));
 
-            tx.send(42).expect("Send")
-        });
+                tx.send(42).expect("Send")
+            });
 
-        executor::block_on(async {
-            assert!(future.await.expect("result") == 42);
-        });
-    }, 500);
+            executor::block_on(async {
+                assert!(future.await.expect("result") == 42);
+            });
+        },
+        500,
+    );
 }
 
 #[test]
-#[cfg(not(miri))]   // timer not supported
+#[cfg(not(miri))] // timer not supported
 fn wait_for_future() {
-    timeout(|| {
-        use futures::executor;
+    timeout(
+        || {
+            use futures::executor;
 
-        // We use a oneshot as our future, and a mpsc channel to track progress
-        let (tx, rx) = channel();
-        let (future_tx, future_rx) = oneshot::channel();
+            // We use a oneshot as our future, and a mpsc channel to track progress
+            let (tx, rx) = channel();
+            let (future_tx, future_rx) = oneshot::channel();
 
-        let scheduler = scheduler();
-        let queue = queue();
+            let scheduler = scheduler();
+            let queue = queue();
 
-        // Start by sending '1' from an async
-        let tx2 = tx.clone();
-        desync(&queue, move || { tx2.send(1).unwrap(); });
+            // Start by sending '1' from an async
+            let tx2 = tx.clone();
+            desync(&queue, move || {
+                tx2.send(1).unwrap();
+            });
 
-        // Then send the value sent via our oneshot using a future
-        let tx2 = tx.clone();
-        let future = scheduler.after(&queue, future_rx,
-                                     move |val| val.map(move |val| {
-                                         tx2.send(val).unwrap();
-                                         4
-                                     }));
+            // Then send the value sent via our oneshot using a future
+            let tx2 = tx.clone();
+            let future = scheduler.after(&queue, future_rx, move |val| {
+                val.map(move |val| {
+                    tx2.send(val).unwrap();
+                    4
+                })
+            });
 
-        // Then send '3'
-        let tx2 = tx.clone();
-        desync(&queue, move || { tx2.send(3).unwrap(); });
+            // Then send '3'
+            let tx2 = tx.clone();
+            desync(&queue, move || {
+                tx2.send(3).unwrap();
+            });
 
-        // '1' should be available, but we should otherwise be blocked on the future
-        assert!(rx.recv().unwrap() == 1);
-        assert!(rx.recv_timeout(Duration::from_millis(100)).is_err());
+            // '1' should be available, but we should otherwise be blocked on the future
+            assert!(rx.recv().unwrap() == 1);
+            assert!(rx.recv_timeout(Duration::from_millis(100)).is_err());
 
-        // Send '2' to the future
-        future_tx.send(2).unwrap();
+            // Send '2' to the future
+            future_tx.send(2).unwrap();
 
-        executor::block_on(async {
-            // Future should resolve to 4
-            assert!(future.await.unwrap() == Ok(4));
+            executor::block_on(async {
+                // Future should resolve to 4
+                assert!(future.await.unwrap() == Ok(4));
 
-            // Should receive the '2' from the future, then 3
-            assert!(rx.recv_timeout(Duration::from_millis(100)).unwrap() == 2);
-            assert!(rx.recv().unwrap() == 3);
-        });
-    }, 500);
+                // Should receive the '2' from the future, then 3
+                assert!(rx.recv_timeout(Duration::from_millis(100)).unwrap() == 2);
+                assert!(rx.recv().unwrap() == 3);
+            });
+        },
+        500,
+    );
 }
 
 #[test]
 fn future_waits_for_us() {
-    timeout(|| {
-        use futures::executor;
+    timeout(
+        || {
+            use futures::executor;
 
-        // We use a oneshot as our future, and a mpsc channel to track progress
-        let (tx, rx) = channel();
-        let (future_tx, future_rx) = oneshot::channel();
+            // We use a oneshot as our future, and a mpsc channel to track progress
+            let (tx, rx) = channel();
+            let (future_tx, future_rx) = oneshot::channel();
 
-        let scheduler = scheduler();
-        let queue = queue();
+            let scheduler = scheduler();
+            let queue = queue();
 
-        // Start by sending '1' from an async
-        let tx2 = tx.clone();
-        desync(&queue, move || {
-            thread::sleep(Duration::from_millis(100));
-            tx2.send(1).unwrap();
-        });
+            // Start by sending '1' from an async
+            let tx2 = tx.clone();
+            desync(&queue, move || {
+                thread::sleep(Duration::from_millis(100));
+                tx2.send(1).unwrap();
+            });
 
-        // Then send the value sent via our oneshot using a future
-        let tx2 = tx.clone();
-        let future = scheduler.after(&queue, future_rx,
-                                     move |val| val.map(move |val| {
-                                         tx2.send(val).unwrap();
-                                         4
-                                     }));
+            // Then send the value sent via our oneshot using a future
+            let tx2 = tx.clone();
+            let future = scheduler.after(&queue, future_rx, move |val| {
+                val.map(move |val| {
+                    tx2.send(val).unwrap();
+                    4
+                })
+            });
 
-        // Then send '3'
-        let tx2 = tx.clone();
-        desync(&queue, move || { tx2.send(3).unwrap(); });
+            // Then send '3'
+            let tx2 = tx.clone();
+            desync(&queue, move || {
+                tx2.send(3).unwrap();
+            });
 
-        // Send '2' to the future
-        future_tx.send(2).unwrap();
+            // Send '2' to the future
+            future_tx.send(2).unwrap();
 
-        executor::block_on(async {
-            // Future should resolve to 4
-            assert!(future.await.unwrap() == Ok(4));
+            executor::block_on(async {
+                // Future should resolve to 4
+                assert!(future.await.unwrap() == Ok(4));
 
-            // '1' should be available first
-            assert!(rx.recv().unwrap() == 1);
+                // '1' should be available first
+                assert!(rx.recv().unwrap() == 1);
 
-            // Should receive the '2' from the future, then 3
-            assert!(rx.recv_timeout(Duration::from_millis(100)).unwrap() == 2);
-            assert!(rx.recv().unwrap() == 3);
-        });
-    }, 500);
+                // Should receive the '2' from the future, then 3
+                assert!(rx.recv_timeout(Duration::from_millis(100)).unwrap() == 2);
+                assert!(rx.recv().unwrap() == 3);
+            });
+        },
+        500,
+    );
 }
 
 ///
@@ -214,21 +245,25 @@ fn poll_two_futures_on_one_queue() {
     scheduler.set_max_threads(0);
     scheduler.despawn_threads_if_overloaded();
 
-    // If a single queue has a future on 
+    // If a single queue has a future on
     let queue = queue();
     let (done1, recv1) = oneshot::channel::<()>();
     let (done2, recv2) = oneshot::channel::<()>();
 
-    let wake1 = Arc::new(TestWaker { awake: Mutex::new(false) });
-    let wake2 = Arc::new(TestWaker { awake: Mutex::new(false) });
-
-    // Wait for done1 then done2 to signal
-    let mut future_1 = scheduler.future_desync(&queue, move || {
-        async move { recv1.await.ok(); }
+    let wake1 = Arc::new(TestWaker {
+        awake: Mutex::new(false),
+    });
+    let wake2 = Arc::new(TestWaker {
+        awake: Mutex::new(false),
     });
 
-    let mut future_2 = scheduler.future_desync(&queue, move || {
-        async move { recv2.await.ok(); }
+    // Wait for done1 then done2 to signal
+    let mut future_1 = scheduler.future_desync(&queue, move || async move {
+        recv1.await.ok();
+    });
+
+    let mut future_2 = scheduler.future_desync(&queue, move || async move {
+        recv2.await.ok();
     });
 
     // Poll future 1 then future 2 (as there are no threads to run, we'll use the 'drain on current thread' style, which will return pending as recv is pending)
@@ -273,7 +308,9 @@ fn poll_two_futures_on_one_queue() {
     // Give the scheduler a chance to run the other future (it will be queued in the background, so this is required for the notification to occur)
     scheduler.set_max_threads(1);
     for _ in 0..100 {
-        if *wake2.awake.lock().unwrap() { break; }
+        if *wake2.awake.lock().unwrap() {
+            break;
+        }
         thread::sleep(Duration::from_millis(1));
     }
     assert!((*wake2.awake.lock().unwrap()) == true);
@@ -289,34 +326,41 @@ fn poll_two_futures_on_one_queue() {
 }
 
 #[test]
-#[cfg(not(miri))]   // slow!
+#[cfg(not(miri))] // slow!
 fn wait_for_desync_future_from_desync_future() {
     use futures::executor;
 
-    timeout(|| {
-        // This reproduces a deadlock due to a race condition, so we usually need several iterations through the test before the issue will occur
-        for _i in 0..1000 {
-            // We'll schedule a sync future on queue1, and wait for it from a desync future on queue2
-            let queue1 = queue();
-            let queue2 = queue();
+    timeout(
+        || {
+            // This reproduces a deadlock due to a race condition, so we usually need several iterations through the test before the issue will occur
+            for _i in 0..1000 {
+                // We'll schedule a sync future on queue1, and wait for it from a desync future on queue2
+                let queue1 = queue();
+                let queue2 = queue();
 
-            // Oneshot channel to wake the sync queue
-            let (done1, recv1) = oneshot::channel::<()>();
+                // Oneshot channel to wake the sync queue
+                let (done1, recv1) = oneshot::channel::<()>();
 
-            let nested_future = future_desync(&queue1, move || { async move { recv1.await.ok(); } });
-            let desync_future = future_desync(&queue2, move || { async move { nested_future.await.ok(); } });
+                let nested_future = future_desync(&queue1, move || async move {
+                    recv1.await.ok();
+                });
+                let desync_future = future_desync(&queue2, move || async move {
+                    nested_future.await.ok();
+                });
 
-            // Signal
-            done1.send(()).unwrap();
+                // Signal
+                done1.send(()).unwrap();
 
-            // Wait for the desync future in an executor
-            executor::block_on(async move {
-                desync_future.await.ok();
-            });
+                // Wait for the desync future in an executor
+                executor::block_on(async move {
+                    desync_future.await.ok();
+                });
 
-            // Run sync on both queues
-            sync(&queue1, move || {});
-            sync(&queue2, move || {});
-        }
-    }, 5000);
+                // Run sync on both queues
+                sync(&queue1, move || {});
+                sync(&queue2, move || {});
+            }
+        },
+        5000,
+    );
 }

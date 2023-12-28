@@ -12,3 +12,4 @@ categories = ["graphics", "rendering", "gui"]
 flo_canvas.workspace = true
 flo_render.workspace = true
 flo_scene.workspace = true
+winit.workspace = true

@@ -1,3 +1,9 @@
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
 use flo_canvas::*;
 use flo_draw::*;
 
@@ -51,7 +57,9 @@ pub fn main() {
             gc.draw_sprite(SpriteId(0));
 
             gc.sprite_transform(SpriteTransform::Identity);
-            gc.sprite_transform(SpriteTransform::Transform2D(Transform2D::translate(300.0, 100.0)));
+            gc.sprite_transform(SpriteTransform::Transform2D(Transform2D::translate(
+                300.0, 100.0,
+            )));
             gc.draw_sprite(SpriteId(0));
         });
     });

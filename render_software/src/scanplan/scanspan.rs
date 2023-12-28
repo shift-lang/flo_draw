@@ -1,10 +1,16 @@
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
 use crate::pixel::*;
 
-use std::ops::{Range};
 use std::fmt;
+use std::ops::Range;
 
 ///
-/// A ScanSpan indicates which program(s) to apply to a range along a scanline 
+/// A ScanSpan indicates which program(s) to apply to a range along a scanline
 ///
 #[derive(Clone, PartialEq)]
 pub struct ScanSpan {
@@ -61,7 +67,7 @@ impl ScanSpan {
                     x_range: pos..(self.x_range.end),
                     program: self.program,
                     opaque: self.opaque,
-                }
+                },
             ))
         } else {
             Err(self)

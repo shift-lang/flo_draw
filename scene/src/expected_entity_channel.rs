@@ -1,11 +1,17 @@
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
 use crate::entity_channel::*;
 use crate::entity_id::*;
 use crate::error::*;
 
-use futures::prelude::*;
-use futures::future;
-use futures::future::{BoxFuture};
 use futures::channel::oneshot;
+use futures::future;
+use futures::future::BoxFuture;
+use futures::prelude::*;
 
 use std::sync::*;
 
@@ -27,16 +33,23 @@ pub struct ExpectedEntityChannel<TResponse> {
 }
 
 impl<TResponse> EntityChannel for ExpectedEntityChannel<TResponse>
-    where
-        TResponse: 'static + Send + Sync + PartialEq,
+where
+    TResponse: 'static + Send + Sync + PartialEq,
 {
     type Message = TResponse;
 
-    fn entity_id(&self) -> EntityId { self.entity_id }
+    fn entity_id(&self) -> EntityId {
+        self.entity_id
+    }
 
-    fn is_closed(&self) -> bool { self.current_pos >= self.expected.len() }
+    fn is_closed(&self) -> bool {
+        self.current_pos >= self.expected.len()
+    }
 
-    fn send(&mut self, message: Self::Message) -> BoxFuture<'static, Result<(), EntityChannelError>> {
+    fn send(
+        &mut self,
+        message: Self::Message,
+    ) -> BoxFuture<'static, Result<(), EntityChannelError>> {
         if let Some(expected_next) = self.expected.get(self.current_pos) {
             // Move to the next position in the message
             self.current_pos += 1;
@@ -56,7 +69,9 @@ impl<TResponse> EntityChannel for ExpectedEntityChannel<TResponse>
                 // Does not match the expected message
                 if let Some(on_completion) = self.on_completion.take() {
                     // Signal an unexpected response
-                    on_completion.send(Err(RecipeError::UnexpectedResponse)).ok();
+                    on_completion
+                        .send(Err(RecipeError::UnexpectedResponse))
+                        .ok();
                 }
 
                 // Close the channel
@@ -71,13 +86,19 @@ impl<TResponse> EntityChannel for ExpectedEntityChannel<TResponse>
 }
 
 impl<TResponse> ExpectedEntityChannel<TResponse>
-    where
-        TResponse: 'static + Send + Sync + PartialEq,
+where
+    TResponse: 'static + Send + Sync + PartialEq,
 {
     ///
     /// Creates a new expected entity channel and the future that will signal when it's completed
     ///
-    pub fn new(entity_id: EntityId, expected_responses: Arc<Vec<TResponse>>) -> (ExpectedEntityChannel<TResponse>, impl Future<Output=Result<(), RecipeError>>) {
+    pub fn new(
+        entity_id: EntityId,
+        expected_responses: Arc<Vec<TResponse>>,
+    ) -> (
+        ExpectedEntityChannel<TResponse>,
+        impl Future<Output = Result<(), RecipeError>>,
+    ) {
         // Create a channel to send the result
         let (result_sender, result_receiver) = oneshot::channel();
 
@@ -88,11 +109,9 @@ impl<TResponse> ExpectedEntityChannel<TResponse>
             on_completion: Some(result_sender),
         };
 
-        let map_cancelled = result_receiver.map(|maybe_cancelled| {
-            match maybe_cancelled {
-                Ok(not_cancelled) => not_cancelled,
-                Err(_) => Err(RecipeError::ExpectedMoreResponses)
-            }
+        let map_cancelled = result_receiver.map(|maybe_cancelled| match maybe_cancelled {
+            Ok(not_cancelled) => not_cancelled,
+            Err(_) => Err(RecipeError::ExpectedMoreResponses),
         });
 
         (channel, map_cancelled)

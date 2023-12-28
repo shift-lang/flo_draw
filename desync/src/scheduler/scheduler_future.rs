@@ -1,17 +1,23 @@
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
+use super::active_queue::*;
+use super::core::*;
+use super::desync_scheduler::*;
 use super::job_queue::*;
 use super::queue_state::*;
-use super::core::*;
-use super::active_queue::*;
 use super::wake_queue::*;
-use super::desync_scheduler::*;
 
-use futures::prelude::*;
 use futures::channel::oneshot;
+use futures::prelude::*;
 use futures::task;
 
 use std::mem;
+use std::pin::Pin;
 use std::sync::*;
-use std::pin::{Pin};
 
 ///
 /// The possible states of a future result
@@ -50,7 +56,7 @@ impl DrainWaker {
     ///
     fn new() -> DrainWaker {
         DrainWaker {
-            state: Mutex::new(DrainWakerState::NotWoken)
+            state: Mutex::new(DrainWakerState::NotWoken),
         }
     }
 
@@ -184,7 +190,7 @@ impl<T> FutureResultState<T> {
         match self {
             FutureResultState::None => true,
             FutureResultState::Some(_) => false,
-            FutureResultState::ReturnedViaFuture => false
+            FutureResultState::ReturnedViaFuture => false,
         }
     }
 
@@ -207,7 +213,7 @@ impl<T> FutureResultState<T> {
                 *self = FutureResultState::ReturnedViaFuture;
                 panic!("Future result has already been returned")
             }
-            FutureResultState::Some(value) => { Some(value) }
+            FutureResultState::Some(value) => Some(value),
         }
     }
 }
@@ -277,7 +283,10 @@ impl<T: Send> SchedulerFuture<T> {
     ///
     /// Creates a new scheduler future and the result needed to signal it
     ///
-    pub(super) fn new(queue: &Arc<JobQueue>, core: Arc<SchedulerCore>) -> (SchedulerFuture<T>, SchedulerFutureSignaller<T>) {
+    pub(super) fn new(
+        queue: &Arc<JobQueue>,
+        core: Arc<SchedulerCore>,
+    ) -> (SchedulerFuture<T>, SchedulerFutureSignaller<T>) {
         // Create an unfinished result
         let result = SchedulerFutureResult {
             result: FutureResultState::None,
@@ -310,14 +319,25 @@ impl<T: Send> SchedulerFuture<T> {
     ///
     pub fn sync(self) -> Result<T, oneshot::Canceled> {
         // See if the result has arrived yet
-        let result = self.result.lock().expect("Scheduler future result").result.take();
+        let result = self
+            .result
+            .lock()
+            .expect("Scheduler future result")
+            .result
+            .take();
         if let Some(result) = result {
             return result;
         }
 
         // Synchronise reading the result with the queue
         // TODO: if future tasks have been queued, this will wait for those as well
-        let result = self.scheduler.sync(&self.queue, || { self.result.lock().expect("Scheduler future result").result.take() });
+        let result = self.scheduler.sync(&self.queue, || {
+            self.result
+                .lock()
+                .expect("Scheduler future result")
+                .result
+                .take()
+        });
 
         // The result should now be available
         if let Some(result) = result {
@@ -332,11 +352,22 @@ impl<T: Send> SchedulerFuture<T> {
     ///
     /// We moved the queue into the running state and need to drain it until we've got a result
     ///
-    fn drain_queue(&mut self, context: &mut task::Context) -> task::Poll<Result<T, oneshot::Canceled>> {
-        debug_assert!(self.queue.core.lock().expect("JobQueue core lock").state.is_running());
+    fn drain_queue(
+        &mut self,
+        context: &mut task::Context,
+    ) -> task::Poll<Result<T, oneshot::Canceled>> {
+        debug_assert!(self
+            .queue
+            .core
+            .lock()
+            .expect("JobQueue core lock")
+            .state
+            .is_running());
 
         // Set the queue as active
-        let _active = ActiveQueue { queue: &*self.queue };
+        let _active = ActiveQueue {
+            queue: &*self.queue,
+        };
         let mut result;
 
         self.draining = true;
@@ -344,13 +375,26 @@ impl<T: Send> SchedulerFuture<T> {
         // While there is no result, run a job from the queue
         loop {
             // See if the result has arrived yet
-            result = self.result.lock().expect("Scheduler future result").result.take();
-            if !result.is_none() { break; }
+            result = self
+                .result
+                .lock()
+                .expect("Scheduler future result")
+                .result
+                .take();
+            if !result.is_none() {
+                break;
+            }
 
             // Run the next job in the queue
             if let Some(mut job) = self.queue.dequeue() {
                 // Queue is running
-                debug_assert!(self.queue.core.lock().expect("Job queue core").state.is_running());
+                debug_assert!(self
+                    .queue
+                    .core
+                    .lock()
+                    .expect("Job queue core")
+                    .state
+                    .is_running());
 
                 // Create a context to poll in (we may need to reschedule in the background)
                 let waker = Arc::new(DrainWaker::new());
@@ -370,12 +414,21 @@ impl<T: Send> SchedulerFuture<T> {
                         self.queue.requeue(job);
 
                         // If the result was supplied, break out of the loop and reschedule the queue
-                        result = self.result.lock().expect("Scheduler future result").result.take();
+                        result = self
+                            .result
+                            .lock()
+                            .expect("Scheduler future result")
+                            .result
+                            .take();
                         if result.is_some() {
                             // Wake the queue in the background if needed (the result has arrived)
-                            self.queue.core.lock().expect("JobQueue core lock").state = QueueState::WaitingForWake;
+                            self.queue.core.lock().expect("JobQueue core lock").state =
+                                QueueState::WaitingForWake;
 
-                            let queue_waker = WakeQueue(Arc::clone(&self.queue), Arc::clone(&self.scheduler.core));
+                            let queue_waker = WakeQueue(
+                                Arc::clone(&self.queue),
+                                Arc::clone(&self.scheduler.core),
+                            );
                             let queue_waker = Arc::new(queue_waker);
                             let queue_waker = task::waker(queue_waker);
 
@@ -386,16 +439,22 @@ impl<T: Send> SchedulerFuture<T> {
                             return task::Poll::Ready(result.unwrap());
                         } else {
                             // Wait for the next poll
-                            self.result.lock().expect("Scheduler future result").waker = Some(context.waker().clone());
-                            self.queue.core.lock().expect("JobQueue core lock").state = QueueState::WaitingForPoll(self.id);
+                            self.result.lock().expect("Scheduler future result").waker =
+                                Some(context.waker().clone());
+                            self.queue.core.lock().expect("JobQueue core lock").state =
+                                QueueState::WaitingForPoll(self.id);
 
                             // Wake both the queue and the context
                             let context_waker = context.waker().clone();
-                            let queue_waker = WakeQueue(Arc::clone(&self.queue), Arc::clone(&self.scheduler.core));
+                            let queue_waker = WakeQueue(
+                                Arc::clone(&self.queue),
+                                Arc::clone(&self.scheduler.core),
+                            );
                             let queue_waker = Arc::new(queue_waker);
                             let queue_waker = task::waker(queue_waker);
 
-                            let wake_both = DoubleWaker(Mutex::new(Some((queue_waker, context_waker))));
+                            let wake_both =
+                                DoubleWaker(Mutex::new(Some((queue_waker, context_waker))));
                             let wake_both = task::waker(Arc::new(wake_both));
 
                             waker.wake_with(wake_both);
@@ -410,11 +469,14 @@ impl<T: Send> SchedulerFuture<T> {
                 // Queue is empty and our result hasn't arrived yet?!
 
                 // Assume the future will resolve eventually: move the queue in to the background
-                self.result.lock().expect("Scheduler future result").waker = Some(context.waker().clone());
+                self.result.lock().expect("Scheduler future result").waker =
+                    Some(context.waker().clone());
 
                 // Reschedule the queue
                 self.queue.core.lock().expect("JobQueue core lock").state = QueueState::Idle;
-                self.scheduler.core.reschedule_queue(&self.queue, Arc::clone(&self.scheduler.core));
+                self.scheduler
+                    .core
+                    .reschedule_queue(&self.queue, Arc::clone(&self.scheduler.core));
 
                 self.draining = false;
                 return task::Poll::Pending;
@@ -427,7 +489,9 @@ impl<T: Send> SchedulerFuture<T> {
         // here. As we've set the queue state to running while we're busy, the thread won't
         // start the queue while it's already running.
         self.queue.core.lock().expect("JobQueue core lock").state = QueueState::Idle;
-        self.scheduler.core.reschedule_queue(&self.queue, Arc::clone(&self.scheduler.core));
+        self.scheduler
+            .core
+            .reschedule_queue(&self.queue, Arc::clone(&self.scheduler.core));
 
         // Result must be available by this point
         self.draining = false;
@@ -507,9 +571,11 @@ impl<T: Send> Future for SchedulerFuture<T> {
                 match &run_action {
                     SchedulerAction::DrainQueue => {}
 
-                    SchedulerAction::WaitForCompletion |
-                    SchedulerAction::ReturnValue(_) |
-                    SchedulerAction::Panic => { future_result.waker = Some(context.waker().clone()); }
+                    SchedulerAction::WaitForCompletion
+                    | SchedulerAction::ReturnValue(_)
+                    | SchedulerAction::Panic => {
+                        future_result.waker = Some(context.waker().clone());
+                    }
                 }
 
                 run_action

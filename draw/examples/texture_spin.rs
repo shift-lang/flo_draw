@@ -1,9 +1,15 @@
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
 use std::io;
 use std::thread;
 use std::time::Duration;
 
-use flo_draw::*;
 use flo_draw::canvas::*;
+use flo_draw::*;
 
 ///
 /// Simple example that displays a canvas window and renders a spinning image from a png file
@@ -27,7 +33,9 @@ pub fn main() {
             gc.center_region(0.0, 0.0, 1000.0, 1000.0);
 
             // Set up the texture
-            let (w, h) = gc.load_texture(TextureId(0), io::Cursor::new(flo_bytes)).unwrap();
+            let (w, h) = gc
+                .load_texture(TextureId(0), io::Cursor::new(flo_bytes))
+                .unwrap();
             flo_w = w;
             flo_h = h;
         });

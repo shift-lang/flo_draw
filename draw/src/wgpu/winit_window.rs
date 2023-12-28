@@ -1,10 +1,15 @@
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
 use std::fmt;
 use std::pin::*;
 use std::sync::*;
 #[cfg(feature = "profile")]
 use std::time::Instant;
 
-use flo_binding::*;
 use flo_stream::*;
 use futures::channel::oneshot;
 use futures::prelude::*;
@@ -15,6 +20,7 @@ use wgpu_profiler::GpuProfiler;
 use winit::dpi::LogicalSize;
 use winit::window::{Fullscreen, Window};
 
+use flo_binding::*;
 use flo_render::*;
 
 use crate::events::*;
@@ -66,8 +72,8 @@ pub(super) async fn send_actions_to_window<RenderStream, EventPublisher>(
     events: EventPublisher,
     window_properties: WindowProperties,
 ) where
-    RenderStream: Unpin + Stream<Item=Vec<RenderAction>>,
-    EventPublisher: MessagePublisher<Message=DrawEvent>,
+    RenderStream: Unpin + Stream<Item = Vec<RenderAction>>,
+    EventPublisher: MessagePublisher<Message = DrawEvent>,
 {
     // Read events from the render actions list
     let mut window = window;
@@ -121,7 +127,7 @@ pub(super) async fn send_actions_to_window<RenderStream, EventPublisher>(
                         // Fetch the device and the queue
                         let features = wgpu::Features::empty();
                         #[cfg(feature = "wgpu-profiler")]
-                            let features = features | GpuProfiler::ALL_WGPU_TIMER_FEATURES;
+                        let features = features | GpuProfiler::ALL_WGPU_TIMER_FEATURES;
                         let (device, queue) = adapter
                             .request_device(
                                 &wgpu::DeviceDescriptor {
@@ -171,7 +177,7 @@ pub(super) async fn send_actions_to_window<RenderStream, EventPublisher>(
                         // Notify that a new frame has been drawn if show_frame_buffer is set
                         if let Some(next_frame) = maybe_next_frame {
                             #[cfg(feature = "profile")]
-                                let start_time = Instant::now();
+                            let start_time = Instant::now();
 
                             // Request that the runtime present the next frame
                             let (yield_send, yield_recv) = oneshot::channel();
@@ -297,28 +303,28 @@ struct WindowUpdateStream<
 }
 
 impl<
-    TRenderStream,
-    TTitleStream,
-    TSizeStream,
-    TFullscreenStream,
-    TDecorationStream,
-    TMousePointerStream,
-> Stream
-for WindowUpdateStream<
-    TRenderStream,
-    TTitleStream,
-    TSizeStream,
-    TFullscreenStream,
-    TDecorationStream,
-    TMousePointerStream,
->
-    where
-        TRenderStream: Unpin + Stream<Item=Vec<RenderAction>>,
-        TTitleStream: Unpin + Stream<Item=String>,
-        TSizeStream: Unpin + Stream<Item=(u64, u64)>,
-        TFullscreenStream: Unpin + Stream<Item=bool>,
-        TDecorationStream: Unpin + Stream<Item=bool>,
-        TMousePointerStream: Unpin + Stream<Item=MousePointer>,
+        TRenderStream,
+        TTitleStream,
+        TSizeStream,
+        TFullscreenStream,
+        TDecorationStream,
+        TMousePointerStream,
+    > Stream
+    for WindowUpdateStream<
+        TRenderStream,
+        TTitleStream,
+        TSizeStream,
+        TFullscreenStream,
+        TDecorationStream,
+        TMousePointerStream,
+    >
+where
+    TRenderStream: Unpin + Stream<Item = Vec<RenderAction>>,
+    TTitleStream: Unpin + Stream<Item = String>,
+    TSizeStream: Unpin + Stream<Item = (u64, u64)>,
+    TFullscreenStream: Unpin + Stream<Item = bool>,
+    TDecorationStream: Unpin + Stream<Item = bool>,
+    TMousePointerStream: Unpin + Stream<Item = MousePointer>,
 {
     type Item = WindowUpdate;
 

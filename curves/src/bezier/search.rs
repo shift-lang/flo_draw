@@ -1,6 +1,12 @@
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
+use super::super::geo::*;
 use super::bounds::*;
 use super::subdivide::*;
-use super::super::geo::*;
 
 ///
 /// Performs a subdivision search on a curve for a point matching a function
@@ -12,10 +18,17 @@ use super::super::geo::*;
 /// A limitation of this algorithm is that if the target point lies very close to a subdivision point,
 /// it may produce multiple matches (as it will find a nearby point on either side of the subdivision)
 ///
-pub fn search_bounds4<Point, MatchFn>(min_size: f64, w1: Point, w2: Point, w3: Point, w4: Point, match_fn: MatchFn) -> Vec<f64>
-    where
-        Point: Coordinate,
-        MatchFn: Fn(Point, Point) -> bool,
+pub fn search_bounds4<Point, MatchFn>(
+    min_size: f64,
+    w1: Point,
+    w2: Point,
+    w3: Point,
+    w4: Point,
+    match_fn: MatchFn,
+) -> Vec<f64>
+where
+    Point: Coordinate,
+    MatchFn: Fn(Point, Point) -> bool,
 {
     // Helper function to determine if a bounding box is below the minimum size
     let min_size_squared = min_size * min_size;

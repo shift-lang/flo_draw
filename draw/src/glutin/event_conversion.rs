@@ -1,3 +1,9 @@
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
 use winit::event::VirtualKeyCode;
 
 use flo_canvas_events::*;
@@ -9,7 +15,7 @@ pub(crate) fn button_from_glutin(mouse_button: &winit::event::MouseButton) -> Bu
         MouseButton::Left => Button::Left,
         MouseButton::Middle => Button::Middle,
         MouseButton::Right => Button::Right,
-        MouseButton::Other(other) => Button::Other(*other as _)
+        MouseButton::Other(other) => Button::Other(*other as _),
     }
 }
 
@@ -116,6 +122,6 @@ pub(crate) fn key_from_glutin(glutin_key: &VirtualKeyCode) -> Key {
         VirtualKeyCode::NumpadEnter => Key::KeyNumpadEnter,
         VirtualKeyCode::NumpadDecimal => Key::KeyNumpadDecimal,
 
-        _ => Key::Unknown
+        _ => Key::Unknown,
     }
 }

@@ -1,22 +1,33 @@
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
 use flo_render_software::draw::*;
 use flo_render_software::pixel::*;
 use flo_render_software::scanplan::*;
 
 use flo_canvas::*;
 
-use std::ops::{Range};
+use std::ops::Range;
 
 ///
 /// Generates a plan for layer 0 of a drawing at a particular y-position (coordinates are in the -1 to 1 range for a canvas drawing)
 ///
-fn plan_layer_0_line_on_drawing(instructions: impl IntoIterator<Item=Draw>, y_pos: f64) -> ScanlinePlan {
+fn plan_layer_0_line_on_drawing(
+    instructions: impl IntoIterator<Item = Draw>,
+    y_pos: f64,
+) -> ScanlinePlan {
     // Draw to the canvas
     let mut drawing = CanvasDrawing::<F32LinearPixel, 4>::empty();
     drawing.set_pixel_height(1080.0);
     drawing.draw(instructions);
 
     // We'll try to generate the plan for layer 0
-    let edges = drawing.edges_for_layer(LayerId(0)).expect("Expected layer 0 to be generated");
+    let edges = drawing
+        .edges_for_layer(LayerId(0))
+        .expect("Expected layer 0 to be generated");
 
     // Create the planner
     let planner = ShardScanPlanner::default();
@@ -57,18 +68,21 @@ pub fn ends_on_pixel(x_range: &Range<f64>) -> bool {
 #[test]
 pub fn triangle_45_degrees() {
     // Read the center line from a triangle with 45-degree edges
-    let plan = plan_layer_0_line_on_drawing(vec![
-        Draw::ClearCanvas(Color::Rgba(0.0, 0.0, 0.0, 1.0)),
-        Draw::CanvasHeight(1080.0),
-        Draw::CenterRegion((-540.0, -540.0), (540.0, 540.0)),
-        Draw::Path(PathOp::NewPath),
-        Draw::Path(PathOp::Move(-200.0, -100.0)),
-        Draw::Path(PathOp::Line(0.0, 100.0)),
-        Draw::Path(PathOp::Line(200.0, -100.0)),
-        Draw::Path(PathOp::Line(-200.0, -100.0)),
-        Draw::FillColor(Color::Rgba(1.0, 1.0, 1.0, 1.0)),
-        Draw::Fill,
-    ], 0.0);
+    let plan = plan_layer_0_line_on_drawing(
+        vec![
+            Draw::ClearCanvas(Color::Rgba(0.0, 0.0, 0.0, 1.0)),
+            Draw::CanvasHeight(1080.0),
+            Draw::CenterRegion((-540.0, -540.0), (540.0, 540.0)),
+            Draw::Path(PathOp::NewPath),
+            Draw::Path(PathOp::Move(-200.0, -100.0)),
+            Draw::Path(PathOp::Line(0.0, 100.0)),
+            Draw::Path(PathOp::Line(200.0, -100.0)),
+            Draw::Path(PathOp::Line(-200.0, -100.0)),
+            Draw::FillColor(Color::Rgba(1.0, 1.0, 1.0, 1.0)),
+            Draw::Fill,
+        ],
+        0.0,
+    );
 
     let spans = plan.spans();
 
@@ -76,9 +90,21 @@ pub fn triangle_45_degrees() {
     assert!(spans.len() == 3, "Number of spans != 3 {:?}", plan);
 
     // Order should be 'transparent, opaque, transparent'
-    assert!(!spans[0].is_opaque(), "First span should not be opaque {:?}", plan);
-    assert!(spans[1].is_opaque(), "Second span should not be transparent {:?}", plan);
-    assert!(!spans[2].is_opaque(), "Third span should not be opaque {:?}", plan);
+    assert!(
+        !spans[0].is_opaque(),
+        "First span should not be opaque {:?}",
+        plan
+    );
+    assert!(
+        spans[1].is_opaque(),
+        "Second span should not be transparent {:?}",
+        plan
+    );
+    assert!(
+        !spans[2].is_opaque(),
+        "Third span should not be opaque {:?}",
+        plan
+    );
 
     // Alpha values should switch sides
     let first_stack = spans[0].programs().collect::<Vec<_>>();
@@ -98,10 +124,30 @@ pub fn triangle_45_degrees() {
     }
 
     // The ranges should start/end at pixel boundaries
-    assert!(ends_on_pixel(&spans[0].x_range()), "First span does not end on pixel (is {:?}), {:?}", spans[0].x_range(), plan);
-    assert!(starts_on_pixel(&spans[1].x_range()), "Second span does not start on pixel (is {:?}), {:?}", spans[1].x_range(), plan);
-    assert!(ends_on_pixel(&spans[1].x_range()), "Second span does not end on pixel (is {:?}), {:?}", spans[1].x_range(), plan);
-    assert!(starts_on_pixel(&spans[1].x_range()), "Third span does not start on pixel (is {:?}), {:?}", spans[2].x_range(), plan);
+    assert!(
+        ends_on_pixel(&spans[0].x_range()),
+        "First span does not end on pixel (is {:?}), {:?}",
+        spans[0].x_range(),
+        plan
+    );
+    assert!(
+        starts_on_pixel(&spans[1].x_range()),
+        "Second span does not start on pixel (is {:?}), {:?}",
+        spans[1].x_range(),
+        plan
+    );
+    assert!(
+        ends_on_pixel(&spans[1].x_range()),
+        "Second span does not end on pixel (is {:?}), {:?}",
+        spans[1].x_range(),
+        plan
+    );
+    assert!(
+        starts_on_pixel(&spans[1].x_range()),
+        "Third span does not start on pixel (is {:?}), {:?}",
+        spans[2].x_range(),
+        plan
+    );
 }
 
 #[test]
@@ -111,36 +157,67 @@ pub fn tall_triangle() {
         let y = (y as f64) / 1080.0;
         let y = 2.0 * y - 1.0;
 
-        // Read the center line from a triangle with edges with a high angle 
-        let plan = plan_layer_0_line_on_drawing(vec![
-            Draw::ClearCanvas(Color::Rgba(0.0, 0.0, 0.0, 1.0)),
-            Draw::CanvasHeight(1080.0),
-            Draw::CenterRegion((0.0, 0.0), (1080.0, 1080.0)),
-            Draw::Path(PathOp::NewPath),
-            Draw::Path(PathOp::Move(400.0, 100.0)),
-            Draw::Path(PathOp::Line(540.0, 800.0)),
-            Draw::Path(PathOp::Line(680.0, 100.0)),
-            Draw::FillColor(Color::Rgba(1.0, 1.0, 1.0, 1.0)),
-            Draw::Fill,
-        ], y);
+        // Read the center line from a triangle with edges with a high angle
+        let plan = plan_layer_0_line_on_drawing(
+            vec![
+                Draw::ClearCanvas(Color::Rgba(0.0, 0.0, 0.0, 1.0)),
+                Draw::CanvasHeight(1080.0),
+                Draw::CenterRegion((0.0, 0.0), (1080.0, 1080.0)),
+                Draw::Path(PathOp::NewPath),
+                Draw::Path(PathOp::Move(400.0, 100.0)),
+                Draw::Path(PathOp::Line(540.0, 800.0)),
+                Draw::Path(PathOp::Line(680.0, 100.0)),
+                Draw::FillColor(Color::Rgba(1.0, 1.0, 1.0, 1.0)),
+                Draw::Fill,
+            ],
+            y,
+        );
 
         let spans = plan.spans();
 
         // Should be three spans (two spans where the triangle partially covers the pixels, and 1 where it fully covers the pixels)
-        assert!(spans.len() == 3, "Number of spans != 3 {:?} (y={:?}, pix_y={:?})", plan, y, pix_y);
+        assert!(
+            spans.len() == 3,
+            "Number of spans != 3 {:?} (y={:?}, pix_y={:?})",
+            plan,
+            y,
+            pix_y
+        );
 
         // Order should be 'transparent, opaque, transparent'
-        assert!(!spans[0].is_opaque(), "First span should not be opaque {:?}", plan);
-        assert!(spans[1].is_opaque(), "Second span should not be transparent {:?}", plan);
-        assert!(!spans[2].is_opaque(), "Third span should not be opaque {:?}", plan);
+        assert!(
+            !spans[0].is_opaque(),
+            "First span should not be opaque {:?}",
+            plan
+        );
+        assert!(
+            spans[1].is_opaque(),
+            "Second span should not be transparent {:?}",
+            plan
+        );
+        assert!(
+            !spans[2].is_opaque(),
+            "Third span should not be opaque {:?}",
+            plan
+        );
 
         // Alpha values should switch sides
         let first_stack = spans[0].programs().collect::<Vec<_>>();
         assert!(first_stack.len() == 3);
         if let PixelProgramPlan::LinearSourceOver(alpha1, alpha2) = first_stack[2] {
-            assert!(spans[0].x_range().end - spans[0].x_range().start >= 1.0, "First range uses less than a pixel {:?}, y={:?}, pix_y={:?}", plan, y, pix_y);
+            assert!(
+                spans[0].x_range().end - spans[0].x_range().start >= 1.0,
+                "First range uses less than a pixel {:?}, y={:?}, pix_y={:?}",
+                plan,
+                y,
+                pix_y
+            );
             assert!(alpha1 <= alpha2, "First span is not fading up {:?}", plan);
-            assert!(alpha1 > 0.0 && alpha1 < 1.0, "First span has no alpha {:?}", plan);
+            assert!(
+                alpha1 > 0.0 && alpha1 < 1.0,
+                "First span has no alpha {:?}",
+                plan
+            );
         } else {
             assert!(false, "First span is not blending {:?}", plan);
         }
@@ -154,29 +231,52 @@ pub fn tall_triangle() {
         }
 
         // The ranges should start/end at pixel boundaries
-        assert!(ends_on_pixel(&spans[0].x_range()), "First span does not end on pixel (is {:?}), {:?}", spans[0].x_range(), plan);
-        assert!(starts_on_pixel(&spans[1].x_range()), "Second span does not start on pixel (is {:?}), {:?}", spans[1].x_range(), plan);
-        assert!(ends_on_pixel(&spans[1].x_range()), "Second span does not end on pixel (is {:?}), {:?}", spans[1].x_range(), plan);
-        assert!(starts_on_pixel(&spans[1].x_range()), "Third span does not start on pixel (is {:?}), {:?}", spans[2].x_range(), plan);
+        assert!(
+            ends_on_pixel(&spans[0].x_range()),
+            "First span does not end on pixel (is {:?}), {:?}",
+            spans[0].x_range(),
+            plan
+        );
+        assert!(
+            starts_on_pixel(&spans[1].x_range()),
+            "Second span does not start on pixel (is {:?}), {:?}",
+            spans[1].x_range(),
+            plan
+        );
+        assert!(
+            ends_on_pixel(&spans[1].x_range()),
+            "Second span does not end on pixel (is {:?}), {:?}",
+            spans[1].x_range(),
+            plan
+        );
+        assert!(
+            starts_on_pixel(&spans[1].x_range()),
+            "Third span does not start on pixel (is {:?}), {:?}",
+            spans[2].x_range(),
+            plan
+        );
     }
 }
 
 #[test]
 fn subpixel_oblique_line() {
     // Read the center line of an oblique line (should cover a quarter of a pixel, sometimes will cover two pixels)
-    let plan = plan_layer_0_line_on_drawing(vec![
-        Draw::ClearCanvas(Color::Rgba(0.0, 0.0, 0.0, 1.0)),
-        Draw::CanvasHeight(1080.0),
-        Draw::CenterRegion((-540.0, -540.0), (540.0, 540.0)),
-        Draw::Path(PathOp::NewPath),
-        Draw::Path(PathOp::Move(-0.5, -500.0)),
-        Draw::Path(PathOp::Line(11.0, 500.0)),
-        Draw::Path(PathOp::Line(11.25, 500.0)),
-        Draw::Path(PathOp::Line(-0.25, -500.0)),
-        Draw::Path(PathOp::Line(-0.5, -500.0)),
-        Draw::FillColor(Color::Rgba(1.0, 1.0, 1.0, 1.0)),
-        Draw::Fill,
-    ], 0.0);
+    let plan = plan_layer_0_line_on_drawing(
+        vec![
+            Draw::ClearCanvas(Color::Rgba(0.0, 0.0, 0.0, 1.0)),
+            Draw::CanvasHeight(1080.0),
+            Draw::CenterRegion((-540.0, -540.0), (540.0, 540.0)),
+            Draw::Path(PathOp::NewPath),
+            Draw::Path(PathOp::Move(-0.5, -500.0)),
+            Draw::Path(PathOp::Line(11.0, 500.0)),
+            Draw::Path(PathOp::Line(11.25, 500.0)),
+            Draw::Path(PathOp::Line(-0.25, -500.0)),
+            Draw::Path(PathOp::Line(-0.5, -500.0)),
+            Draw::FillColor(Color::Rgba(1.0, 1.0, 1.0, 1.0)),
+            Draw::Fill,
+        ],
+        0.0,
+    );
 
     let spans = plan.spans();
 
@@ -187,19 +287,22 @@ fn subpixel_oblique_line() {
 #[test]
 fn subpixel_vertical_line() {
     // Read the center line of a thin vertical line (should cover quarter of a pixel)
-    let plan = plan_layer_0_line_on_drawing(vec![
-        Draw::ClearCanvas(Color::Rgba(0.0, 0.0, 0.0, 1.0)),
-        Draw::CanvasHeight(1080.0),
-        Draw::CenterRegion((-540.0, -540.0), (540.0, 540.0)),
-        Draw::Path(PathOp::NewPath),
-        Draw::Path(PathOp::Move(-0.5, -500.0)),
-        Draw::Path(PathOp::Line(-0.5, 500.0)),
-        Draw::Path(PathOp::Line(-0.25, 500.0)),
-        Draw::Path(PathOp::Line(-0.25, -500.0)),
-        Draw::Path(PathOp::Line(-0.5, -500.0)),
-        Draw::FillColor(Color::Rgba(1.0, 1.0, 1.0, 1.0)),
-        Draw::Fill,
-    ], 0.0);
+    let plan = plan_layer_0_line_on_drawing(
+        vec![
+            Draw::ClearCanvas(Color::Rgba(0.0, 0.0, 0.0, 1.0)),
+            Draw::CanvasHeight(1080.0),
+            Draw::CenterRegion((-540.0, -540.0), (540.0, 540.0)),
+            Draw::Path(PathOp::NewPath),
+            Draw::Path(PathOp::Move(-0.5, -500.0)),
+            Draw::Path(PathOp::Line(-0.5, 500.0)),
+            Draw::Path(PathOp::Line(-0.25, 500.0)),
+            Draw::Path(PathOp::Line(-0.25, -500.0)),
+            Draw::Path(PathOp::Line(-0.5, -500.0)),
+            Draw::FillColor(Color::Rgba(1.0, 1.0, 1.0, 1.0)),
+            Draw::Fill,
+        ],
+        0.0,
+    );
 
     let spans = plan.spans();
 
@@ -211,27 +314,43 @@ fn subpixel_vertical_line() {
 fn overlapping_subpixel_ranges() {
     // Try planning a concave shape that will force the spans to overlap (by switching direction on a subpixel)
     let y_pos = 400.0;
-    let plan = plan_layer_0_line_on_drawing(vec![
-        Draw::ClearCanvas(Color::Rgba(0.0, 0.0, 0.0, 1.0)),
-        Draw::CanvasHeight(1080.0),
-        Draw::CenterRegion((0.0, 0.0), (1080.0, 1080.0)),
-        Draw::Path(PathOp::NewPath),
-        Draw::Path(PathOp::Move(99.9, y_pos - 1.0)),
-        Draw::Path(PathOp::Line(109.9, y_pos - 1.0)),
-        Draw::Path(PathOp::Line(111.5, y_pos + 0.6)),
-        Draw::Path(PathOp::Line(115.1, y_pos - 1.0)),
-        Draw::Path(PathOp::Line(130.1, y_pos - 1.0)),
-        Draw::Path(PathOp::Line(130.1, y_pos + 100.0)),
-        Draw::Path(PathOp::Line(99.9, y_pos + 100.0)),
-        Draw::FillColor(Color::Rgba(1.0, 1.0, 1.0, 1.0)),
-        Draw::Fill,
-    ], (1080.0 - y_pos as f64) / 540.0 - 1.0);
+    let plan = plan_layer_0_line_on_drawing(
+        vec![
+            Draw::ClearCanvas(Color::Rgba(0.0, 0.0, 0.0, 1.0)),
+            Draw::CanvasHeight(1080.0),
+            Draw::CenterRegion((0.0, 0.0), (1080.0, 1080.0)),
+            Draw::Path(PathOp::NewPath),
+            Draw::Path(PathOp::Move(99.9, y_pos - 1.0)),
+            Draw::Path(PathOp::Line(109.9, y_pos - 1.0)),
+            Draw::Path(PathOp::Line(111.5, y_pos + 0.6)),
+            Draw::Path(PathOp::Line(115.1, y_pos - 1.0)),
+            Draw::Path(PathOp::Line(130.1, y_pos - 1.0)),
+            Draw::Path(PathOp::Line(130.1, y_pos + 100.0)),
+            Draw::Path(PathOp::Line(99.9, y_pos + 100.0)),
+            Draw::FillColor(Color::Rgba(1.0, 1.0, 1.0, 1.0)),
+            Draw::Fill,
+        ],
+        (1080.0 - y_pos as f64) / 540.0 - 1.0,
+    );
 
     let spans = plan.spans();
 
     // Should be 7 spans (3 for each intercept, then another where they overlap)
-    assert!(spans.len() == 7, "Expected 7 spans, got {}: {:?}", spans.len(), spans);
+    assert!(
+        spans.len() == 7,
+        "Expected 7 spans, got {}: {:?}",
+        spans.len(),
+        spans
+    );
 
     // One of these ranges should cover both entering and leaving (so be two intercepts)
-    assert!(spans.iter().filter(|span| span.programs().count() >= 5).next().is_some(), "Expected an overlapping span (got {:?})", spans);
+    assert!(
+        spans
+            .iter()
+            .filter(|span| span.programs().count() >= 5)
+            .next()
+            .is_some(),
+        "Expected an overlapping span (got {:?})",
+        spans
+    );
 }

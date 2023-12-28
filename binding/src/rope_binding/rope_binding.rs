@@ -1,28 +1,34 @@
-use crate::traits::*;
-use crate::watcher::*;
-use crate::notify_fn::*;
-use crate::releasable::*;
-use crate::binding_context::*;
-use crate::rope_binding::core::*;
-use crate::rope_binding::stream::*;
-use crate::rope_binding::bound_rope::*;
-use crate::rope_binding::stream_state::*;
-use crate::rope_binding::rope_binding_mut::*;
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
+use std::collections::VecDeque;
+use std::hash::Hash;
+use std::mem;
+use std::ops::Range;
+use std::sync::*;
 
 use flo_rope::*;
-use ::desync::*;
 use futures::prelude::*;
 use futures::stream;
-use futures::task::{Poll};
-
+use futures::task::Poll;
 #[cfg(feature = "diff")]
 use similar::*;
 
-use std::mem;
-use std::sync::*;
-use std::ops::{Range};
-use std::hash::{Hash};
-use std::collections::{VecDeque};
+use ::desync::*;
+
+use crate::binding_context::*;
+use crate::notify_fn::*;
+use crate::releasable::*;
+use crate::rope_binding::bound_rope::*;
+use crate::rope_binding::core::*;
+use crate::rope_binding::rope_binding_mut::*;
+use crate::rope_binding::stream::*;
+use crate::rope_binding::stream_state::*;
+use crate::traits::*;
+use crate::watcher::*;
 
 ///
 /// A rope binding binds a vector of cells and attributes
@@ -35,18 +41,18 @@ use std::collections::{VecDeque};
 /// any collection data structure.
 ///
 pub struct RopeBinding<Cell, Attribute>
-    where
-        Cell: 'static + Send + Unpin + Clone + PartialEq,
-        Attribute: 'static + Send + Sync + Unpin + Clone + PartialEq + Default,
+where
+    Cell: 'static + Send + Unpin + Clone + PartialEq,
+    Attribute: 'static + Send + Sync + Unpin + Clone + PartialEq + Default,
 {
     /// The core of this binding
     core: Arc<Desync<RopeBindingCore<Cell, Attribute>>>,
 }
 
 impl<Cell, Attribute> RopeBinding<Cell, Attribute>
-    where
-        Cell: 'static + Send + Unpin + Clone + PartialEq,
-        Attribute: 'static + Send + Sync + Clone + Unpin + PartialEq + Default,
+where
+    Cell: 'static + Send + Unpin + Clone + PartialEq,
+    Attribute: 'static + Send + Sync + Clone + Unpin + PartialEq + Default,
 {
     ///
     /// Generates a rope binding by tracking a mutable binding
@@ -59,8 +65,8 @@ impl<Cell, Attribute> RopeBinding<Cell, Attribute>
     /// Creates a new rope binding from a stream of changes
     ///
     pub fn from_stream<S>(stream: S) -> Self
-        where
-            S: 'static + Stream<Item=RopeAction<Cell, Attribute>> + Unpin + Send
+    where
+        S: 'static + Stream<Item = RopeAction<Cell, Attribute>> + Unpin + Send,
     {
         // Create the core
         let core = RopeBindingCore {
@@ -76,13 +82,16 @@ impl<Cell, Attribute> RopeBinding<Cell, Attribute>
         // Recreate the rope in the core with a version that responds to pull events
         let weak_core = Arc::downgrade(&core);
         core.sync(move |core| {
-            core.rope = PullRope::from(AttributedRope::new(), Box::new(move || {
-                // Pass the event through to the core
-                let core = weak_core.upgrade();
-                if let Some(core) = core {
-                    core.desync(|core| core.on_pull());
-                }
-            }));
+            core.rope = PullRope::from(
+                AttributedRope::new(),
+                Box::new(move || {
+                    // Pass the event through to the core
+                    let core = weak_core.upgrade();
+                    if let Some(core) = core {
+                        core.desync(|core| core.on_pull());
+                    }
+                }),
+            );
         });
 
         // Push changes through to the core rope from the stream
@@ -90,13 +99,12 @@ impl<Cell, Attribute> RopeBinding<Cell, Attribute>
             async move {
                 core.rope.edit(actions);
                 core.wake();
-            }.boxed()
+            }
+            .boxed()
         });
 
         // Create the binding
-        RopeBinding {
-            core
-        }
+        RopeBinding { core }
     }
 
     ///
@@ -104,9 +112,9 @@ impl<Cell, Attribute> RopeBinding<Cell, Attribute>
     /// have their default values when using this method)
     ///
     pub fn computed<TFn, TValueIter>(calculate_value: TFn) -> Self
-        where
-            TFn: 'static + Send + Fn() -> TValueIter,
-            TValueIter: IntoIterator<Item=Cell>,
+    where
+        TFn: 'static + Send + Fn() -> TValueIter,
+        TValueIter: IntoIterator<Item = Cell>,
     {
         // Create a stream of changes by following the function
         let mut length = 0;
@@ -131,17 +139,22 @@ impl<Cell, Attribute> RopeBinding<Cell, Attribute>
                     // When the dependencies change, mark that we've changed and wake up the stream
                     let new_value = Arc::clone(&new_value);
                     let waker = Arc::clone(&waker);
-                    let new_dependency_monitor = dependencies.when_changed_if_unchanged(notify(move || {
-                        // Mark as changed
-                        (*new_value.lock().unwrap()) = true;
+                    let new_dependency_monitor =
+                        dependencies.when_changed_if_unchanged(notify(move || {
+                            // Mark as changed
+                            (*new_value.lock().unwrap()) = true;
 
-                        // Wake the stream
-                        let waker = mem::take(&mut *waker.lock().unwrap());
-                        if let Some(waker) = waker { waker.wake() }
-                    }));
+                            // Wake the stream
+                            let waker = mem::take(&mut *waker.lock().unwrap());
+                            if let Some(waker) = waker {
+                                waker.wake()
+                            }
+                        }));
 
                     // Recalculate the value if it has already changed
-                    if new_dependency_monitor.is_none() { continue; }
+                    if new_dependency_monitor.is_none() {
+                        continue;
+                    }
 
                     // Keep the releasable alongside this stream
                     (*dependency_monitor.lock().unwrap()) = new_dependency_monitor;
@@ -176,7 +189,7 @@ impl<Cell, Attribute> RopeBinding<Cell, Attribute>
     ///
     /// Reads the cell values for a range in this rope
     ///
-    pub fn read_cells<'a>(&'a self, range: Range<usize>) -> impl 'a + Iterator<Item=Cell> {
+    pub fn read_cells<'a>(&'a self, range: Range<usize>) -> impl 'a + Iterator<Item = Cell> {
         BindingContext::add_dependency(self.clone());
 
         // Read this range of cells by cloning from the core
@@ -206,9 +219,9 @@ impl<Cell, Attribute> RopeBinding<Cell, Attribute>
 }
 
 impl<Cell, Attribute> RopeBinding<Cell, Attribute>
-    where
-        Cell: 'static + Send + Unpin + Clone + PartialEq + Hash + Ord + Eq,
-        Attribute: 'static + Send + Sync + Clone + Unpin + PartialEq + Default,
+where
+    Cell: 'static + Send + Unpin + Clone + PartialEq + Hash + Ord + Eq,
+    Attribute: 'static + Send + Sync + Clone + Unpin + PartialEq + Default,
 {
     ///
     /// Similar to computed, but instead of always replacing the entire rope, replaces only the sections that are different between the
@@ -222,7 +235,12 @@ impl<Cell, Attribute> RopeBinding<Cell, Attribute>
     /// the user, or for generating edit lists when the data source is not already formatted in a suitable form.
     ///
     #[cfg(feature = "diff")]
-    pub fn computed_difference<TFn: 'static + Send + Fn() -> TValueIter, TValueIter: IntoIterator<Item=Cell>>(calculate_value: TFn) -> Self {
+    pub fn computed_difference<
+        TFn: 'static + Send + Fn() -> TValueIter,
+        TValueIter: IntoIterator<Item = Cell>,
+    >(
+        calculate_value: TFn,
+    ) -> Self {
         // Create a stream of changes by following the function
         let new_value = Arc::new(Mutex::new(true));
         let mut last_cells = vec![];
@@ -246,34 +264,72 @@ impl<Cell, Attribute> RopeBinding<Cell, Attribute>
                     // When the dependencies change, mark that we've changed and wake up the stream
                     let new_value = Arc::clone(&new_value);
                     let waker = Arc::clone(&waker);
-                    let new_dependency_monitor = dependencies.when_changed_if_unchanged(notify(move || {
-                        // Mark as changed
-                        (*new_value.lock().unwrap()) = true;
+                    let new_dependency_monitor =
+                        dependencies.when_changed_if_unchanged(notify(move || {
+                            // Mark as changed
+                            (*new_value.lock().unwrap()) = true;
 
-                        // Wake the stream
-                        let waker = mem::take(&mut *waker.lock().unwrap());
-                        if let Some(waker) = waker { waker.wake() }
-                    }));
+                            // Wake the stream
+                            let waker = mem::take(&mut *waker.lock().unwrap());
+                            if let Some(waker) = waker {
+                                waker.wake()
+                            }
+                        }));
 
                     // Recalculate the value if it has already changed
-                    if new_dependency_monitor.is_none() { continue; }
+                    if new_dependency_monitor.is_none() {
+                        continue;
+                    }
 
                     // Keep the releasable alongside this stream
                     (*dependency_monitor.lock().unwrap()) = new_dependency_monitor;
 
                     // Figure out the differences between the old and the new values
                     let new_cells = value_iter.into_iter().collect::<Vec<_>>();
-                    let mut differences = capture_diff_slices(Algorithm::Myers, &last_cells, &new_cells);
+                    let mut differences =
+                        capture_diff_slices(Algorithm::Myers, &last_cells, &new_cells);
                     differences.sort_by(|a, b| a.new_range().start.cmp(&b.new_range().start));
 
                     let mut actions = vec![];
                     for diff in differences {
                         use self::DiffOp::*;
                         match diff {
-                            Equal { old_index: _, new_index: _, len: _ } => { /* No difference */ }
-                            Delete { old_index: _, old_len, new_index } => { actions.push(RopeAction::Replace(new_index..(new_index + old_len), vec![])) }
-                            Insert { old_index: _, new_index, new_len } => { actions.push(RopeAction::Replace(new_index..new_index, new_cells[new_index..(new_index + new_len)].iter().cloned().collect())) }
-                            Replace { old_index: _, old_len, new_index, new_len } => { actions.push(RopeAction::Replace(new_index..(new_index + old_len), new_cells[new_index..(new_index + new_len)].iter().cloned().collect())) }
+                            Equal {
+                                old_index: _,
+                                new_index: _,
+                                len: _,
+                            } => { /* No difference */ }
+                            Delete {
+                                old_index: _,
+                                old_len,
+                                new_index,
+                            } => actions.push(RopeAction::Replace(
+                                new_index..(new_index + old_len),
+                                vec![],
+                            )),
+                            Insert {
+                                old_index: _,
+                                new_index,
+                                new_len,
+                            } => actions.push(RopeAction::Replace(
+                                new_index..new_index,
+                                new_cells[new_index..(new_index + new_len)]
+                                    .iter()
+                                    .cloned()
+                                    .collect(),
+                            )),
+                            Replace {
+                                old_index: _,
+                                old_len,
+                                new_index,
+                                new_len,
+                            } => actions.push(RopeAction::Replace(
+                                new_index..(new_index + old_len),
+                                new_cells[new_index..(new_index + new_len)]
+                                    .iter()
+                                    .cloned()
+                                    .collect(),
+                            )),
                         }
                     }
 
@@ -292,9 +348,9 @@ impl<Cell, Attribute> RopeBinding<Cell, Attribute>
 }
 
 impl<Cell, Attribute> BoundRope<Cell, Attribute> for RopeBinding<Cell, Attribute>
-    where
-        Cell: 'static + Send + Unpin + Clone + PartialEq,
-        Attribute: 'static + Send + Sync + Clone + Unpin + PartialEq + Default,
+where
+    Cell: 'static + Send + Unpin + Clone + PartialEq,
+    Attribute: 'static + Send + Sync + Clone + Unpin + PartialEq + Default,
 {
     ///
     /// Creates a stream that follows the changes to this rope
@@ -368,9 +424,9 @@ impl<Cell, Attribute> BoundRope<Cell, Attribute> for RopeBinding<Cell, Attribute
 }
 
 impl<Cell, Attribute> Clone for RopeBinding<Cell, Attribute>
-    where
-        Cell: 'static + Send + Unpin + Clone + PartialEq,
-        Attribute: 'static + Send + Sync + Clone + Unpin + PartialEq + Default,
+where
+    Cell: 'static + Send + Unpin + Clone + PartialEq,
+    Attribute: 'static + Send + Sync + Clone + Unpin + PartialEq + Default,
 {
     fn clone(&self) -> RopeBinding<Cell, Attribute> {
         // Increase the usage count
@@ -383,9 +439,9 @@ impl<Cell, Attribute> Clone for RopeBinding<Cell, Attribute>
 }
 
 impl<Cell, Attribute> Drop for RopeBinding<Cell, Attribute>
-    where
-        Cell: 'static + Send + Unpin + Clone + PartialEq,
-        Attribute: 'static + Send + Sync + Clone + Unpin + PartialEq + Default
+where
+    Cell: 'static + Send + Unpin + Clone + PartialEq,
+    Attribute: 'static + Send + Sync + Clone + Unpin + PartialEq + Default,
 {
     fn drop(&mut self) {
         self.core.desync(|core| {
@@ -401,9 +457,9 @@ impl<Cell, Attribute> Drop for RopeBinding<Cell, Attribute>
 }
 
 impl<Cell, Attribute> Changeable for RopeBinding<Cell, Attribute>
-    where
-        Cell: 'static + Send + Unpin + Clone + PartialEq,
-        Attribute: 'static + Send + Sync + Clone + Unpin + PartialEq + Default
+where
+    Cell: 'static + Send + Unpin + Clone + PartialEq,
+    Attribute: 'static + Send + Sync + Clone + Unpin + PartialEq + Default,
 {
     ///
     /// Supplies a function to be notified when this item is changed
@@ -434,9 +490,9 @@ impl<Cell, Attribute> Changeable for RopeBinding<Cell, Attribute>
 /// Trait implemented by something that is bound to a value
 ///
 impl<Cell, Attribute> Bound for RopeBinding<Cell, Attribute>
-    where
-        Cell: 'static + Send + Unpin + Clone + PartialEq,
-        Attribute: 'static + Send + Sync + Clone + Unpin + PartialEq + Default
+where
+    Cell: 'static + Send + Unpin + Clone + PartialEq,
+    Attribute: 'static + Send + Sync + Clone + Unpin + PartialEq + Default,
 {
     type Value = AttributedRope<Cell, Attribute>;
 
@@ -477,7 +533,10 @@ impl<Cell, Attribute> Bound for RopeBinding<Cell, Attribute>
         })
     }
 
-    fn watch(&self, what: Arc<dyn Notifiable>) -> Arc<dyn Watcher<AttributedRope<Cell, Attribute>>> {
+    fn watch(
+        &self,
+        what: Arc<dyn Notifiable>,
+    ) -> Arc<dyn Watcher<AttributedRope<Cell, Attribute>>> {
         let watch_binding = self.clone();
         let (watcher, notifiable) = NotifyWatcher::new(move || watch_binding.get(), what);
 
@@ -491,9 +550,9 @@ impl<Cell, Attribute> Bound for RopeBinding<Cell, Attribute>
 }
 
 impl<Cell, Attribute> From<&RopeBindingMut<Cell, Attribute>> for RopeBinding<Cell, Attribute>
-    where
-        Cell: 'static + Send + Unpin + Clone + PartialEq,
-        Attribute: 'static + Send + Sync + Clone + Unpin + PartialEq + Default,
+where
+    Cell: 'static + Send + Unpin + Clone + PartialEq,
+    Attribute: 'static + Send + Sync + Clone + Unpin + PartialEq + Default,
 {
     fn from(mut_binding: &RopeBindingMut<Cell, Attribute>) -> RopeBinding<Cell, Attribute> {
         RopeBinding::from_mutable(mut_binding)

@@ -1,7 +1,12 @@
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
 use std::ffi::CString;
 use std::pin::*;
 
-use flo_binding::*;
 use flo_stream::*;
 use futures::prelude::*;
 use futures::task::{Context, Poll};
@@ -16,6 +21,7 @@ use glutin_winit::GlWindow;
 use winit::dpi::LogicalSize;
 use winit::window::{Fullscreen, Window};
 
+use flo_binding::*;
 use flo_render::*;
 
 use crate::events::*;
@@ -34,8 +40,8 @@ pub(crate) enum SuspendResume {
 /// Manages the state of a Glutin window
 ///
 pub struct GlutinWindow<TConfig>
-    where
-        TConfig: GlConfig + GetGlDisplay,
+where
+    TConfig: GlConfig + GetGlDisplay,
 {
     /// The context for this window
     context: Option<NotCurrentContext>,
@@ -54,8 +60,8 @@ pub struct GlutinWindow<TConfig>
 }
 
 impl<TConfig> GlutinWindow<TConfig>
-    where
-        TConfig: GlConfig + GetGlDisplay,
+where
+    TConfig: GlConfig + GetGlDisplay,
 {
     ///
     /// Creates a new glutin window
@@ -91,11 +97,11 @@ pub(super) async fn send_actions_to_window<
     events: DrawEventPublisher,
     window_properties: WindowProperties,
 ) where
-    RenderStream: Unpin + Stream<Item=Vec<RenderAction>>,
-    SuspendResumeStream: Unpin + Stream<Item=SuspendResume>,
-    DrawEventPublisher: MessagePublisher<Message=DrawEvent>,
+    RenderStream: Unpin + Stream<Item = Vec<RenderAction>>,
+    SuspendResumeStream: Unpin + Stream<Item = SuspendResume>,
+    DrawEventPublisher: MessagePublisher<Message = DrawEvent>,
     TConfig: GlConfig + GetGlDisplay,
-    TConfig::Target: GlDisplay<WindowSurface=Surface<TSurfaceType>, Config=TConfig>,
+    TConfig::Target: GlDisplay<WindowSurface = Surface<TSurfaceType>, Config = TConfig>,
     TSurfaceType: SurfaceTypeTrait,
 {
     // Read events from the render actions list
@@ -308,31 +314,31 @@ struct WindowUpdateStream<
 }
 
 impl<
-    TSuspendResumeStream,
-    TRenderStream,
-    TTitleStream,
-    TSizeStream,
-    TFullscreenStream,
-    TDecorationStream,
-    TMousePointerStream,
-> Stream
-for WindowUpdateStream<
-    TSuspendResumeStream,
-    TRenderStream,
-    TTitleStream,
-    TSizeStream,
-    TFullscreenStream,
-    TDecorationStream,
-    TMousePointerStream,
->
-    where
-        TSuspendResumeStream: Unpin + Stream<Item=SuspendResume>,
-        TRenderStream: Unpin + Stream<Item=Vec<RenderAction>>,
-        TTitleStream: Unpin + Stream<Item=String>,
-        TSizeStream: Unpin + Stream<Item=(u64, u64)>,
-        TFullscreenStream: Unpin + Stream<Item=bool>,
-        TDecorationStream: Unpin + Stream<Item=bool>,
-        TMousePointerStream: Unpin + Stream<Item=MousePointer>,
+        TSuspendResumeStream,
+        TRenderStream,
+        TTitleStream,
+        TSizeStream,
+        TFullscreenStream,
+        TDecorationStream,
+        TMousePointerStream,
+    > Stream
+    for WindowUpdateStream<
+        TSuspendResumeStream,
+        TRenderStream,
+        TTitleStream,
+        TSizeStream,
+        TFullscreenStream,
+        TDecorationStream,
+        TMousePointerStream,
+    >
+where
+    TSuspendResumeStream: Unpin + Stream<Item = SuspendResume>,
+    TRenderStream: Unpin + Stream<Item = Vec<RenderAction>>,
+    TTitleStream: Unpin + Stream<Item = String>,
+    TSizeStream: Unpin + Stream<Item = (u64, u64)>,
+    TFullscreenStream: Unpin + Stream<Item = bool>,
+    TDecorationStream: Unpin + Stream<Item = bool>,
+    TMousePointerStream: Unpin + Stream<Item = MousePointer>,
 {
     type Item = WindowUpdate;
 

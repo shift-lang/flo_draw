@@ -1,3 +1,9 @@
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
 use std::sync::*;
 
 use futures::prelude::*;
@@ -17,10 +23,11 @@ pub enum ExampleRequest {
 ///
 /// Creates an example entity
 ///
-pub fn create_example_entity(entity_id: EntityId, context: &Arc<SceneContext>) -> Result<impl EntityChannel<Message=ExampleRequest>, CreateEntityError> {
-    context.create_entity(entity_id, move |_context, mut requests| {
-        async move {
-            while let Some(_req) = requests.next().await {}
-        }
+pub fn create_example_entity(
+    entity_id: EntityId,
+    context: &Arc<SceneContext>,
+) -> Result<impl EntityChannel<Message = ExampleRequest>, CreateEntityError> {
+    context.create_entity(entity_id, move |_context, mut requests| async move {
+        while let Some(_req) = requests.next().await {}
     })
 }

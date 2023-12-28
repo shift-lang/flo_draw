@@ -1,3 +1,9 @@
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
 #[cfg(not(feature = "render-wgpu"))]
 fn main() {
     panic!("This example requires the render-wgpu feature to be set");
@@ -17,16 +23,18 @@ fn main() {
     use flo_render::*;
     use flo_render_canvas::*;
 
-    use winit::window;
     use winit::event::{Event, WindowEvent};
     use winit::event_loop::{ControlFlow, EventLoop};
+    use winit::window;
 
-    use futures::prelude::*;
     use futures::executor;
+    use futures::prelude::*;
     use std::sync::*;
 
     // The render instructions that we'll send to the window
-    let mascot = decode_drawing(MASCOT.chars()).collect::<Result<Vec<Draw>, _>>().unwrap();
+    let mascot = decode_drawing(MASCOT.chars())
+        .collect::<Result<Vec<Draw>, _>>()
+        .unwrap();
 
     // The canvas renderer converts instructions from `flo_canvas` to `flo_render`
     let mut canvas_renderer = CanvasRenderer::new();
@@ -36,7 +44,10 @@ fn main() {
 
     // Create a rendering of the mascot (rendering are streamed, but we just gather them into a big Vec to send to flo_render later here)
     let rendering = executor::block_on(async {
-        canvas_renderer.draw(mascot.into_iter()).collect::<Vec<_>>().await
+        canvas_renderer
+            .draw(mascot.into_iter())
+            .collect::<Vec<_>>()
+            .await
     });
 
     // Set up an event loop and a window that reports to it
@@ -48,25 +59,40 @@ fn main() {
         // Create a new WGPU instance, surface and adapter
         let instance = wgpu::Instance::new(wgpu::Backends::all());
         let surface = unsafe { instance.create_surface(&window) };
-        let adapter = instance.request_adapter(&wgpu::RequestAdapterOptions {
-            power_preference: wgpu::PowerPreference::default(),
-            force_fallback_adapter: false,
-            compatible_surface: Some(&surface),
-        }).await.unwrap();
+        let adapter = instance
+            .request_adapter(&wgpu::RequestAdapterOptions {
+                power_preference: wgpu::PowerPreference::default(),
+                force_fallback_adapter: false,
+                compatible_surface: Some(&surface),
+            })
+            .await
+            .unwrap();
 
         // Fetch the device and the queue
-        let (device, queue) = adapter.request_device(&wgpu::DeviceDescriptor {
-            label: None,
-            features: wgpu::Features::empty(),
-            limits: wgpu::Limits::downlevel_webgl2_defaults().using_resolution(adapter.limits()),
-        }, None).await.unwrap();
+        let (device, queue) = adapter
+            .request_device(
+                &wgpu::DeviceDescriptor {
+                    label: None,
+                    features: wgpu::Features::empty(),
+                    limits: wgpu::Limits::downlevel_webgl2_defaults()
+                        .using_resolution(adapter.limits()),
+                },
+                None,
+            )
+            .await
+            .unwrap();
 
         // Create the WGPU renderer
         let device = Arc::new(device);
         let queue = Arc::new(queue);
         let surface = Arc::new(surface);
         let adapter = Arc::new(adapter);
-        let mut renderer = WgpuRenderer::from_surface(Arc::clone(&device), Arc::clone(&queue), Arc::clone(&surface), Arc::clone(&adapter));
+        let mut renderer = WgpuRenderer::from_surface(
+            Arc::clone(&device),
+            Arc::clone(&queue),
+            Arc::clone(&surface),
+            Arc::clone(&adapter),
+        );
 
         // Surface configuration
         let size = window.inner_size();
@@ -78,11 +104,17 @@ fn main() {
             *control_flow = ControlFlow::Wait;
 
             match event {
-                Event::WindowEvent { event: WindowEvent::CloseRequested, .. } => {
+                Event::WindowEvent {
+                    event: WindowEvent::CloseRequested,
+                    ..
+                } => {
                     *control_flow = ControlFlow::Exit;
                 }
 
-                Event::WindowEvent { event: WindowEvent::Resized(size), .. } => {
+                Event::WindowEvent {
+                    event: WindowEvent::Resized(size),
+                    ..
+                } => {
                     // Configure the surface to the new size
                     renderer.prepare_to_render(size.width, size.height);
                     renderer.render_to_surface(rendering.clone());

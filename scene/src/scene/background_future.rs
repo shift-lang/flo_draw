@@ -1,3 +1,9 @@
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
 use std::collections::HashSet;
 use std::mem;
 use std::pin::*;
@@ -158,13 +164,19 @@ impl Future for BackgroundFuture {
 
             for awake_idx in awake_futures.into_iter() {
                 // Make a context for this future to mark it as awake
-                let waker = Arc::new(BackgroundWaker { future_idx: awake_idx, core: Arc::clone(&self.core) });
+                let waker = Arc::new(BackgroundWaker {
+                    future_idx: awake_idx,
+                    core: Arc::clone(&self.core),
+                });
                 let future_waker = task::waker(waker);
                 let mut context = task::Context::from_waker(&future_waker);
 
                 if let Some(future) = &mut self.futures[awake_idx] {
                     // Poll the future
-                    let poll_result = SceneContext::with_context(&scene_context, || future.poll_unpin(&mut context)).unwrap();
+                    let poll_result = SceneContext::with_context(&scene_context, || {
+                        future.poll_unpin(&mut context)
+                    })
+                    .unwrap();
 
                     // Poll the future
                     match poll_result {
@@ -212,12 +224,12 @@ pub(crate) trait ArcBackgroundFutureCore {
     ///
     /// Adds a future to the core, but doesn't wake the main future
     ///
-    fn add_future_without_waking(&self, future: impl 'static + Send + Future<Output=()>);
+    fn add_future_without_waking(&self, future: impl 'static + Send + Future<Output = ()>);
 
     ///
     /// Add a future to the list that this core owns
     ///
-    fn add_future(&self, future: impl 'static + Send + Future<Output=()>);
+    fn add_future(&self, future: impl 'static + Send + Future<Output = ()>);
 
     ///
     /// Stop the future from running
@@ -261,7 +273,7 @@ impl ArcBackgroundFutureCore for Arc<Mutex<BackgroundFutureCore>> {
     ///
     /// Adds a future to the core, but doesn't wake the main future
     ///
-    fn add_future_without_waking(&self, future: impl 'static + Send + Future<Output=()>) {
+    fn add_future_without_waking(&self, future: impl 'static + Send + Future<Output = ()>) {
         let mut core = self.lock().unwrap();
 
         // Setting the new futures flag ensures that the futures will be moved into the polling thread next time it's awoken
@@ -279,13 +291,14 @@ impl ArcBackgroundFutureCore for Arc<Mutex<BackgroundFutureCore>> {
         // Create a new future if there are no existing slots
         let new_slot_idx = core.futures.len();
         core.awake_futures.insert(new_slot_idx);
-        core.futures.push(CoreFutureState::NewFuture(future.boxed()));
+        core.futures
+            .push(CoreFutureState::NewFuture(future.boxed()));
     }
 
     ///
     /// Add a future to the list that this core owns
     ///
-    fn add_future(&self, future: impl 'static + Send + Future<Output=()>) {
+    fn add_future(&self, future: impl 'static + Send + Future<Output = ()>) {
         self.add_future_without_waking(future);
         self.wake();
     }

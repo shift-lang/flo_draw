@@ -1,3 +1,9 @@
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
 use flo_render_software::draw::*;
 use flo_render_software::pixel::*;
 use flo_render_software::render::*;
@@ -5,7 +11,7 @@ use flo_render_software::scanplan::*;
 
 use flo_render_software::canvas::*;
 
-use std::time::{Instant};
+use std::time::Instant;
 
 ///
 /// Draw some canvas commands to the terminal
@@ -29,16 +35,28 @@ pub fn main() {
 
     let render_start = Instant::now();
     for _ in 0..100 {
-        let renderer = CanvasDrawingRegionRenderer::new(PixelScanPlanner::default(), ScanlineRenderer::new(canvas_drawing.program_runner(1080.0)), 1080);
+        let renderer = CanvasDrawingRegionRenderer::new(
+            PixelScanPlanner::default(),
+            ScanlineRenderer::new(canvas_drawing.program_runner(1080.0)),
+            1080,
+        );
         rgba.render(renderer, &canvas_drawing);
     }
     let render_time = Instant::now().duration_since(render_start);
     let avg_micros = render_time.as_micros() / 100;
-    println!("Frame render time: {}.{}ms", avg_micros / 1000, avg_micros % 1000);
+    println!(
+        "Frame render time: {}.{}ms",
+        avg_micros / 1000,
+        avg_micros % 1000
+    );
 
     // Render the mascot to the terminal
     let mut term_renderer = TerminalRenderTarget::new(500, 400);
 
-    let renderer = CanvasDrawingRegionRenderer::new(PixelScanPlanner::default(), ScanlineRenderer::new(canvas_drawing.program_runner(400.0)), 400);
+    let renderer = CanvasDrawingRegionRenderer::new(
+        PixelScanPlanner::default(),
+        ScanlineRenderer::new(canvas_drawing.program_runner(400.0)),
+        400,
+    );
     term_renderer.render(renderer, &canvas_drawing);
 }

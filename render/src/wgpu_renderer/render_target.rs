@@ -1,3 +1,9 @@
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
 use crate::action::*;
 
 use wgpu;
@@ -30,7 +36,12 @@ impl RenderTarget {
     ///
     /// Creates a new render target
     ///
-    pub fn new(device: &wgpu::Device, width: u32, height: u32, render_target_type: RenderTargetType) -> RenderTarget {
+    pub fn new(
+        device: &wgpu::Device,
+        width: u32,
+        height: u32,
+        render_target_type: RenderTargetType,
+    ) -> RenderTarget {
         // Set up the texture descriptor (basic width and height and standard format)
         let mut descriptor = wgpu::TextureDescriptor {
             label: Some("render_target"),
@@ -43,7 +54,9 @@ impl RenderTarget {
             sample_count: 1,
             dimension: wgpu::TextureDimension::D2,
             format: wgpu::TextureFormat::Bgra8Unorm,
-            usage: wgpu::TextureUsages::COPY_SRC | wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::TEXTURE_BINDING,
+            usage: wgpu::TextureUsages::COPY_SRC
+                | wgpu::TextureUsages::RENDER_ATTACHMENT
+                | wgpu::TextureUsages::TEXTURE_BINDING,
             view_formats: &[],
         };
 
@@ -51,10 +64,13 @@ impl RenderTarget {
         use self::RenderTargetType::*;
         match render_target_type {
             Standard => {}
-            StandardForReading => { descriptor.view_formats = &[wgpu::TextureFormat::Bgra8Unorm] }
-            Multisampled |
-            MultisampledTexture => { descriptor.sample_count = 4; }
-            Monochrome => { descriptor.format = wgpu::TextureFormat::R8Unorm; }
+            StandardForReading => descriptor.view_formats = &[wgpu::TextureFormat::Bgra8Unorm],
+            Multisampled | MultisampledTexture => {
+                descriptor.sample_count = 4;
+            }
+            Monochrome => {
+                descriptor.format = wgpu::TextureFormat::R8Unorm;
+            }
             MonochromeMultisampledTexture => {
                 descriptor.format = wgpu::TextureFormat::R8Unorm;
                 descriptor.sample_count = 4;
@@ -66,20 +82,14 @@ impl RenderTarget {
 
         // Return the resulting render target
         match render_target_type {
-            Standard |
-            StandardForReading |
-            Monochrome => {
-                RenderTarget::Texture {
-                    texture: Arc::new(texture),
-                    texture_descriptor: descriptor,
-                    width: width,
-                    height: height,
-                }
-            }
+            Standard | StandardForReading | Monochrome => RenderTarget::Texture {
+                texture: Arc::new(texture),
+                texture_descriptor: descriptor,
+                width: width,
+                height: height,
+            },
 
-            Multisampled |
-            MultisampledTexture |
-            MonochromeMultisampledTexture => {
+            Multisampled | MultisampledTexture | MonochromeMultisampledTexture => {
                 RenderTarget::Multisampled {
                     texture: Arc::new(texture),
                     texture_descriptor: descriptor,
@@ -116,8 +126,12 @@ impl RenderTarget {
     ///
     pub fn texture_format(&self) -> wgpu::TextureFormat {
         match self {
-            RenderTarget::Texture { texture_descriptor, .. } => texture_descriptor.format,
-            RenderTarget::Multisampled { texture_descriptor, .. } => texture_descriptor.format,
+            RenderTarget::Texture {
+                texture_descriptor, ..
+            } => texture_descriptor.format,
+            RenderTarget::Multisampled {
+                texture_descriptor, ..
+            } => texture_descriptor.format,
         }
     }
 
@@ -126,8 +140,12 @@ impl RenderTarget {
     ///
     pub fn texture_descriptor(&self) -> wgpu::TextureDescriptor<'static> {
         match self {
-            RenderTarget::Texture { texture_descriptor, .. } => texture_descriptor.clone(),
-            RenderTarget::Multisampled { texture_descriptor, .. } => texture_descriptor.clone(),
+            RenderTarget::Texture {
+                texture_descriptor, ..
+            } => texture_descriptor.clone(),
+            RenderTarget::Multisampled {
+                texture_descriptor, ..
+            } => texture_descriptor.clone(),
         }
     }
 
