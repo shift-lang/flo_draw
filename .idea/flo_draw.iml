@@ -26,6 +26,8 @@
       <sourceFolder url="file://$MODULE_DIR$/render_software/tests" isTestSource="true" />
       <sourceFolder url="file://$MODULE_DIR$/scene/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/scene/tests" isTestSource="true" />
+      <excludeFolder url="file://$MODULE_DIR$/.idea/copyright" />
+      <excludeFolder url="file://$MODULE_DIR$/.idea/inspectionProfiles" />
       <excludeFolder url="file://$MODULE_DIR$/target" />
     </content>
     <orderEntry type="inheritedJdk" />
