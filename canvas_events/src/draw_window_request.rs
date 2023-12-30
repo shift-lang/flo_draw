@@ -6,6 +6,7 @@
 
 use flo_canvas::scenery::*;
 use flo_scene::*;
+use winit::window::CursorIcon;
 
 use super::draw_event_request::*;
 use super::render_request::*;
@@ -19,7 +20,7 @@ pub enum MousePointer {
     None,
 
     /// The default pointer for the operating system
-    SystemDefault,
+    SystemDefault(CursorIcon),
 }
 
 ///

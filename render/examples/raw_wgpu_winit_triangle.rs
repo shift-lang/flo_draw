@@ -59,12 +59,7 @@ fn main() {
     // Bits of wgpu are async so we need an async blocker here
     executor::block_on(async move {
         // Create a new WGPU instance, surface and adapter
-        let instance = wgpu::Instance::new(InstanceDescriptor {
-            backends: wgpu::Backends::all(),
-            dx12_shader_compiler: wgpu::Dx12Compiler::Fxc,
-            gles_minor_version: wgpu::Gles3MinorVersion::Automatic,
-            flags: wgpu::InstanceFlags::empty(),
-        });
+        let instance = wgpu::Instance::new(Default::default());
         let surface = unsafe { instance.create_surface(&window).unwrap() };
         let adapter = instance
             .request_adapter(&wgpu::RequestAdapterOptions {

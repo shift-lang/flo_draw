@@ -11,7 +11,7 @@ use std::sync::*;
 use std::thread;
 
 use once_cell::sync::Lazy;
-use winit::event_loop::{EventLoop, EventLoopProxy};
+use winit::event_loop::{EventLoop, EventLoopBuilder, EventLoopProxy};
 
 use ::desync::*;
 
@@ -138,7 +138,7 @@ fn create_winit_thread() -> Arc<WinitThread> {
 ///
 fn run_winit_thread(send_proxy: mpsc::Sender<EventLoopProxy<WinitThreadEvent>>) {
     // Create the event loop
-    let event_loop = EventLoop::with_user_event();
+    let event_loop = EventLoopBuilder::with_user_event().build();
 
     // We communicate with the event loop via the proxy
     let proxy = event_loop.create_proxy();

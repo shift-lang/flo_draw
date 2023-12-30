@@ -4,6 +4,8 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
+use flo_render::wgpu::InstanceDescriptor;
+
 #[cfg(not(feature = "render-wgpu"))]
 fn main() {
     panic!("This example requires the render-wgpu feature to be set");
@@ -57,8 +59,11 @@ fn main() {
     // Bits of wgpu are async so we need an async blocker here
     executor::block_on(async move {
         // Create a new WGPU instance, surface and adapter
-        let instance = wgpu::Instance::new(wgpu::Backends::all());
-        let surface = unsafe { instance.create_surface(&window) };
+        let instance = wgpu::Instance::new(InstanceDescriptor {
+            backends: wgpu::Backends::PRIMARY,
+            ..Default::default()
+        });
+        let surface = unsafe { instance.create_surface(&window).unwrap() };
         let adapter = instance
             .request_adapter(&wgpu::RequestAdapterOptions {
                 power_preference: wgpu::PowerPreference::default(),

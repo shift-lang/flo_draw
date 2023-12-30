@@ -237,9 +237,10 @@ pub(super) async fn send_actions_to_window<RenderStream, EventPublisher>(
                     }
                 }
 
-                WindowUpdate::SetMousePointer(MousePointer::SystemDefault) => {
+                WindowUpdate::SetMousePointer(MousePointer::SystemDefault(mode)) => {
                     if let Some(winit_window) = &window.window {
                         winit_window.set_cursor_visible(true);
+                        winit_window.set_cursor_icon(mode)
                     }
                 }
             }

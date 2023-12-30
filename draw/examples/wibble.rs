@@ -4,18 +4,12 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-use std::f64;
-use std::sync::*;
-use std::thread;
-use std::time::{Duration, Instant};
+use std::{f64, sync::*, thread, time::{Duration, Instant}};
 
-use futures::executor;
-use futures::prelude::*;
-use futures::stream;
+use futures::{executor, prelude::*,stream};
 
 use flo_curves::bezier::path::*;
 use flo_curves::bezier::*;
-use flo_curves::*;
 use flo_draw::canvas::*;
 use flo_draw::*;
 

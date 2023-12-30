@@ -4,7 +4,6 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-use std::fmt;
 use std::fmt::*;
 
 use flo_stream::*;
@@ -50,7 +49,7 @@ pub enum WinitThreadEvent {
 }
 
 impl Debug for WinitThreadEvent {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result {
         use self::WinitThreadEvent::*;
 
         match self {

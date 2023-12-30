@@ -21,21 +21,21 @@ profile = []
 bindgen = "0.69"
 
 [dependencies]
-gl = { version = "0.14", optional = true }
-wgpu = { version = "0.18", optional = true }
-metal = { version = "0.27", optional = true }
-cocoa = { version = "0.25", optional = true }
+gl = { workspace = true, optional = true }
+wgpu = { workspace = true, optional = true }
+metal = { workspace = true, optional = true }
+cocoa = { workspace = true, optional = true }
 libc = { version = "0.2", optional = true }
 flo_canvas = { workspace = true, optional = true }
 flo_render_gl_offscreen = { workspace = true, optional = true }
 desync = { workspace = true, optional = true }
-once_cell = { version = "1.18", optional = true }
-futures = { version = "0.3", optional = true }
-wgpu-profiler = { version = "0.15", optional = true }
+once_cell = { workspace = true, optional = true }
+futures = { workspace = true, optional = true }
+wgpu-profiler = { workspace = true, optional = true }
 
 [dev-dependencies]
-winit = "0.28"
-futures = "0.3"
+winit.workspace = true
+futures.workspace = true
 
 [target.'cfg(target_os = "macos")'.dependencies]
 core-foundation = "0.9"

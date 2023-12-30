@@ -265,11 +265,11 @@ pub(super) async fn send_actions_to_window<
                     .map(|ctxt| ctxt.set_cursor_visible(false));
             }
 
-            WindowUpdate::SetMousePointer(MousePointer::SystemDefault) => {
+            WindowUpdate::SetMousePointer(MousePointer::SystemDefault(mode)) => {
                 window
                     .window
                     .as_ref()
-                    .map(|ctxt| ctxt.set_cursor_visible(true));
+                    .map(|ctxt| { ctxt.set_cursor_visible(true); ctxt.set_cursor_icon(mode) });
             }
         }
     }

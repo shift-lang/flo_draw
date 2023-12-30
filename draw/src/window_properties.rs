@@ -4,6 +4,7 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
+use winit::window::CursorIcon;
 use flo_binding::*;
 use flo_canvas_events::*;
 
@@ -57,7 +58,7 @@ impl FloWindowProperties for () {
         BindRef::from(bind(true))
     }
     fn mouse_pointer(&self) -> BindRef<MousePointer> {
-        BindRef::from(bind(MousePointer::SystemDefault))
+        BindRef::from(bind(MousePointer::SystemDefault(CursorIcon::Default)))
     }
 }
 
@@ -78,7 +79,7 @@ impl<'a> FloWindowProperties for &'a str {
         BindRef::from(bind(true))
     }
     fn mouse_pointer(&self) -> BindRef<MousePointer> {
-        BindRef::from(bind(MousePointer::SystemDefault))
+        BindRef::from(bind(MousePointer::SystemDefault(CursorIcon::Default)))
     }
 }
 

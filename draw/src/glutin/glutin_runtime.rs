@@ -151,21 +151,20 @@ impl GlutinRuntime {
     /// Handles a glutin window event
     ///
     fn handle_window_event(&mut self, window_id: WindowId, event: WindowEvent) {
-        if let CloseRequested = event {
-            // Glutin has a problem (at least in OS X) where setting control_flow to Exit does not actually shut it down
-            // This issue does not occur if the 'Exit' request is done in response to closing a window
-            // (This only partially works around the issue: the process will still not quit properly if the last window
-            // is closed before the main routine finishes, ie when 'will_stop_when_no_windows' is still false)
-            if self.will_stop_when_no_windows && self.window_events.len() <= 1 {
-                self.will_exit = true;
-            }
-        }
-
         use WindowEvent::*;
 
         let event = match event {
             Resized(size) => DrawEvent::Resized(size),
-            CloseRequested => DrawEvent::CloseRequested,
+            CloseRequested => {
+                // Glutin has a problem (at least in OS X) where setting control_flow to Exit does not actually shut it down
+                // This issue does not occur if the 'Exit' request is done in response to closing a window
+                // (This only partially works around the issue: the process will still not quit properly if the last window
+                // is closed before the main routine finishes, ie when 'will_stop_when_no_windows' is still false)
+                if self.will_stop_when_no_windows && self.window_events.len() <= 1 {
+                    self.will_exit = true;
+                }
+                DrawEvent::CloseRequested
+            }
             Destroyed => DrawEvent::Destroyed,
             DroppedFile(path) => DrawEvent::DroppedFile(path),
             HoveredFile(path) => DrawEvent::HoveredFile(path),
@@ -397,7 +396,7 @@ impl GlutinRuntime {
                         window_events,
                         window_properties,
                     )
-                    .await;
+                        .await;
 
                     // Stop processing events for the window once there are no more actions
                     glutin_thread().send_event(GlutinThreadEvent::StopSendingToWindow(window_id));
@@ -433,7 +432,7 @@ impl GlutinRuntime {
     ///
     /// Runs a process in the context of this runtime
     ///
-    fn run_process<Fut: 'static + Future<Output = ()>>(&mut self, future: Fut) {
+    fn run_process<Fut: 'static + Future<Output=()>>(&mut self, future: Fut) {
         // Box the future for polling
         let future = future.boxed_local();
 

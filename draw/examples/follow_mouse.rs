@@ -6,6 +6,8 @@
 
 use futures::executor;
 use futures::prelude::*;
+use winit::window::CursorIcon;
+use flo_binding::{bind, BindRef, Bound, MutableBound};
 
 use flo_canvas::*;
 use flo_draw::*;
@@ -25,16 +27,30 @@ use flo_draw::*;
 ///
 pub fn main() {
     // 'with_2d_graphics' is used to support operating systems that can't run event loops anywhere other than the main thread
-    with_2d_graphics(|| {
+    let size = bind((1024, 768));
+    let mut local_size = (1024, 768);
+    with_2d_graphics(move || {
+        let title = bind("Mouse tracking".to_string());
+        let fullscreen = bind(false);
+        let has_decorations = bind(true);
+        let mouse_pointer = bind(MousePointer::SystemDefault(CursorIcon::Default));
+        let window_props = WindowProperties {
+            title: BindRef::from(title.clone()),
+            size: BindRef::from(size.clone()),
+            fullscreen: BindRef::from(fullscreen.clone()),
+            has_decorations: BindRef::from(has_decorations.clone()),
+            mouse_pointer: BindRef::from(mouse_pointer.clone()),
+        };
+
         // Create a window and an event queue
-        let (canvas, events) = create_drawing_window_with_events("Mouse tracking");
+        let (canvas, events) = create_drawing_window_with_events(window_props);
 
         // Render the window background on layer 0 (just a triangle)
         canvas.draw(|gc| {
             // Clear the canvas and set up the coordinates
             gc.clear_canvas(Color::Rgba(0.3, 0.2, 0.0, 1.0));
-            gc.canvas_height(1000.0);
-            gc.center_region(0.0, 0.0, 1000.0, 1000.0);
+            gc.canvas_height(local_size.1 as _);
+            gc.center_region(0.0, 0.0, local_size.0 as _, local_size.1 as _);
 
             // We'll draw some graphics to layer 0 (we can leave these alone as we track the mouse around)
             gc.layer(LayerId(0));
@@ -42,9 +58,9 @@ pub fn main() {
             // Draw a rectangle...
             gc.new_path();
             gc.move_to(0.0, 0.0);
-            gc.line_to(1000.0, 0.0);
-            gc.line_to(1000.0, 1000.0);
-            gc.line_to(0.0, 1000.0);
+            gc.line_to(local_size.0 as _, 0.0);
+            gc.line_to(local_size.0 as _, local_size.1 as _);
+            gc.line_to(0.0, local_size.1 as _);
             gc.line_to(0.0, 0.0);
 
             gc.fill_color(Color::Rgba(1.0, 1.0, 0.8, 1.0));
@@ -68,6 +84,41 @@ pub fn main() {
             // Main event loop
             while let Some(event) = events.next().await {
                 match event {
+                    DrawEvent::Resized(new_size) => {
+                        // Resize the canvas
+                        local_size = (new_size.width, new_size.height);
+                        canvas.draw(|gc| {
+                            // Clear the canvas and set up the coordinates
+                            gc.clear_canvas(Color::Rgba(0.3, 0.2, 0.0, 1.0));
+                            gc.canvas_height(local_size.1 as _);
+                            gc.center_region(0.0, 0.0, local_size.0 as _, local_size.1 as _);
+
+                            // We'll draw some graphics to layer 0 (we can leave these alone as we track the mouse around)
+                            gc.layer(LayerId(0));
+
+                            // Draw a rectangle...
+                            gc.new_path();
+                            gc.move_to(0.0, 0.0);
+                            gc.line_to(local_size.0 as _, 0.0);
+                            gc.line_to(local_size.0 as _, local_size.1 as _);
+                            gc.line_to(0.0, local_size.1 as _);
+                            gc.line_to(0.0, 0.0);
+
+                            gc.fill_color(Color::Rgba(1.0, 1.0, 0.8, 1.0));
+                            gc.fill();
+
+                            // Draw a triangle on top
+                            gc.new_path();
+                            gc.move_to(200.0, 200.0);
+                            gc.line_to(800.0, 200.0);
+                            gc.line_to(500.0, 800.0);
+                            gc.line_to(200.0, 200.0);
+
+                            gc.fill_color(Color::Rgba(0.0, 0.0, 0.8, 1.0));
+                            gc.fill();
+                        });
+                    }
+
                     // Track any event relating to the pointer
                     DrawEvent::CursorMoved { state } => {
                         // Draw a circle at the mouse position

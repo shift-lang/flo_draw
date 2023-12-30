@@ -17,9 +17,9 @@ categories = ["algorithms", "rendering"]
 extra_checks = []
 
 [dependencies]
-itertools = "0.11"
+itertools.workspace = true
 roots = "0.0.8"
-smallvec = { version = "1.10", features = ["const_generics"] }
+smallvec = { workspace = true, features = ["const_generics"] }
 ouroboros = "0.17"
 
 [dev-dependencies]

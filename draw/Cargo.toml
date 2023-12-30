@@ -15,34 +15,38 @@ include = ["Cargo.toml", "src/**/*", "examples/**/*", "images/**/*", "guide_imag
 default = ["render-opengl"]
 render-opengl = ["gl", "glutin", "glutin-winit", "raw-window-handle", "flo_render/opengl"]
 render-wgpu = ["wgpu", "flo_render/render-wgpu"]
+render-metal = ["flo_render/osx-metal", "metal", "cocoa"]
 profile = ["flo_render/profile"]
 wgpu-profiler = ["dep:wgpu-profiler", "flo_render/wgpu-profiler"]
 
 [dependencies]
 flo_canvas = { workspace = true, features = ["outline-fonts", "image-loading", "scenery"] }
-flo_canvas_events = { workspace = true }
-flo_render = { workspace = true, features = ["opengl"] }
+flo_canvas_events.workspace = true
+flo_render.workspace = true
 flo_render_canvas.workspace = true
-flo_stream = "0.7"
+flo_stream.workspace = true
 flo_binding.workspace = true
 flo_scene.workspace = true
 desync.workspace = true
+winit.workspace = true
 
 once_cell = "1.18"
 futures = "0.3"
 
-glutin = { optional = true, version = "0.30" }
-glutin-winit = { optional = true, version = "0.3" }
-raw-window-handle = { optional = true, version = "0.5" }
-gl = { optional = true, version = "0.14" }
+glutin = { workspace = true,optional = true }
+glutin-winit = {workspace = true, optional = true }
+raw-window-handle = { workspace = true, optional = true }
+gl = { workspace = true, optional = true }
 
-winit = { version = "0.28" }
-wgpu = { optional = true, version = "0.18" }
-wgpu-profiler = { version = "0.15", optional = true }
+wgpu = { workspace = true, optional = true}
+wgpu-profiler = { workspace = true, optional = true }
+
+metal = { workspace = true, optional = true }
+cocoa = { workspace = true, optional = true }
 
 [dev-dependencies]
 flo_curves.workspace = true
 rand = "0.8"
 futures-timer = "3.0"
 num-complex = "0.4"
-rayon = "1.5"
+rayon.workspace = true

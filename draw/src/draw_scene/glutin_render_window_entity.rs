@@ -9,6 +9,7 @@ use std::sync::*;
 use flo_stream::*;
 use futures::channel::mpsc;
 use futures::prelude::*;
+use winit::window::CursorIcon;
 
 use flo_binding::*;
 use flo_canvas_events::*;
@@ -37,7 +38,7 @@ pub fn create_glutin_render_window_entity(
             let title = bind("flo_draw".to_string());
             let fullscreen = bind(false);
             let has_decorations = bind(true);
-            let mouse_pointer = bind(MousePointer::SystemDefault);
+            let mouse_pointer = bind(MousePointer::SystemDefault(CursorIcon::Default));
             let size = bind(initial_size);
 
             let window_properties = WindowProperties {
