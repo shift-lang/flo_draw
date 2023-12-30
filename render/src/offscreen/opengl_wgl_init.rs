@@ -8,25 +8,33 @@ use super::error::*;
 use super::offscreen_trait::*;
 use super::opengl::*;
 
-use flo_render_gl_offscreen::wgl;
-use flo_render_gl_offscreen::winapi::shared::minwindef::HINSTANCE;
-use flo_render_gl_offscreen::winapi::shared::windef::{HGLRC, HWND};
-use flo_render_gl_offscreen::winapi::shared::winerror::ERROR_CLASS_ALREADY_EXISTS;
-use flo_render_gl_offscreen::winapi::um::errhandlingapi::GetLastError;
-use flo_render_gl_offscreen::winapi::um::libloaderapi::{
-    FreeLibrary, GetModuleHandleW, GetProcAddress, LoadLibraryW,
-};
-use flo_render_gl_offscreen::winapi::um::wingdi::{
-    ChoosePixelFormat, SetPixelFormat, PFD_DOUBLEBUFFER, PFD_DRAW_TO_WINDOW, PFD_MAIN_PLANE,
-    PFD_SUPPORT_OPENGL, PFD_TYPE_RGBA, PIXELFORMATDESCRIPTOR,
-};
-use flo_render_gl_offscreen::winapi::um::winuser::{
-    CreateWindowExW, DefWindowProcW, DestroyWindow, GetDC, RegisterClassExW, CS_OWNDC, WNDCLASSEXW,
-    WS_EX_APPWINDOW, WS_OVERLAPPEDWINDOW,
+use flo_render_gl_offscreen::{
+    wgl,
+    winapi::{
+        shared::{
+            minwindef::{DWORD, HINSTANCE},
+            windef::{HGLRC, HWND},
+            // BUG: for some reason doesn't work
+            // winerror::ERROR_CLASS_ALREADY_EXISTS,
+        },
+        um::{
+            errhandlingapi::GetLastError,
+            libloaderapi::{FreeLibrary, GetModuleHandleW, GetProcAddress, LoadLibraryW},
+            wingdi::{
+                ChoosePixelFormat, SetPixelFormat, PFD_DOUBLEBUFFER, PFD_DRAW_TO_WINDOW,
+                PFD_MAIN_PLANE, PFD_SUPPORT_OPENGL, PFD_TYPE_RGBA, PIXELFORMATDESCRIPTOR,
+            },
+            winuser::{
+                CreateWindowExW, DefWindowProcW, DestroyWindow, GetDC, RegisterClassExW, CS_OWNDC,
+                WNDCLASSEXW, WS_EX_APPWINDOW, WS_OVERLAPPEDWINDOW,
+            },
+        },
+    },
 };
 
-use std::ffi;
-use std::ffi::{CString, OsStr};
+pub const ERROR_CLASS_ALREADY_EXISTS: DWORD = 1410;
+
+use std::ffi::{self, CString, OsStr};
 use std::mem;
 use std::os::windows::ffi::OsStrExt;
 use std::ptr;

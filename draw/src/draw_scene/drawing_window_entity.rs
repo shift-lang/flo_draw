@@ -326,29 +326,53 @@ pub fn create_drawing_window_entity(
                                         .ok();
                                 }
 
-                                DrawingWindowRequest::SetTitle(title) => {
-                                    render_target
-                                        .send(RenderWindowRequest::SetTitle(title))
-                                        .await
-                                        .ok();
+                                DrawingWindowRequest::SetMinSize(value) => {
+                                    render_target.send(RenderWindowRequest::SetMinSize(value)).await.ok();
                                 }
-                                DrawingWindowRequest::SetFullScreen(fullscreen) => {
-                                    render_target
-                                        .send(RenderWindowRequest::SetFullScreen(fullscreen))
-                                        .await
-                                        .ok();
+                                DrawingWindowRequest::SetMaxSize(value) => {
+                                    render_target.send(RenderWindowRequest::SetMaxSize(value)).await.ok();
                                 }
-                                DrawingWindowRequest::SetHasDecorations(decorations) => {
-                                    render_target
-                                        .send(RenderWindowRequest::SetHasDecorations(decorations))
-                                        .await
-                                        .ok();
+                                DrawingWindowRequest::SetTitle(value) => {
+                                    render_target.send(RenderWindowRequest::SetTitle(value)).await.ok();
                                 }
-                                DrawingWindowRequest::SetMousePointer(mouse_pointer) => {
-                                    render_target
-                                        .send(RenderWindowRequest::SetMousePointer(mouse_pointer))
-                                        .await
-                                        .ok();
+                                DrawingWindowRequest::SetIsTransparent(value) => {
+                                    render_target.send(RenderWindowRequest::SetIsTransparent(value)).await.ok();
+                                }
+                                DrawingWindowRequest::SetIsVisible(value) => {
+                                    render_target.send(RenderWindowRequest::SetIsVisible(value)).await.ok();
+                                }
+                                DrawingWindowRequest::SetIsResizable(value) => {
+                                    render_target.send(RenderWindowRequest::SetIsResizable(value)).await.ok();
+                                }
+                                DrawingWindowRequest::SetMinimized(value) => {
+                                    render_target.send(RenderWindowRequest::SetMinimized(value)).await.ok();
+                                }
+                                DrawingWindowRequest::SetMaximized(value) => {
+                                    render_target.send(RenderWindowRequest::SetMaximized(value)).await.ok();
+                                }
+                                DrawingWindowRequest::SetFullscreen(value) => {
+                                    render_target.send(RenderWindowRequest::SetFullscreen(value)).await.ok();
+                                }
+                                DrawingWindowRequest::SetHasDecorations(value) => {
+                                    render_target.send(RenderWindowRequest::SetHasDecorations(value)).await.ok();
+                                }
+                                DrawingWindowRequest::SetWindowLevel(value) => {
+                                    render_target.send(RenderWindowRequest::SetWindowLevel(value)).await.ok();
+                                }
+                                DrawingWindowRequest::SetImePosition(value) => {
+                                    render_target.send(RenderWindowRequest::SetImePosition(value)).await.ok();
+                                }
+                                DrawingWindowRequest::SetImeAllowed(value) => {
+                                    render_target.send(RenderWindowRequest::SetImeAllowed(value)).await.ok();
+                                }
+                                DrawingWindowRequest::SetTheme(value) => {
+                                    render_target.send(RenderWindowRequest::SetTheme(value)).await.ok();
+                                }
+                                DrawingWindowRequest::SetCursorPosition(value) => {
+                                    render_target.send(RenderWindowRequest::SetCursorPosition(value)).await.ok();
+                                }
+                                DrawingWindowRequest::SetCursorIcon(value) => {
+                                    render_target.send(RenderWindowRequest::SetCursorIcon(value)).await.ok();
                                 }
                             }
                         }

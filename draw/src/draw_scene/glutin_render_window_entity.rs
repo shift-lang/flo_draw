@@ -9,7 +9,7 @@ use std::sync::*;
 use flo_stream::*;
 use futures::channel::mpsc;
 use futures::prelude::*;
-use winit::window::CursorIcon;
+use winit::window::{CursorIcon, WindowLevel};
 
 use flo_binding::*;
 use flo_canvas_events::*;
@@ -35,18 +35,42 @@ pub fn create_glutin_render_window_entity(
         entity_id,
         move |context, render_window_requests| async move {
             // Create the publisher to send the render actions to the stream
+            let size = bind(initial_size);
             let title = bind("flo_draw".to_string());
             let fullscreen = bind(false);
             let has_decorations = bind(true);
-            let mouse_pointer = bind(MousePointer::SystemDefault(CursorIcon::Default));
-            let size = bind(initial_size);
+            let cursor_icon = bind(MousePointer::SystemDefault(CursorIcon::Default));
+            let min_size = bind(None);
+            let max_size = bind(None);
+            let is_transparent = bind(false);
+            let is_visible = bind(true);
+            let is_resizable = bind(true);
+            let is_minimized = bind(false);
+            let is_maximized = bind(false);
+            let window_level = bind(WindowLevel::Normal);
+            let ime_position = bind((0, 0));
+            let ime_allowed = bind(false);
+            let theme = bind(None);
+            let cursor_position = bind((0, 0));
 
             let window_properties = WindowProperties {
                 title: BindRef::from(title.clone()),
                 fullscreen: BindRef::from(fullscreen.clone()),
                 has_decorations: BindRef::from(has_decorations.clone()),
-                mouse_pointer: BindRef::from(mouse_pointer.clone()),
+                cursor_icon: BindRef::from(cursor_icon.clone()),
                 size: BindRef::from(size.clone()),
+                min_size: BindRef::from(min_size.clone()),
+                max_size: BindRef::from(max_size.clone()),
+                is_transparent: BindRef::from(is_transparent.clone()),
+                is_visible: BindRef::from(is_visible.clone()),
+                is_resizable: BindRef::from(is_resizable.clone()),
+                is_minimized: BindRef::from(is_minimized.clone()),
+                is_maximized: BindRef::from(is_maximized.clone()),
+                window_level: BindRef::from(window_level.clone()),
+                ime_position: BindRef::from(ime_position.clone()),
+                ime_allowed: BindRef::from(ime_allowed.clone()),
+                theme: BindRef::from(theme.clone()),
+                cursor_position: BindRef::from(cursor_position.clone()),
             };
             let mut event_publisher = Publisher::new(1000);
 
@@ -110,18 +134,22 @@ pub fn create_glutin_render_window_entity(
                         return;
                     }
 
-                    RenderWindowRequest::SetTitle(new_title) => {
-                        title.set(new_title);
-                    }
-                    RenderWindowRequest::SetFullScreen(new_fullscreen) => {
-                        fullscreen.set(new_fullscreen);
-                    }
-                    RenderWindowRequest::SetHasDecorations(new_decorations) => {
-                        has_decorations.set(new_decorations);
-                    }
-                    RenderWindowRequest::SetMousePointer(new_mouse_pointer) => {
-                        mouse_pointer.set(new_mouse_pointer);
-                    }
+                    RenderWindowRequest::SetMinSize(value) => min_size.set(value),
+                    RenderWindowRequest::SetMaxSize(value) => max_size.set(value),
+                    RenderWindowRequest::SetTitle(value) => title.set(value),
+                    RenderWindowRequest::SetIsTransparent(value) => is_transparent.set(value),
+                    RenderWindowRequest::SetIsVisible(value) => is_visible.set(value),
+                    RenderWindowRequest::SetIsResizable(value) => is_resizable.set(value),
+                    RenderWindowRequest::SetMinimized(value) => is_minimized.set(value),
+                    RenderWindowRequest::SetMaximized(value) => is_maximized.set(value),
+                    RenderWindowRequest::SetFullscreen(value) => fullscreen.set(value),
+                    RenderWindowRequest::SetHasDecorations(value) => has_decorations.set(value),
+                    RenderWindowRequest::SetWindowLevel(value) => window_level.set(value),
+                    RenderWindowRequest::SetImePosition(value) => ime_position.set(value),
+                    RenderWindowRequest::SetImeAllowed(value) => ime_allowed.set(value),
+                    RenderWindowRequest::SetTheme(value) => theme.set(value),
+                    RenderWindowRequest::SetCursorPosition(value) => cursor_position.set(value),
+                    RenderWindowRequest::SetCursorIcon(value) => cursor_icon.set(value),
                 }
             }
         },

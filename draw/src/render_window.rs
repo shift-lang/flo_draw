@@ -52,24 +52,62 @@ where
 {
     context.run_in_background(async move {
         // Follow the properties
+        let min_size = follow(window_properties.min_size);
+        let max_size = follow(window_properties.max_size);
         let title = follow(window_properties.title);
+        let is_transparent = follow(window_properties.is_transparent);
+        let is_visible = follow(window_properties.is_visible);
+        let is_resizable = follow(window_properties.is_resizable);
+        let is_minimized = follow(window_properties.is_minimized);
+        let is_maximized = follow(window_properties.is_maximized);
         let fullscreen = follow(window_properties.fullscreen);
         let has_decorations = follow(window_properties.has_decorations);
-        let mouse_pointer = follow(window_properties.mouse_pointer);
+        let window_level = follow(window_properties.window_level);
+        let ime_position = follow(window_properties.ime_position);
+        let ime_allowed = follow(window_properties.ime_allowed);
+        let theme = follow(window_properties.theme);
+        let cursor_position = follow(window_properties.cursor_position);
+        let cursor_icon = follow(window_properties.cursor_icon);
 
-        // Each one generates an event when it changes
-        let title = title.map(|new_title| EventWindowRequest::SetTitle(new_title));
-        let fullscreen = fullscreen.map(|fullscreen| EventWindowRequest::SetFullScreen(fullscreen));
-        let has_decorations = has_decorations
-            .map(|has_decorations| EventWindowRequest::SetHasDecorations(has_decorations));
-        let mouse_pointer =
-            mouse_pointer.map(|mouse_pointer| EventWindowRequest::SetMousePointer(mouse_pointer));
+        macro_rules! map {
+            ($name:ident, $event:ident) => {
+                $name.map(|$name| EventWindowRequest::$event($name))
+            };
+        }
+        let min_size = map!(min_size, SetMinSize);
+        let max_size = map!(max_size, SetMaxSize);
+        let title = map!(title, SetTitle);
+        let is_transparent = map!(is_transparent, SetIsTransparent);
+        let is_visible = map!(is_visible, SetIsVisible);
+        let is_resizable = map!(is_resizable, SetIsResizable);
+        let is_minimized = map!(is_minimized, SetMinimized);
+        let is_maximized = map!(is_maximized, SetMaximized);
+        let fullscreen = map!(fullscreen, SetFullscreen);
+        let has_decorations = map!(has_decorations, SetHasDecorations);
+        let window_level = map!(window_level, SetWindowLevel);
+        let ime_position = map!(ime_position, SetImePosition);
+        let ime_allowed = map!(ime_allowed, SetImeAllowed);
+        let theme = map!(theme, SetTheme);
+        let cursor_position = map!(cursor_position, SetCursorPosition);
+        let cursor_icon = map!(cursor_icon, SetCursorIcon);
 
         let mut requests = stream::select_all(vec![
+            min_size.boxed(),
+            max_size.boxed(),
             title.boxed(),
+            is_transparent.boxed(),
+            is_visible.boxed(),
+            is_resizable.boxed(),
+            is_minimized.boxed(),
+            is_maximized.boxed(),
             fullscreen.boxed(),
             has_decorations.boxed(),
-            mouse_pointer.boxed(),
+            window_level.boxed(),
+            ime_position.boxed(),
+            ime_allowed.boxed(),
+            theme.boxed(),
+            cursor_position.boxed(),
+            cursor_icon.boxed(),
         ]);
 
         // Pass the requests on to the underlying window

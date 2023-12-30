@@ -18,8 +18,8 @@ use glutin::display::{GetGlDisplay, GlDisplay};
 use glutin::prelude::{GlConfig, GlSurface};
 use glutin::surface::{Surface, SurfaceTypeTrait};
 use glutin_winit::GlWindow;
-use winit::dpi::LogicalSize;
-use winit::window::{Fullscreen, Window};
+use winit::dpi::{LogicalSize, PhysicalPosition};
+use winit::window::{Fullscreen, Theme, Window, WindowLevel};
 
 use flo_binding::*;
 use flo_render::*;
@@ -110,11 +110,23 @@ pub(super) async fn send_actions_to_window<
     let mut window_actions = WindowUpdateStream {
         suspend_resume,
         render_stream: render_actions,
-        title_stream: follow(window_properties.title),
         size: follow(window_properties.size),
+        min_size: follow(window_properties.min_size),
+        max_size: follow(window_properties.max_size),
+        title: follow(window_properties.title),
+        is_transparent: follow(window_properties.is_transparent),
+        is_visible: follow(window_properties.is_visible),
+        is_resizable: follow(window_properties.is_resizable),
+        is_minimized: follow(window_properties.is_minimized),
+        is_maximized: follow(window_properties.is_maximized),
         fullscreen: follow(window_properties.fullscreen),
         has_decorations: follow(window_properties.has_decorations),
-        mouse_pointer: follow(window_properties.mouse_pointer),
+        window_level: follow(window_properties.window_level),
+        ime_position: follow(window_properties.ime_position),
+        ime_allowed: follow(window_properties.ime_allowed),
+        theme: follow(window_properties.theme),
+        cursor_position: follow(window_properties.cursor_position),
+        cursor_icon: follow(window_properties.cursor_icon),
     };
 
     while let Some(next_action) = window_actions.next().await {
@@ -225,20 +237,57 @@ pub(super) async fn send_actions_to_window<
                 events.publish(DrawEvent::NewFrame).await;
             }
 
+            WindowUpdate::SetSize((width, height)) => {
+                window
+                    .window
+                    .as_ref()
+                    .map(|win| win.set_inner_size(LogicalSize::new(width as f64, height as _)));
+            }
+            WindowUpdate::SetMinSize(Some((width, height))) => {
+                window
+                    .window
+                    .as_ref()
+                    .map(|win| win.set_min_inner_size(Some(LogicalSize::new(width as f64, height as _))));
+            },
+            WindowUpdate::SetMinSize(None) => {
+                window
+                    .window
+                    .as_ref()
+                    .map(|win| win.set_min_inner_size::<LogicalSize<f64>>(None));
+            },
+            WindowUpdate::SetMaxSize(Some((width, height))) => {
+                window
+                    .window
+                    .as_ref()
+                    .map(|win| win.set_max_inner_size(Some(LogicalSize::new(width as f64, height as _))));
+            },
+            WindowUpdate::SetMaxSize(None) => {
+                window
+                    .window
+                    .as_ref()
+                    .map(|win| win.set_max_inner_size::<LogicalSize<f64>>(None));
+            },
             WindowUpdate::SetTitle(new_title) => {
                 window
                     .window
                     .as_ref()
-                    .map(|ctxt| ctxt.set_title(&new_title));
+                    .map(|win| win.set_title(&new_title));
             }
-
-            WindowUpdate::SetSize((size_x, size_y)) => {
-                window
-                    .window
-                    .as_ref()
-                    .map(|ctxt| ctxt.set_inner_size(LogicalSize::new(size_x as f64, size_y as _)));
-            }
-
+            WindowUpdate::SetIsTransparent(val) => {
+                window.window.as_ref().map(|win| win.set_transparent(val));
+            },
+            WindowUpdate::SetIsVisible(val) => {
+                window.window.as_ref().map(|win| win.set_visible(val));
+            },
+            WindowUpdate::SetIsResizable(val) => {
+                window.window.as_ref().map(|win| win.set_resizable(val));
+            },
+            WindowUpdate::SetMinimized(val) => {
+                window.window.as_ref().map(|win| win.set_minimized(val));
+            },
+            WindowUpdate::SetMaximized(val) => {
+                window.window.as_ref().map(|win| win.set_maximized(val));
+            },
             WindowUpdate::SetFullscreen(is_fullscreen) => {
                 let fullscreen = if is_fullscreen {
                     Some(Fullscreen::Borderless(None))
@@ -248,28 +297,41 @@ pub(super) async fn send_actions_to_window<
                 window
                     .window
                     .as_ref()
-                    .map(|ctxt| ctxt.set_fullscreen(fullscreen));
+                    .map(|win| win.set_fullscreen(fullscreen));
             }
-
             WindowUpdate::SetHasDecorations(decorations) => {
                 window
                     .window
                     .as_ref()
-                    .map(|ctxt| ctxt.set_decorations(decorations));
+                    .map(|win| win.set_decorations(decorations));
             }
-
-            WindowUpdate::SetMousePointer(MousePointer::None) => {
+            WindowUpdate::SetWindowLevel(level) => {
+                window.window.as_ref().map(|win| win.set_window_level(level));
+            },
+            WindowUpdate::SetImePosition((x, y)) => {
+                window.window.as_ref().map(|win| win.set_ime_position(PhysicalPosition::new(x as u32, y as _)));
+            },
+            WindowUpdate::SetImeAllowed(val) => {
+                window.window.as_ref().map(|win| win.set_ime_allowed(val));
+            },
+            WindowUpdate::SetTheme(theme) => {
+                window.window.as_ref().map(|win| win.set_theme(theme));
+            },
+            WindowUpdate::SetCursorPosition((x, y)) => {
+                window.window.as_ref().map(|win| win.set_cursor_position(PhysicalPosition::new(x as u32, y as _)));
+            },
+            WindowUpdate::SetCursorIcon(MousePointer::None) => {
                 window
                     .window
                     .as_ref()
-                    .map(|ctxt| ctxt.set_cursor_visible(false));
+                    .map(|win| win.set_cursor_visible(false));
             }
 
-            WindowUpdate::SetMousePointer(MousePointer::SystemDefault(mode)) => {
+            WindowUpdate::SetCursorIcon(MousePointer::SystemDefault(mode)) => {
                 window
                     .window
                     .as_ref()
-                    .map(|ctxt| { ctxt.set_cursor_visible(true); ctxt.set_cursor_icon(mode) });
+                    .map(|win| { win.set_cursor_visible(true); win.set_cursor_icon(mode) });
             }
         }
     }
@@ -285,11 +347,23 @@ enum WindowUpdate {
     Resumed,
     Suspended,
     Render(Vec<RenderAction>),
-    SetTitle(String),
     SetSize((u64, u64)),
+    SetMinSize(Option<(u64, u64)>),
+    SetMaxSize(Option<(u64, u64)>),
+    SetTitle(String),
+    SetIsTransparent(bool),
+    SetIsVisible(bool),
+    SetIsResizable(bool),
+    SetMinimized(bool),
+    SetMaximized(bool),
     SetFullscreen(bool),
     SetHasDecorations(bool),
-    SetMousePointer(MousePointer),
+    SetWindowLevel(WindowLevel),
+    SetImePosition((u64, u64)),
+    SetImeAllowed(bool),
+    SetTheme(Option<Theme>),
+    SetCursorPosition((u64, u64)),
+    SetCursorIcon(MousePointer),
 }
 
 ///
@@ -298,51 +372,125 @@ enum WindowUpdate {
 struct WindowUpdateStream<
     TSuspendResumeStream,
     TRenderStream,
-    TTitleStream,
     TSizeStream,
+    TMinSizeStream,
+    TMaxSizeStream,
+    TTitleStream,
+    TIsTransparentStream,
+    TIsVisibleStream,
+    TIsResizableStream,
+    TMinimizedStream,
+    TMaximizedStream,
     TFullscreenStream,
-    TDecorationStream,
-    TMousePointerStream,
+    THasDecorationsStream,
+    TWindowLevelStream,
+    TImePositionStream,
+    TImeAllowedStream,
+    TThemeStream,
+    TCursorPositionStream,
+    TCursorIconStream,
 > {
     suspend_resume: TSuspendResumeStream,
     render_stream: TRenderStream,
-    title_stream: TTitleStream,
     size: TSizeStream,
+    min_size: TMinSizeStream,
+    max_size: TMaxSizeStream,
+    title: TTitleStream,
+    is_transparent: TIsTransparentStream,
+    is_visible: TIsVisibleStream,
+    is_resizable: TIsResizableStream,
+    is_minimized: TMinimizedStream,
+    is_maximized: TMaximizedStream,
     fullscreen: TFullscreenStream,
-    has_decorations: TDecorationStream,
-    mouse_pointer: TMousePointerStream,
+    has_decorations: THasDecorationsStream,
+    window_level: TWindowLevelStream,
+    ime_position: TImePositionStream,
+    ime_allowed: TImeAllowedStream,
+    theme: TThemeStream,
+    cursor_position: TCursorPositionStream,
+    cursor_icon: TCursorIconStream,
 }
 
 impl<
         TSuspendResumeStream,
         TRenderStream,
-        TTitleStream,
         TSizeStream,
+        TMinSizeStream,
+        TMaxSizeStream,
+        TTitleStream,
+        TIsTransparentStream,
+        TIsVisibleStream,
+        TIsResizableStream,
+        TMinimizedStream,
+        TMaximizedStream,
         TFullscreenStream,
-        TDecorationStream,
-        TMousePointerStream,
+        THasDecorationsStream,
+        TWindowLevelStream,
+        TImePositionStream,
+        TImeAllowedStream,
+        TThemeStream,
+        TCursorPositionStream,
+        TCursorIconStream,
     > Stream
     for WindowUpdateStream<
         TSuspendResumeStream,
         TRenderStream,
-        TTitleStream,
         TSizeStream,
+        TMinSizeStream,
+        TMaxSizeStream,
+        TTitleStream,
+        TIsTransparentStream,
+        TIsVisibleStream,
+        TIsResizableStream,
+        TMinimizedStream,
+        TMaximizedStream,
         TFullscreenStream,
-        TDecorationStream,
-        TMousePointerStream,
+        THasDecorationsStream,
+        TWindowLevelStream,
+        TImePositionStream,
+        TImeAllowedStream,
+        TThemeStream,
+        TCursorPositionStream,
+        TCursorIconStream,
     >
 where
     TSuspendResumeStream: Unpin + Stream<Item = SuspendResume>,
     TRenderStream: Unpin + Stream<Item = Vec<RenderAction>>,
-    TTitleStream: Unpin + Stream<Item = String>,
     TSizeStream: Unpin + Stream<Item = (u64, u64)>,
+    TMinSizeStream: Unpin + Stream<Item = Option<(u64, u64)>>,
+    TMaxSizeStream: Unpin + Stream<Item = Option<(u64, u64)>>,
+    TTitleStream: Unpin + Stream<Item = String>,
+    TIsTransparentStream: Unpin + Stream<Item = bool>,
+    TIsVisibleStream: Unpin + Stream<Item = bool>,
+    TIsResizableStream: Unpin + Stream<Item = bool>,
+    TMinimizedStream: Unpin + Stream<Item = bool>,
+    TMaximizedStream: Unpin + Stream<Item = bool>,
     TFullscreenStream: Unpin + Stream<Item = bool>,
-    TDecorationStream: Unpin + Stream<Item = bool>,
-    TMousePointerStream: Unpin + Stream<Item = MousePointer>,
+    THasDecorationsStream: Unpin + Stream<Item = bool>,
+    TWindowLevelStream: Unpin + Stream<Item = WindowLevel>,
+    TImePositionStream: Unpin + Stream<Item = (u64, u64)>,
+    TImeAllowedStream: Unpin + Stream<Item = bool>,
+    TThemeStream: Unpin + Stream<Item = Option<Theme>>,
+    TCursorPositionStream: Unpin + Stream<Item = (u64, u64)>,
+    TCursorIconStream: Unpin + Stream<Item = MousePointer>,
 {
     type Item = WindowUpdate;
 
     fn poll_next(mut self: Pin<&mut Self>, context: &mut Context<'_>) -> Poll<Option<Self::Item>> {
+        macro_rules! is_ready {
+            ($name:ident, $event:ident) => {
+                match self.$name.poll_next_unpin(context) {
+                    Poll::Ready(Some(item)) => {
+                        return Poll::Ready(Some(WindowUpdate::$event(item)));
+                    }
+                    Poll::Ready(None) => {
+                        return Poll::Ready(None);
+                    }
+                    Poll::Pending => {}
+                }
+            };
+        }
+
         // Poll each stream in turn to see if they have an item
 
         // Suspending and resuming has priority
@@ -360,66 +508,27 @@ where
         }
 
         // Followed by render instructions
-        match self.render_stream.poll_next_unpin(context) {
-            Poll::Ready(Some(item)) => {
-                return Poll::Ready(Some(WindowUpdate::Render(item)));
-            }
-            Poll::Ready(None) => {
-                return Poll::Ready(None);
-            }
-            Poll::Pending => {}
-        }
+        is_ready!(render_stream, Render);
 
         // The various binding streams
-        match self.title_stream.poll_next_unpin(context) {
-            Poll::Ready(Some(item)) => {
-                return Poll::Ready(Some(WindowUpdate::SetTitle(item)));
-            }
-            Poll::Ready(None) => {
-                return Poll::Ready(None);
-            }
-            Poll::Pending => {}
-        }
+        is_ready!(size, SetSize);
+        is_ready!(min_size, SetMinSize);
+        is_ready!(max_size, SetMaxSize);
+        is_ready!(title, SetTitle);
+        is_ready!(is_transparent, SetIsTransparent);
+        is_ready!(is_visible, SetIsVisible);
+        is_ready!(is_resizable, SetIsResizable);
+        is_ready!(is_minimized, SetMinimized);
+        is_ready!(is_maximized, SetMaximized);
+        is_ready!(fullscreen, SetFullscreen);
+        is_ready!(has_decorations, SetHasDecorations);
+        is_ready!(window_level, SetWindowLevel);
+        is_ready!(ime_position, SetImePosition);
+        is_ready!(ime_allowed, SetImeAllowed);
+        is_ready!(theme, SetTheme);
+        is_ready!(cursor_position, SetCursorPosition);
+        is_ready!(cursor_icon, SetCursorIcon);
 
-        match self.size.poll_next_unpin(context) {
-            Poll::Ready(Some(item)) => {
-                return Poll::Ready(Some(WindowUpdate::SetSize(item)));
-            }
-            Poll::Ready(None) => {
-                return Poll::Ready(None);
-            }
-            Poll::Pending => {}
-        }
-
-        match self.fullscreen.poll_next_unpin(context) {
-            Poll::Ready(Some(item)) => {
-                return Poll::Ready(Some(WindowUpdate::SetFullscreen(item)));
-            }
-            Poll::Ready(None) => {
-                return Poll::Ready(None);
-            }
-            Poll::Pending => {}
-        }
-
-        match self.has_decorations.poll_next_unpin(context) {
-            Poll::Ready(Some(item)) => {
-                return Poll::Ready(Some(WindowUpdate::SetHasDecorations(item)));
-            }
-            Poll::Ready(None) => {
-                return Poll::Ready(None);
-            }
-            Poll::Pending => {}
-        }
-
-        match self.mouse_pointer.poll_next_unpin(context) {
-            Poll::Ready(Some(item)) => {
-                return Poll::Ready(Some(WindowUpdate::SetMousePointer(item)));
-            }
-            Poll::Ready(None) => {
-                return Poll::Ready(None);
-            }
-            Poll::Pending => {}
-        }
 
         // No stream matched anything
         Poll::Pending
